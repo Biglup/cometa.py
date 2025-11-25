@@ -3,9 +3,6 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-# C extensions
-*.so
-
 # Distribution / packaging
 .Python
 build/
@@ -207,3 +204,4 @@ marimo/_lsp/
 __marimo__/
 
 .idea
+docs/README_docs.md
