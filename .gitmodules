@@ -1,0 +1,3 @@
+[submodule "vendor/cardano-c"]
+	path = vendor/cardano-c
+	url = git@github.com:Biglup/cardano-c.git
