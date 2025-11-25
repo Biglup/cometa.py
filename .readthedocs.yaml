@@ -12,7 +12,7 @@ build:
     # Run the auto-generation script after the package is installed
     # but BEFORE Sphinx starts building the docs.
     post_install:
-      - python scripts/generate_docs.py
+      - python tools/generate_docs.py
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
