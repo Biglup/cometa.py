@@ -1,31 +1,72 @@
 import pytest
+from biglup.cometa.common.protocol_version import ProtocolVersion
+from biglup.cometa.cbor.cbor_writer import CborWriter
+from biglup.cometa.cbor.cbor_reader import CborReader
+from biglup.cometa.json.json_writer import JsonWriter
 
-from biglup.cometa.common import ProtocolVersion
+class TestProtocolVersion:
+    def test_new(self):
+        """Test creating a new ProtocolVersion."""
+        pv = ProtocolVersion.new(8, 0)
+        assert pv.major == 8
+        assert pv.minor == 0
+        assert pv.refcount >= 1
 
+    def test_setters(self):
+        """Test modifying major and minor versions."""
+        pv = ProtocolVersion.new(1, 0)
 
-def test_protocol_version_basic_roundtrip():
-    # Create with initial values
-    v = ProtocolVersion.from_numbers(1, 0)
+        pv.major = 9
+        assert pv.major == 9
 
-    assert v.major == 1
-    assert v.minor == 0
+        pv.minor = 2
+        assert pv.minor == 2
 
-    # Change values via setters
-    v.major = 2
-    v.minor = 3
+    def test_equality(self):
+        """Test equality comparison."""
+        pv1 = ProtocolVersion.new(8, 0)
+        pv2 = ProtocolVersion.new(8, 0)
+        pv3 = ProtocolVersion.new(9, 0)
+        pv4 = ProtocolVersion.new(8, 1)
 
-    assert v.major == 2
-    assert v.minor == 3
+        assert pv1 == pv2
+        assert pv1 != pv3
+        assert pv1 != pv4
+        assert pv1 != "not a protocol version"
 
-    # Refcount should be >= 1
-    rc_before = v.refcount()
-    assert rc_before >= 1
+    def test_repr(self):
+        """Test string representation."""
+        pv = ProtocolVersion.new(8, 0)
+        assert repr(pv) == "<ProtocolVersion major=8 minor=0>"
 
-    # Clone increases refcount
-    v_clone = v.clone()
-    rc_after = v.refcount()
-    assert rc_after == rc_before + 1 or rc_after >= rc_before  # depending on implementation
+    def test_cbor_roundtrip(self):
+        """Test CBOR serialization and deserialization."""
+        original = ProtocolVersion.new(8, 0)
 
-    # Cloned object sees same values
-    assert v_clone.major == 2
-    assert v_clone.minor == 3
+        # Serialize
+        writer = CborWriter()
+        original.to_cbor(writer)
+        cbor_data = writer.encode()
+
+        # Deserialize
+        reader = CborReader.from_bytes(cbor_data)
+        decoded = ProtocolVersion.from_cbor(reader)
+
+        assert original == decoded
+
+    def test_json_serialization(self):
+        """Test JSON serialization."""
+        pv = ProtocolVersion.new(8, 2)
+        writer = JsonWriter()
+
+        pv.to_json(writer)
+        json_str = writer.encode()
+
+        assert '"major":8' in json_str.replace(" ", "")
+        assert '"minor":2' in json_str.replace(" ", "")
+
+    def test_context_manager(self):
+        """Test usage as a context manager."""
+        with ProtocolVersion.new(1, 1) as pv:
+            assert pv.major == 1
+            assert pv.minor == 1

@@ -1,15 +1,27 @@
 from __future__ import annotations
+import typing
 
 from .._ffi import ffi, lib
-from .._errors import check_error
+from ..errors import check_error, CardanoError
+
+if typing.TYPE_CHECKING:
+    from ..cbor.cbor_reader import CborReader
+    from ..cbor.cbor_writer import CborWriter
+    from ..json.json_writer import JsonWriter
 
 
 class ProtocolVersion:
-    """Python wrapper for cardano_protocol_version_t."""
+    """
+    Represents a version of the Cardano protocol.
+
+    The protocol can be thought of as the set of rules that nodes in the network agree to follow.
+    This versioning system helps nodes to keep track of which set of rules they are adhering to
+    and allows for the decentralized updating of the protocol parameters without requiring a hard fork.
+    """
 
     def __init__(self, ptr) -> None:
         if ptr == ffi.NULL:
-            raise ValueError("ProtocolVersion pointer is NULL")
+            raise CardanoError("ProtocolVersion pointer is NULL")
         self._ptr = ptr
 
     def __del__(self) -> None:
@@ -18,57 +30,116 @@ class ProtocolVersion:
             lib.cardano_protocol_version_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
-    # ---- Constructors -----------------------------------------------------
+    def __enter__(self) -> ProtocolVersion:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+    def __repr__(self) -> str:
+        return f"<ProtocolVersion major={self.major} minor={self.minor}>"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ProtocolVersion):
+            return self.major == other.major and self.minor == other.minor
+        return False
+
+    # --------------------------------------------------------------------------
+    # Factories
+    # --------------------------------------------------------------------------
 
     @classmethod
-    def from_numbers(cls, major: int, minor: int) -> "ProtocolVersion":
-        """Create a ProtocolVersion from major/minor integers."""
+    def new(cls, major: int, minor: int) -> ProtocolVersion:
+        """
+        Creates and initializes a new instance of the Protocol Version.
+
+        Args:
+            major (int): The major version number.
+            minor (int): The minor version number.
+        """
         out = ffi.new("cardano_protocol_version_t**")
-        err = lib.cardano_protocol_version_new(
-            int(major),
-            int(minor),
-            out,
-        )
-        # On error, ctx_ptr is out[0] but may be NULL; that's OK for get_last_error.
-        ctx = out[0] if out[0] != ffi.NULL else ffi.NULL
-        check_error(err, lib.cardano_protocol_version_get_last_error, ctx)
+        err = lib.cardano_protocol_version_new(major, minor, out)
+        check_error(err, lib.cardano_protocol_version_get_last_error, ffi.NULL)
         return cls(out[0])
 
-    # ---- Reference counting ----------------------------------------------
+    @classmethod
+    def from_cbor(cls, reader: CborReader) -> ProtocolVersion:
+        """
+        Creates a ProtocolVersion from a CBOR reader.
 
-    def clone(self) -> "ProtocolVersion":
-        """Increase refcount and wrap in a new Python object."""
-        lib.cardano_protocol_version_ref(self._ptr)
-        return ProtocolVersion(self._ptr)
+        Args:
+            reader (CborReader): The CBOR reader instance.
+        """
+        out = ffi.new("cardano_protocol_version_t**")
+        err = lib.cardano_protocol_version_from_cbor(reader._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, reader._ptr)
+        return cls(out[0])
 
-    def refcount(self) -> int:
-        """Return the current reference count (debugging helper)."""
-        return int(lib.cardano_protocol_version_refcount(self._ptr))
-
-    # ---- Properties -------------------------------------------------------
+    # --------------------------------------------------------------------------
+    # Properties
+    # --------------------------------------------------------------------------
 
     @property
     def major(self) -> int:
+        """The major version number."""
         return int(lib.cardano_protocol_version_get_major(self._ptr))
 
     @major.setter
     def major(self, value: int) -> None:
-        err = lib.cardano_protocol_version_set_major(self._ptr, int(value))
+        err = lib.cardano_protocol_version_set_major(self._ptr, value)
         check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
 
     @property
     def minor(self) -> int:
+        """The minor version number."""
         return int(lib.cardano_protocol_version_get_minor(self._ptr))
 
     @minor.setter
     def minor(self, value: int) -> None:
-        err = lib.cardano_protocol_version_set_minor(self._ptr, int(value))
+        err = lib.cardano_protocol_version_set_minor(self._ptr, value)
         check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
 
-    # def to_cbor(self, writer: CborWriter) -> None:
-    #     err = lib.cardano_protocol_version_to_cbor(self._ptr, writer._ptr)
-    #     check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
-    #
-    # def to_cip116_json(self, writer: JsonWriter) -> None:
-    #     err = lib.cardano_protocol_version_to_cip116_json(self._ptr, writer._ptr)
-    #     check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
+    # --------------------------------------------------------------------------
+    # Serialization
+    # --------------------------------------------------------------------------
+
+    def to_cbor(self, writer: CborWriter) -> None:
+        """
+        Serializes protocol version into CBOR format using a CBOR writer.
+
+        Args:
+            writer (CborWriter): The CBOR writer instance.
+        """
+        err = lib.cardano_protocol_version_to_cbor(self._ptr, writer._ptr)
+        check_error(err, lib.cardano_cbor_writer_get_last_error, writer._ptr)
+
+    def to_json(self, writer: JsonWriter) -> None:
+        """
+        Serializes a protocol version to CIP-116 JSON.
+
+        Args:
+            writer (JsonWriter): The JSON writer instance.
+        """
+        err = lib.cardano_protocol_version_to_cip116_json(self._ptr, writer._ptr)
+        # Note: Assuming generic check since JsonWriter bindings might not be fully available in context
+        check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
+
+    # --------------------------------------------------------------------------
+    # Internal State
+    # --------------------------------------------------------------------------
+
+    @property
+    def refcount(self) -> int:
+        """Returns the number of active references to the underlying C object."""
+        return int(lib.cardano_protocol_version_refcount(self._ptr))
+
+    @property
+    def last_error(self) -> str:
+        """Returns the last error message recorded for this object."""
+        return ffi.string(lib.cardano_protocol_version_get_last_error(self._ptr)).decode("utf-8")
+
+    @last_error.setter
+    def last_error(self, message: str) -> None:
+        """Manually sets the last error message."""
+        c_msg = ffi.new("char[]", message.encode("utf-8"))
+        lib.cardano_protocol_version_set_last_error(self._ptr, c_msg)

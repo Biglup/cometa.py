@@ -1,15 +1,25 @@
 from __future__ import annotations
+import typing
+from typing import Optional
 
 from .._ffi import ffi, lib
-from .._errors import check_error, CardanoError
+from ..errors import check_error, CardanoError
+from .cbor_reader_state import CborReaderState
 
+if typing.TYPE_CHECKING:
+    from ..buffer import Buffer
+    from ..common.bigint import BigInt
 
 class CborReader:
-    """Python wrapper for cardano_cbor_reader_t."""
+    """
+    Represents a reader for parsing Concise Binary Object Representation (CBOR) encoded data.
+
+    This class provides a stream-like interface to decode CBOR data items sequentially.
+    """
 
     def __init__(self, ptr) -> None:
+        """Internal constructor. Use factories like `from_bytes` or `from_hex`."""
         if ptr == ffi.NULL:
-            # we can try to fetch a generic message, but spec says NULL => error
             raise CardanoError("CBOR reader pointer is NULL")
         self._ptr = ptr
 
@@ -19,13 +29,35 @@ class CborReader:
             lib.cardano_cbor_reader_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
+    def __enter__(self) -> CborReader:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+    def __repr__(self) -> str:
+        try:
+            remaining = self.remaining_bytes
+        except Exception:
+            remaining = "?"
+        return f"<CborReader at 0x{id(self):x}, remaining={remaining}>"
+
+    # --------------------------------------------------------------------------
+    # Factories
+    # --------------------------------------------------------------------------
+
     @classmethod
-    def from_bytes(cls, data: bytes) -> "CborReader":
-        """Create a reader from raw CBOR bytes."""
+    def from_bytes(cls, data: bytes) -> CborReader:
+        """
+        Creates a CborReader from raw bytes.
+
+        Args:
+            data (bytes): The CBOR encoded data.
+        """
         buf = ffi.from_buffer("unsigned char[]", data)
         ptr = lib.cardano_cbor_reader_new(buf, len(data))
         if ptr == ffi.NULL:
-            # cardano_cbor_reader_get_last_error(NULL) returns generic message
+            # Retrieve generic error if creation fails
             msg = ffi.string(
                 lib.cardano_cbor_reader_get_last_error(ffi.NULL)
             ).decode("utf-8")
@@ -33,8 +65,13 @@ class CborReader:
         return cls(ptr)
 
     @classmethod
-    def from_hex(cls, hex_string: str) -> "CborReader":
-        """Create a reader from a hex-encoded CBOR string (without 0x prefix)."""
+    def from_hex(cls, hex_string: str) -> CborReader:
+        """
+        Creates a CborReader from a hexadecimal string.
+
+        Args:
+            hex_string (str): The hex-encoded CBOR data.
+        """
         bs = hex_string.encode("utf-8")
         ptr = lib.cardano_cbor_reader_from_hex(bs, len(bs))
         if ptr == ffi.NULL:
@@ -44,54 +81,218 @@ class CborReader:
             raise CardanoError(msg)
         return cls(ptr)
 
-    def clone(self) -> "CborReader":
-        """Clone the reader (new C object, separate lifetime)."""
-        out = ffi.new("cardano_cbor_reader_t**")
-        err = lib.cardano_cbor_reader_clone(self._ptr, out)
-        ctx = out[0] if out[0] != ffi.NULL else self._ptr
-        check_error(err, lib.cardano_cbor_reader_get_last_error, ctx)
-        return CborReader(out[0])
+    # --------------------------------------------------------------------------
+    # Properties & State
+    # --------------------------------------------------------------------------
 
+    @property
     def refcount(self) -> int:
-        """Return the current reference count (for debugging/testing)."""
+        """Returns the number of active references to the underlying C object."""
         return int(lib.cardano_cbor_reader_refcount(self._ptr))
 
-    def get_bytes_remaining(self) -> int:
-        """Return the number of unread bytes remaining in the reader."""
+    @property
+    def remaining_bytes(self) -> int:
+        """Returns the number of unread bytes remaining in the buffer."""
         remaining = ffi.new("size_t*")
         err = lib.cardano_cbor_reader_get_bytes_remaining(self._ptr, remaining)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
         return int(remaining[0])
 
-    def read_uint(self) -> int:
-        """Read next CBOR item as unsigned integer."""
-        value = ffi.new("uint64_t*")
-        err = lib.cardano_cbor_reader_read_uint(self._ptr, value)
+    @property
+    def last_error(self) -> str:
+        """Returns the last error message recorded for this reader."""
+        return ffi.string(lib.cardano_cbor_reader_get_last_error(self._ptr)).decode("utf-8")
+
+    @last_error.setter
+    def last_error(self, message: str) -> None:
+        """Manually sets the last error message."""
+        c_msg = ffi.new("char[]", message.encode("utf-8"))
+        lib.cardano_cbor_reader_set_last_error(self._ptr, c_msg)
+
+    def peek_state(self) -> CborReaderState:
+        """
+        Inspects the type of the next CBOR token without consuming it.
+
+        Returns:
+            CborReaderState: The state enum indicating the next token type.
+        """
+        state = ffi.new("cardano_cbor_reader_state_t*")
+        err = lib.cardano_cbor_reader_peek_state(self._ptr, state)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
-        return int(value[0])
+        return CborReaderState(state[0])
+
+    def clone(self) -> CborReader:
+        """Creates a deep copy of the reader with its own independent cursor."""
+        out = ffi.new("cardano_cbor_reader_t**")
+        err = lib.cardano_cbor_reader_clone(self._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return CborReader(out[0])
+
+    # --------------------------------------------------------------------------
+    # Reading Methods
+    # --------------------------------------------------------------------------
+
+    def read_remainder(self) -> bytes:
+        """Reads all remaining unparsed bytes."""
+        from ..buffer import Buffer
+
+        out = ffi.new("cardano_buffer_t**")
+        err = lib.cardano_cbor_reader_get_remainder_bytes(self._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return bytes(Buffer(out[0]))
+
+    def skip_value(self) -> None:
+        """Skips the next CBOR data item completely (including nested items)."""
+        err = lib.cardano_cbor_reader_skip_value(self._ptr)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+
+    def read_encoded_value(self) -> bytes:
+        """Reads the next CBOR data item as-is and returns the raw bytes."""
+        from ..buffer import Buffer
+
+        out = ffi.new("cardano_buffer_t**")
+        err = lib.cardano_cbor_reader_read_encoded_value(self._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return bytes(Buffer(out[0]))
+
+    def read_array_len(self) -> Optional[int]:
+        """
+        Reads the start of an array.
+
+        Returns:
+            int | None: The number of elements in the array, or None if it is indefinite-length.
+        """
+        size = ffi.new("int64_t*")
+        err = lib.cardano_cbor_reader_read_start_array(self._ptr, size)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+
+        val = int(size[0])
+        return None if val < 0 else val
+
+    def read_array_end(self) -> None:
+        """Consumes the 'break' code ending an indefinite-length array."""
+        err = lib.cardano_cbor_reader_read_end_array(self._ptr)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+
+    def read_map_len(self) -> Optional[int]:
+        """
+        Reads the start of a map.
+
+        Returns:
+            int | None: The number of pairs in the map, or None if it is indefinite-length.
+        """
+        size = ffi.new("int64_t*")
+        err = lib.cardano_cbor_reader_read_start_map(self._ptr, size)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+
+        val = int(size[0])
+        return None if val < 0 else val
+
+    def read_map_end(self) -> None:
+        """Consumes the 'break' code ending an indefinite-length map."""
+        err = lib.cardano_cbor_reader_read_end_map(self._ptr)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+
+    # --------------------------------------------------------------------------
+    # Primitive Readers
+    # --------------------------------------------------------------------------
 
     def read_int(self) -> int:
-        """Read next CBOR item as signed integer."""
+        """Reads a signed integer (Major type 0 or 1)."""
         value = ffi.new("int64_t*")
         err = lib.cardano_cbor_reader_read_int(self._ptr, value)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
         return int(value[0])
 
+    def read_uint(self) -> int:
+        """Reads an unsigned integer (Major type 0)."""
+        value = ffi.new("uint64_t*")
+        err = lib.cardano_cbor_reader_read_uint(self._ptr, value)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return int(value[0])
+
+    def read_bigint(self) -> int:
+        """Reads a bignum (Major type 6, tag 2 or 3)."""
+        from ..common.bigint import BigInt
+
+        out = ffi.new("cardano_bigint_t**")
+        err = lib.cardano_cbor_reader_read_bigint(self._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        # Wrap in BigInt to manage memory via __del__, then convert to Python int
+        return int(BigInt(out[0]))
+
+    def read_float(self) -> float:
+        """Reads a double-precision float (Major type 7)."""
+        value = ffi.new("double*")
+        err = lib.cardano_cbor_reader_read_double(self._ptr, value)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return float(value[0])
+
+    def read_simple_value(self) -> int:
+        """
+        Reads a simple value (e.g., boolean, null, or undefined).
+
+        Returns:
+            int: The simple value.
+        """
+        value = ffi.new("cardano_cbor_simple_value_t*")
+        err = lib.cardano_cbor_reader_read_simple_value(self._ptr, value)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return int(value[0])
+
     def read_bool(self) -> bool:
-        """Read next CBOR item as boolean."""
+        """Reads a boolean value."""
         value = ffi.new("bool*")
         err = lib.cardano_cbor_reader_read_bool(self._ptr, value)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
         return bool(value[0])
 
     def read_null(self) -> None:
-        """Read next CBOR item as null (just advances the reader)."""
+        """Consumes a null value."""
         err = lib.cardano_cbor_reader_read_null(self._ptr)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
 
-    def __repr__(self) -> str:
-        try:
-            remaining = self.get_bytes_remaining()
-        except Exception:
-            remaining = "?"
-        return f"<CborReader at 0x{id(self):x}, remaining={remaining}>"
+    def read_bytes(self) -> bytes:
+        """Reads a byte string (Major type 2)."""
+        from ..buffer import Buffer
+
+        out = ffi.new("cardano_buffer_t**")
+        err = lib.cardano_cbor_reader_read_bytestring(self._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return bytes(Buffer(out[0]))
+
+    def read_str(self) -> str:
+        """
+        Reads a text string (Major type 3).
+        Returns a string (decoded UTF-8).
+        """
+        from ..buffer import Buffer
+
+        out = ffi.new("cardano_buffer_t**")
+        err = lib.cardano_cbor_reader_read_textstring(self._ptr, out)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return Buffer(out[0]).to_str()
+
+    def read_tag(self) -> int:
+        """
+        Reads a semantic tag (Major type 6).
+
+        Returns:
+            int: The tag value.
+        """
+        tag = ffi.new("cardano_cbor_tag_t*")
+        err = lib.cardano_cbor_reader_read_tag(self._ptr, tag)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return int(tag[0])
+
+    def peek_tag(self) -> int:
+        """
+        Peeks at the next semantic tag without consuming it.
+
+        Returns:
+            int: The tag value if present.
+        """
+        tag = ffi.new("cardano_cbor_tag_t*")
+        err = lib.cardano_cbor_reader_peek_tag(self._ptr, tag)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return int(tag[0])
