@@ -1,10 +1,8 @@
-import pytest
-from biglup.cometa.json.json_writer import JsonWriter
-from biglup.cometa.json.json_format import JsonFormat
-from biglup.cometa.json.json_context import JsonContext
-from biglup.cometa.common.bigint import BigInt
-from biglup.cometa.buffer import Buffer
-from biglup.cometa.errors import CardanoError
+from cometa import JsonWriter
+from cometa import JsonFormat
+from cometa import JsonContext
+from cometa.common import BigInt
+from cometa import Buffer
 
 class TestJsonWriterLifecycle:
     def test_init_and_properties(self):

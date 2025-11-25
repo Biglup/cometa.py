@@ -28,8 +28,8 @@ def _load_all_cdef() -> str:
     """
     Load the generated cardano-c.cdef file from the package.
     """
-    # biglup/cometa/_cdef/all.cdef
-    cdef_path = importlib_resources.files("biglup.cometa") / "_cdef" / "cardano-c.cdef"
+    # cometa/_cdef/all.cdef
+    cdef_path = importlib_resources.files("cometa") / "_cdef" / "cardano-c.cdef"
     return cdef_path.read_text(encoding="utf-8")
 
 
@@ -61,7 +61,7 @@ def _detect_platform_dir() -> str:
 def _find_native_lib() -> Traversable:
     plat_dir = _detect_platform_dir()
 
-    base = importlib_resources.files("biglup.cometa") / "_native" / plat_dir
+    base = importlib_resources.files("cometa") / "_native" / plat_dir
 
     if sys.platform.startswith("linux"):
         candidates = ["libcardano-c.so"]

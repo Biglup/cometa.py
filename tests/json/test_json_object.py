@@ -1,8 +1,8 @@
 import pytest
-from biglup.cometa.json.json_object import JsonObject
-from biglup.cometa.json.json_object_type import JsonObjectType
-from biglup.cometa.json.json_format import JsonFormat
-from biglup.cometa.errors import CardanoError
+from cometa import JsonObject
+from cometa import JsonObjectType
+from cometa import JsonFormat
+from cometa import CardanoError
 
 
 class TestJsonObjectFactories:

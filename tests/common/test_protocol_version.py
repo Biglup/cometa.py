@@ -1,8 +1,7 @@
-import pytest
-from biglup.cometa.common.protocol_version import ProtocolVersion
-from biglup.cometa.cbor.cbor_writer import CborWriter
-from biglup.cometa.cbor.cbor_reader import CborReader
-from biglup.cometa.json.json_writer import JsonWriter
+from cometa.common.protocol_version import ProtocolVersion
+from cometa import CborWriter
+from cometa import CborReader
+from cometa import JsonWriter
 
 class TestProtocolVersion:
     def test_new(self):

@@ -1,8 +1,8 @@
 import math
-from biglup.cometa.cbor.cbor_reader import CborReader
-from biglup.cometa.cbor.cbor_reader_state import CborReaderState
-from biglup.cometa.cbor.cbor_tag import CborTag
-from biglup.cometa.cbor.cbor_simple_value import CborSimpleValue
+from cometa import CborReader
+from cometa import CborReaderState
+from cometa import CborTag
+from cometa import CborSimpleValue
 
 # ------------------------------------------------------------------------------
 # Helpers

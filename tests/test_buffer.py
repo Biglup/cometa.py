@@ -1,7 +1,7 @@
 import pytest
 import math
-from biglup.cometa.buffer import Buffer
-from biglup.cometa.common.byte_order import ByteOrder
+from cometa import Buffer
+from cometa import ByteOrder
 
 def test_buffer_new():
     buf = Buffer.new(10)

@@ -1,7 +1,7 @@
 import pytest
-from biglup.cometa.common.bigint import BigInt
-from biglup.cometa.common.byte_order import ByteOrder
-from biglup.cometa.errors import CardanoError
+from cometa.common import BigInt
+from cometa import ByteOrder
+from cometa import CardanoError
 
 # ------------------------------------------------------------------------------
 # Factories & Initialization

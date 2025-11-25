@@ -1,5 +1,5 @@
-from biglup.cometa.cbor.cbor_writer import CborWriter
-from biglup.cometa.cbor.cbor_tag import CborTag
+from cometa import CborWriter
+from cometa import CborTag
 
 class TestCborWriterArray:
     def test_write_empty_fixed_size_array(self):
