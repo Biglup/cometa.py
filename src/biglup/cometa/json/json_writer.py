@@ -1,3 +1,19 @@
+"""
+Copyright 2025 Biglup Labs.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 from __future__ import annotations
 import typing
 from typing import Union
@@ -6,10 +22,10 @@ from .._ffi import ffi, lib
 from ..errors import check_error, CardanoError
 from .json_format import JsonFormat
 from .json_context import JsonContext
+from ..common.bigint import BigInt
+from ..buffer import Buffer
 
 if typing.TYPE_CHECKING:
-    from ..buffer import Buffer
-    from ..common.bigint import BigInt
     from .json_object import JsonObject
 
 
@@ -21,15 +37,15 @@ class JsonWriter:
     internal state to ensure syntactically valid JSON output.
     """
 
-    def __init__(self, format: JsonFormat = JsonFormat.COMPACT) -> None:
+    def __init__(self, json_format: JsonFormat = JsonFormat.COMPACT) -> None:
         """
         Creates a new JSON writer instance.
 
         Args:
-            format (JsonFormat): The desired output format (COMPACT or PRETTY).
+            json_format (JsonFormat): The desired output format (COMPACT or PRETTY).
                                  Defaults to COMPACT.
         """
-        self._ptr = lib.cardano_json_writer_new(int(format))
+        self._ptr = lib.cardano_json_writer_new(int(json_format))
         if self._ptr == ffi.NULL:
             raise CardanoError("Failed to create JSON writer")
 
@@ -182,11 +198,9 @@ class JsonWriter:
         Args:
             value (int | BigInt): The integer to write.
             as_string (bool): If True, writes the number as a string (e.g. "123").
-                              Note: Very large integers (BigInts) are *always* written 
+                              Note: Very large integers (BigInts) are *always* written
                               as strings by the underlying library to preserve precision.
         """
-        from ..common.bigint import BigInt
-
         # Case 1: BigInt wrapper
         if isinstance(value, BigInt):
             # C API cardano_json_writer_write_bigint always writes as string
@@ -260,8 +274,6 @@ class JsonWriter:
         Args:
             data (bytes | Buffer): The data to write.
         """
-        from ..buffer import Buffer
-
         if isinstance(data, bytes):
             c_data = ffi.from_buffer("byte_t[]", data)
             lib.cardano_json_writer_write_bytes_as_hex(self._ptr, c_data, len(data))
@@ -278,8 +290,6 @@ class JsonWriter:
             hrp (str): The human-readable part (prefix).
             data (bytes | Buffer): The binary payload.
         """
-        from ..buffer import Buffer
-
         b_hrp = hrp.encode("utf-8")
 
         if isinstance(data, bytes):

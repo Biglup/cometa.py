@@ -1,4 +1,3 @@
-import pytest
 import math
 from biglup.cometa.cbor.cbor_reader import CborReader
 from biglup.cometa.cbor.cbor_reader_state import CborReaderState

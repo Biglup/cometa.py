@@ -9,8 +9,7 @@
 <div align="center">
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
-![Post-Integration](https://github.com/Biglup/cometa.js/actions/workflows/unit-test.yml/badge.svg)
-![node-current](https://img.shields.io/node/v/@biglup/cometa)
+![Post-Integration](https://github.com/Biglup/cometa.py/actions/workflows/ci.yml/badge.svg)
 [![Documentation Status](https://app.readthedocs.org/projects/cometajs/badge/?version=latest)](https://cometajs.readthedocs.io/en/latest/?badge=latest)
 [![Twitter Follow](https://img.shields.io/twitter/follow/BiglupLabs?style=social)](https://x.com/BiglupLabs)
 

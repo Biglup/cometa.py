@@ -1,8 +1,26 @@
-from cffi import FFI
+"""
+Copyright 2025 Biglup Labs.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+from importlib.abc import Traversable
+from importlib import resources as importlib_resources
+
 import sys
 import platform
-from importlib import resources as importlib_resources
-from pathlib import Path
+
+from cffi import FFI
 
 ffi = FFI()
 
@@ -18,12 +36,12 @@ def _load_all_cdef() -> str:
 ffi.cdef(_load_all_cdef())
 
 def _normalize_arch(machine: str) -> str:
-    m = machine.lower()
-    if m in ("x86_64", "amd64"):
+    machine_lower = machine.lower()
+    if machine_lower in ("x86_64", "amd64"):
         return "x86_64"
-    if m in ("aarch64", "arm64"):
+    if machine_lower in ("aarch64", "arm64"):
         return "arm64"
-    return m
+    return machine_lower
 
 def _detect_platform_dir() -> str:
     plat = sys.platform
@@ -31,19 +49,20 @@ def _detect_platform_dir() -> str:
 
     if plat.startswith("linux"):
         return f"linux-{arch}"
-    elif plat == "darwin":
-        return f"macos-{arch}"
-    elif plat in ("win32", "cygwin", "msys"):
-        return f"windows-{arch}-msvc"
-    else:
-        raise RuntimeError(f"Unsupported platform: {plat!r} arch: {arch!r}")
 
-def _find_native_lib() -> Path:
+    if plat == "darwin":
+        return f"macos-{arch}"
+
+    if plat in ("win32", "cygwin", "msys"):
+        return f"windows-{arch}-msvc"
+
+    raise RuntimeError(f"Unsupported platform: {plat!r} arch: {arch!r}")
+
+def _find_native_lib() -> Traversable:
     plat_dir = _detect_platform_dir()
 
     base = importlib_resources.files("biglup.cometa") / "_native" / plat_dir
 
-    candidates = []
     if sys.platform.startswith("linux"):
         candidates = ["libcardano-c.so"]
     elif sys.platform == "darwin":

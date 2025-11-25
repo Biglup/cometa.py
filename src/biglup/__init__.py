@@ -1,4 +1,3 @@
-# src/biglup/__init__.py
 """
 Biglup namespace package.
 

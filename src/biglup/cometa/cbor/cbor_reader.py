@@ -1,14 +1,27 @@
+"""
+Copyright 2025 Biglup Labs.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 from __future__ import annotations
-import typing
 from typing import Optional
 
 from .._ffi import ffi, lib
 from ..errors import check_error, CardanoError
 from .cbor_reader_state import CborReaderState
-
-if typing.TYPE_CHECKING:
-    from ..buffer import Buffer
-    from ..common.bigint import BigInt
+from ..buffer import Buffer
+from ..common.bigint import BigInt
 
 class CborReader:
     """
@@ -38,7 +51,7 @@ class CborReader:
     def __repr__(self) -> str:
         try:
             remaining = self.remaining_bytes
-        except Exception:
+        except CardanoError:
             remaining = "?"
         return f"<CborReader at 0x{id(self):x}, remaining={remaining}>"
 
@@ -72,8 +85,8 @@ class CborReader:
         Args:
             hex_string (str): The hex-encoded CBOR data.
         """
-        bs = hex_string.encode("utf-8")
-        ptr = lib.cardano_cbor_reader_from_hex(bs, len(bs))
+        input_bytes = hex_string.encode("utf-8")
+        ptr = lib.cardano_cbor_reader_from_hex(input_bytes, len(input_bytes))
         if ptr == ffi.NULL:
             msg = ffi.string(
                 lib.cardano_cbor_reader_get_last_error(ffi.NULL)
@@ -134,8 +147,6 @@ class CborReader:
 
     def read_remainder(self) -> bytes:
         """Reads all remaining unparsed bytes."""
-        from ..buffer import Buffer
-
         out = ffi.new("cardano_buffer_t**")
         err = lib.cardano_cbor_reader_get_remainder_bytes(self._ptr, out)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
@@ -148,8 +159,6 @@ class CborReader:
 
     def read_encoded_value(self) -> bytes:
         """Reads the next CBOR data item as-is and returns the raw bytes."""
-        from ..buffer import Buffer
-
         out = ffi.new("cardano_buffer_t**")
         err = lib.cardano_cbor_reader_read_encoded_value(self._ptr, out)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
@@ -213,8 +222,6 @@ class CborReader:
 
     def read_bigint(self) -> int:
         """Reads a bignum (Major type 6, tag 2 or 3)."""
-        from ..common.bigint import BigInt
-
         out = ffi.new("cardano_bigint_t**")
         err = lib.cardano_cbor_reader_read_bigint(self._ptr, out)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
@@ -254,8 +261,6 @@ class CborReader:
 
     def read_bytes(self) -> bytes:
         """Reads a byte string (Major type 2)."""
-        from ..buffer import Buffer
-
         out = ffi.new("cardano_buffer_t**")
         err = lib.cardano_cbor_reader_read_bytestring(self._ptr, out)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
@@ -266,8 +271,6 @@ class CborReader:
         Reads a text string (Major type 3).
         Returns a string (decoded UTF-8).
         """
-        from ..buffer import Buffer
-
         out = ffi.new("cardano_buffer_t**")
         err = lib.cardano_cbor_reader_read_textstring(self._ptr, out)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)

@@ -1,3 +1,19 @@
+"""
+Copyright 2025 Biglup Labs.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
 from __future__ import annotations
 from typing import Union, Optional, Iterator, Tuple
 
@@ -5,7 +21,6 @@ from .._ffi import ffi, lib
 from ..errors import check_error, CardanoError
 from .json_object_type import JsonObjectType
 from .json_format import JsonFormat
-
 
 class JsonObject:
     """
@@ -104,18 +119,18 @@ class JsonObject:
     # Serialization
     # --------------------------------------------------------------------------
 
-    def to_json(self, format: JsonFormat = JsonFormat.COMPACT) -> str:
+    def to_json(self, json_format: JsonFormat = JsonFormat.COMPACT) -> str:
         """
         Serializes the JSON object into a string.
 
         Args:
-            format (JsonFormat): The output format (COMPACT or PRETTY).
+            json_format (JsonFormat): The output format (COMPACT or PRETTY).
 
         Returns:
             str: The JSON string.
         """
         length = ffi.new("size_t*")
-        c_str = lib.cardano_json_object_to_json_string(self._ptr, format, length)
+        c_str = lib.cardano_json_object_to_json_string(self._ptr, json_format, length)
 
         if c_str == ffi.NULL:
             raise CardanoError("Failed to serialize JSON object")
@@ -135,7 +150,7 @@ class JsonObject:
         obj_type = self.type
         if obj_type == JsonObjectType.OBJECT:
             return int(lib.cardano_json_object_get_property_count(self._ptr))
-        elif obj_type == JsonObjectType.ARRAY:
+        if obj_type == JsonObjectType.ARRAY:
             return int(lib.cardano_json_object_array_get_length(self._ptr))
         return 0
 
@@ -174,7 +189,7 @@ class JsonObject:
                 raise CardanoError("Failed to retrieve array element")
             return JsonObject(ptr)
 
-        elif isinstance(key, str):
+        if isinstance(key, str):
             if obj_type != JsonObjectType.OBJECT:
                 raise TypeError(f"Cannot access JSON {obj_type.name} with string key")
 
@@ -189,8 +204,7 @@ class JsonObject:
             # val_ptr[0] has refcount incremented by C API
             return JsonObject(val_ptr[0])
 
-        else:
-            raise TypeError(f"Invalid key type: {type(key)}")
+        raise TypeError(f"Invalid key type: {type(key)}")
 
     def __contains__(self, key: str) -> bool:
         """Checks if a key exists in a JSON object."""
@@ -243,7 +257,7 @@ class JsonObject:
             # Value
             ptr = lib.cardano_json_object_get_value_at(self._ptr, i)
             if ptr != ffi.NULL:
-                yield (key_str, JsonObject(ptr))
+                yield key_str, JsonObject(ptr)
 
     # --------------------------------------------------------------------------
     # Type Conversions
@@ -293,11 +307,11 @@ class JsonObject:
             err = lib.cardano_json_object_get_signed_int(self._ptr, val)
             check_error(err, lib.cardano_json_object_get_last_error, self._ptr)
             return int(val[0])
-        else:
-            val = ffi.new("uint64_t*")
-            err = lib.cardano_json_object_get_uint(self._ptr, val)
-            check_error(err, lib.cardano_json_object_get_last_error, self._ptr)
-            return int(val[0])
+
+        val = ffi.new("uint64_t*")
+        err = lib.cardano_json_object_get_uint(self._ptr, val)
+        check_error(err, lib.cardano_json_object_get_last_error, self._ptr)
+        return int(val[0])
 
     def as_float(self) -> Optional[float]:
         """
@@ -321,19 +335,18 @@ class JsonObject:
         - Empty Array/Object -> False
         - Everything else -> True
         """
-        t = self.type
-        if t == JsonObjectType.NULL:
+        json_type = self.type
+        if json_type == JsonObjectType.NULL:
             return False
-        if t == JsonObjectType.BOOLEAN:
+        if json_type == JsonObjectType.BOOLEAN:
             return bool(self.as_bool())
-        if t == JsonObjectType.NUMBER:
-            # Check if 0
+        if json_type == JsonObjectType.NUMBER:
             if lib.cardano_json_object_get_is_real_number(self._ptr):
                 return self.as_float() != 0.0
-            else:
-                return self.as_int() != 0
-        if t == JsonObjectType.STRING:
+
+            return self.as_int() != 0
+        if json_type == JsonObjectType.STRING:
             return len(self.as_str() or "") > 0
-        if t == JsonObjectType.ARRAY or t == JsonObjectType.OBJECT:
+        if json_type in (JsonObjectType.ARRAY, JsonObjectType.OBJECT):
             return len(self) > 0
         return True
