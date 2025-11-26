@@ -2,15 +2,19 @@
 import os
 import sys
 import shutil
+import re
+from pathlib import Path
 
 # -- Path setup --------------------------------------------------------------
+
 sys.path.insert(0, os.path.abspath('../src'))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # -- Project information -----------------------------------------------------
 project = 'Cometa'
 copyright = '2025, Biglup Labs'
 author = 'Biglup Labs'
-release = '0.1.1'
+release = '0.1.3'
 
 # -- General configuration ---------------------------------------------------
 extensions = [
@@ -42,6 +46,21 @@ autodoc_typehints = 'description'
 
 
 # -- Post-process ------------------------------------------------------------
+
+def get_project_info():
+    """Parses pyproject.toml to get the package name and version."""
+    pyproject_path = PROJECT_ROOT / "pyproject.toml"
+    version = "0.0.0"
+
+    if pyproject_path.exists():
+        with open(pyproject_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            v_match = re.search(r'^version\s*=\s*"(.*)"', content, re.MULTILINE)
+
+            if v_match: version = v_match.group(1)
+
+    return version
+
 def on_build_finished(app, exception):
     """
     Post-process the generated HTML files.
@@ -92,6 +111,9 @@ def on_build_finished(app, exception):
         # We redirect them to the _static/assets folder we just created.
         content = content.replace('src="assets/', 'src="_static/assets/')
         content = content.replace('href="assets/', 'href="_static/assets/')
+
+        version = get_project_info()
+        content = content.replace('biglup-cometa 0.1.1', 'biglup-cometa ' + version)
 
         with open(index_path, 'w', encoding='utf-8') as f:
             f.write(content)
