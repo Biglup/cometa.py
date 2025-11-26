@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # -- Project information -----------------------------------------------------
-project = 'Cometa'
+project = 'Cometa.py'
 copyright = '2025, Biglup Labs'
 author = 'Biglup Labs'
 release = '0.1.3'
@@ -95,7 +95,7 @@ def on_build_finished(app, exception):
 
         # Remove the H1 containing the project name (The duplicate title)
         # Matches: <h1 ...> ... Cometa ... </h1>
-        pattern = r'<h1[^>]*>.*?' + re.escape(project) + r'.*?</h1>'
+        pattern = r'<h1[^>]*>.*?' + re.escape('Cometa') + r'.*?</h1>'
         content, count = re.subn(pattern, '', content, count=1, flags=re.DOTALL | re.IGNORECASE)
 
         if count > 0:
