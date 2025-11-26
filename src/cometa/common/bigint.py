@@ -47,26 +47,25 @@ class BigInt:
     interchangeably with native Python integers in most contexts.
     """
 
-    def __init__(self, ptr) -> None:
-        """
-        Internal constructor.
-        Use class methods like `from_int`, `from_string`, or `from_bytes` instead.
-        """
-        if ptr == ffi.NULL:
-            raise CardanoError("BigInt pointer is NULL")
-        self._ptr = ptr
+    @property
+    def is_zero(self) -> bool:
+        """Returns True if the value is 0."""
+        return bool(lib.cardano_bigint_is_zero(self._ptr))
 
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_bigint_t**", self._ptr)
-            lib.cardano_bigint_unref(ptr_ptr)
-            self._ptr = ffi.NULL
+    @property
+    def sign(self) -> int:
+        """Returns -1 for negative, 0 for zero, 1 for positive."""
+        return int(lib.cardano_bigint_signum(self._ptr))
 
-    def __enter__(self) -> BigInt:
-        return self
+    @property
+    def bit_count(self) -> int:
+        """Returns number of bits differing from sign bit."""
+        return int(lib.cardano_bigint_bit_count(self._ptr))
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+    @property
+    def bit_length(self) -> int:
+        """Returns number of bits required to represent the integer."""
+        return int(lib.cardano_bigint_bit_length(self._ptr))
 
     # --------------------------------------------------------------------------
     # Factories
@@ -135,45 +134,6 @@ class BigInt:
         return cls(out[0])
 
     # --------------------------------------------------------------------------
-    # Python Protocols
-    # --------------------------------------------------------------------------
-
-    def __int__(self) -> int:
-        """Converts the BigInt to a Python int."""
-        return int(self.to_string(base=10))
-
-    def __index__(self) -> int:
-        """
-        Allows BigInt to be used as a list index or in functions like hex(), bin().
-        Example: `my_list[big_int]` or `hex(big_int)`
-        """
-        return int(self)
-
-    def __str__(self) -> str:
-        """Returns the decimal string representation."""
-        return self.to_string(base=10)
-
-    def __repr__(self) -> str:
-        return f"BigInt({self})"
-
-    def __format__(self, format_spec: str) -> str:
-        """
-        Allows BigInt to be formatted in f-strings.
-        Example: f"{big_int:x}" -> hexadecimal
-        """
-        return int(self).__format__(format_spec)
-
-    @property
-    def is_zero(self) -> bool:
-        """Returns True if the value is 0."""
-        return bool(lib.cardano_bigint_is_zero(self._ptr))
-
-    @property
-    def sign(self) -> int:
-        """Returns -1 for negative, 0 for zero, 1 for positive."""
-        return int(lib.cardano_bigint_signum(self._ptr))
-
-    # --------------------------------------------------------------------------
     # Core Methods
     # --------------------------------------------------------------------------
 
@@ -208,66 +168,6 @@ class BigInt:
 
         return bytes(buf)
 
-    # --------------------------------------------------------------------------
-    # Math Magic Methods
-    # --------------------------------------------------------------------------
-
-    def __add__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_add(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __sub__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_subtract(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __mul__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_multiply(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __truediv__(self, other: BigIntLike) -> BigInt:
-        """Integer division (same as floordiv for BigInt)."""
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_divide(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __floordiv__(self, other: BigIntLike) -> BigInt:
-        return self.__truediv__(other)
-
-    def __mod__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_mod(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __divmod__(self, other: BigIntLike) -> tuple[BigInt, BigInt]:
-        other_bi = _ensure_bigint(other)
-        quo = _new_res()
-        rem = _new_res()
-        lib.cardano_bigint_divide_and_reminder(self._ptr, other_bi._ptr, quo._ptr, rem._ptr)
-        return quo, rem
-
-    def __pow__(self, exponent: int, modulus: Optional[BigIntLike] = None) -> BigInt:
-        if modulus is not None:
-            return self.mod_pow(exponent, modulus)
-        return self.pow(exponent)
-
-    def __abs__(self) -> BigInt:
-        res = _new_res()
-        lib.cardano_bigint_abs(self._ptr, res._ptr)
-        return res
-
-    def __neg__(self) -> BigInt:
-        res = _new_res()
-        lib.cardano_bigint_negate(self._ptr, res._ptr)
-        return res
-
     def pow(self, exponent: int) -> BigInt:
         """Raises BigInt to a positive integer power."""
         if exponent < 0:
@@ -299,43 +199,6 @@ class BigInt:
         return res
 
     # --------------------------------------------------------------------------
-    # Bitwise Operations
-    # --------------------------------------------------------------------------
-
-    def __and__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_and(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __or__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_or(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __xor__(self, other: BigIntLike) -> BigInt:
-        other_bi = _ensure_bigint(other)
-        res = _new_res()
-        lib.cardano_bigint_xor(self._ptr, other_bi._ptr, res._ptr)
-        return res
-
-    def __invert__(self) -> BigInt:
-        res = _new_res()
-        lib.cardano_bigint_not(self._ptr, res._ptr)
-        return res
-
-    def __lshift__(self, bits: int) -> BigInt:
-        res = _new_res()
-        lib.cardano_bigint_shift_left(self._ptr, bits, res._ptr)
-        return res
-
-    def __rshift__(self, bits: int) -> BigInt:
-        res = _new_res()
-        lib.cardano_bigint_shift_right(self._ptr, bits, res._ptr)
-        return res
-
-    # --------------------------------------------------------------------------
     # Bit Manipulation
     # --------------------------------------------------------------------------
 
@@ -355,16 +218,6 @@ class BigInt:
         """Flips the N-th bit in-place."""
         lib.cardano_bigint_flip_bit(self._ptr, bit_position)
 
-    @property
-    def bit_count(self) -> int:
-        """Returns number of bits differing from sign bit."""
-        return int(lib.cardano_bigint_bit_count(self._ptr))
-
-    @property
-    def bit_length(self) -> int:
-        """Returns number of bits required to represent the integer."""
-        return int(lib.cardano_bigint_bit_length(self._ptr))
-
     # --------------------------------------------------------------------------
     # Comparison
     # --------------------------------------------------------------------------
@@ -374,20 +227,231 @@ class BigInt:
         other_bi = _ensure_bigint(other)
         return int(lib.cardano_bigint_compare(self._ptr, other_bi._ptr))
 
+    # --------------------------------------------------------------------------
+    # Python Protocols
+    # --------------------------------------------------------------------------
+
+    def __int__(self) -> int:
+        """Converts the BigInt to a Python int."""
+        return int(self.to_string(base=10))
+
+    def __index__(self) -> int:
+        """
+        Allows BigInt to be used as a list index or in functions like hex(), bin().
+        Example: `my_list[big_int]` or `hex(big_int)`
+        """
+        return int(self)
+
+    def __str__(self) -> str:
+        """Returns the decimal string representation."""
+        return self.to_string(base=10)
+
+    def __repr__(self) -> str:
+        """
+        Returns the official string representation.
+        """
+        return f"BigInt({self})"
+
+    def __format__(self, format_spec: str) -> str:
+        """
+        Allows BigInt to be formatted in f-strings.
+        Example: f"{big_int:x}" -> hexadecimal
+        """
+        return int(self).__format__(format_spec)
+
+    def __add__(self, other: BigIntLike) -> BigInt:
+        """
+        Adds two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_add(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __sub__(self, other: BigIntLike) -> BigInt:
+        """
+        Subtracts two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_subtract(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __mul__(self, other: BigIntLike) -> BigInt:
+        """
+        Multiplies two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_multiply(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __truediv__(self, other: BigIntLike) -> BigInt:
+        """Integer division (same as floordiv for BigInt)."""
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_divide(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __floordiv__(self, other: BigIntLike) -> BigInt:
+        """
+        Integer division (same as truediv for BigInt).
+        """
+        return self.__truediv__(other)
+
+    def __mod__(self, other: BigIntLike) -> BigInt:
+        """
+        Computes the modulus of two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_mod(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __divmod__(self, other: BigIntLike) -> tuple[BigInt, BigInt]:
+        """
+        Computes the quotient and remainder of two BigInt values.
+        Returns a tuple (quotient, remainder).
+        """
+        other_bi = _ensure_bigint(other)
+        quo = _new_res()
+        rem = _new_res()
+        lib.cardano_bigint_divide_and_reminder(self._ptr, other_bi._ptr, quo._ptr, rem._ptr)
+        return quo, rem
+
+    def __pow__(self, exponent: int, modulus: Optional[BigIntLike] = None) -> BigInt:
+        """
+        Raises BigInt to a power, optionally modulo another BigInt.
+        """
+        if modulus is not None:
+            return self.mod_pow(exponent, modulus)
+        return self.pow(exponent)
+
+    def __abs__(self) -> BigInt:
+        """
+        Returns the absolute value of the BigInt.
+        """
+        res = _new_res()
+        lib.cardano_bigint_abs(self._ptr, res._ptr)
+        return res
+
+    def __neg__(self) -> BigInt:
+        """
+        Returns the negation of the BigInt.
+        """
+        res = _new_res()
+        lib.cardano_bigint_negate(self._ptr, res._ptr)
+        return res
+
+    def __and__(self, other: BigIntLike) -> BigInt:
+        """
+        Bitwise AND of two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_and(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __or__(self, other: BigIntLike) -> BigInt:
+        """
+        Bitwise OR of two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_or(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __xor__(self, other: BigIntLike) -> BigInt:
+        """
+        Bitwise XOR of two BigInt values.
+        """
+        other_bi = _ensure_bigint(other)
+        res = _new_res()
+        lib.cardano_bigint_xor(self._ptr, other_bi._ptr, res._ptr)
+        return res
+
+    def __invert__(self) -> BigInt:
+        """
+        Bitwise NOT of the BigInt value.
+        """
+        res = _new_res()
+        lib.cardano_bigint_not(self._ptr, res._ptr)
+        return res
+
+    def __lshift__(self, bits: int) -> BigInt:
+        """
+        Left shift the BigInt by the specified number of bits.
+        """
+        res = _new_res()
+        lib.cardano_bigint_shift_left(self._ptr, bits, res._ptr)
+        return res
+
+    def __rshift__(self, bits: int) -> BigInt:
+        """
+        Right shift the BigInt by the specified number of bits.
+        """
+        res = _new_res()
+        lib.cardano_bigint_shift_right(self._ptr, bits, res._ptr)
+        return res
+
     def __eq__(self, other: object) -> bool:
+        """
+        Checks equality between two BigInt values.
+        """
         if isinstance(other, (BigInt, int, str)):
             other_bi = _ensure_bigint(other)
             return bool(lib.cardano_bigint_equals(self._ptr, other_bi._ptr))
         return False
 
     def __lt__(self, other: BigIntLike) -> bool:
+        """
+        Less than comparison.
+        """
         return self.compare(other) < 0
 
     def __le__(self, other: BigIntLike) -> bool:
+        """
+        Less than or equal comparison.
+        """
         return self.compare(other) <= 0
 
     def __gt__(self, other: BigIntLike) -> bool:
+        """
+        Greater than comparison.
+        """
         return self.compare(other) > 0
 
     def __ge__(self, other: BigIntLike) -> bool:
+        """
+        Greater than or equal comparison.
+        """
         return self.compare(other) >= 0
+
+    def __init__(self, ptr) -> None:
+        """
+        Internal constructor.
+        Use class methods like `from_int`, `from_string`, or `from_bytes` instead.
+        """
+        if ptr == ffi.NULL:
+            raise CardanoError("BigInt pointer is NULL")
+        self._ptr = ptr
+
+    def __del__(self) -> None:
+        """
+        Destructor to release the underlying C object.
+        """
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_bigint_t**", self._ptr)
+            lib.cardano_bigint_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> BigInt:
+        """
+        Context manager entry (no-op).
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Context manager exit (no-op).
+        """

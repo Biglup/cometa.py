@@ -25,8 +25,12 @@ class JsonFormat(IntEnum):
     (extra spaces and line breaks for readability).
     """
 
-    # Compact JSON format (no extra spaces or line breaks).
     COMPACT = 0
+    """
+    Compact JSON format (no extra spaces or line breaks).
+    """
 
-    # Pretty JSON format (extra spaces and line breaks for readability).
     PRETTY = 1
+    """
+    Pretty JSON format (extra spaces and line breaks for readability).
+    """

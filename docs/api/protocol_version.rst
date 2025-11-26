@@ -4,59 +4,7 @@ ProtocolVersion
 .. currentmodule:: cometa.common.protocol_version
 
 .. autoclass:: ProtocolVersion
-   :no-members:
+   :members:
+   :undoc-members:
    :show-inheritance:
-
-------------
-
-.. automethod:: ProtocolVersion.__init__
-
-------------
-
-.. automethod:: ProtocolVersion.__enter__
-
-------------
-
-.. automethod:: ProtocolVersion.__exit__
-
-------------
-
-.. automethod:: ProtocolVersion.__repr__
-
-------------
-
-.. automethod:: ProtocolVersion.__eq__
-
-------------
-
-.. automethod:: ProtocolVersion.new
-
-------------
-
-.. automethod:: ProtocolVersion.from_cbor
-
-------------
-
-.. automethod:: ProtocolVersion.to_cbor
-
-------------
-
-.. automethod:: ProtocolVersion.to_json
-
-------------
-
-.. autoattribute:: ProtocolVersion.last_error
-
-------------
-
-.. autoattribute:: ProtocolVersion.major
-
-------------
-
-.. autoattribute:: ProtocolVersion.minor
-
-------------
-
-.. autoattribute:: ProtocolVersion.refcount
-
-------------
+   :special-members: __abs__, __add__, __and__, __bool__, __bytes__, __call__, __contains__, __divmod__, __enter__, __eq__, __exit__, __float__, __floordiv__, __format__, __ge__, __getitem__, __gt__, __hash__, __index__, __init__, __int__, __invert__, __iter__, __le__, __len__, __lshift__, __lt__, __mod__, __mul__, __neg__, __or__, __pos__, __pow__, __repr__, __rshift__, __setitem__, __str__, __sub__, __truediv__, __xor__

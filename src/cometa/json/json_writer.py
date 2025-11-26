@@ -49,21 +49,6 @@ class JsonWriter:
         if self._ptr == ffi.NULL:
             raise CardanoError("Failed to create JSON writer")
 
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_json_writer_t**", self._ptr)
-            lib.cardano_json_writer_unref(ptr_ptr)
-            self._ptr = ffi.NULL
-
-    def __enter__(self) -> JsonWriter:
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
-
-    def __repr__(self) -> str:
-        return f"<JsonWriter encoded_size={self.encoded_size} context={self.context.name}>"
-
     # --------------------------------------------------------------------------
     # Properties
     # --------------------------------------------------------------------------
@@ -303,3 +288,29 @@ class JsonWriter:
             )
         else:
             raise TypeError(f"Expected bytes or Buffer, got {type(data)}")
+
+    def __del__(self) -> None:
+        """
+        Cleans up the underlying C resources when the JsonWriter is garbage collected.
+        """
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_json_writer_t**", self._ptr)
+            lib.cardano_json_writer_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> JsonWriter:
+        """
+        Context manager entry. Returns self.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Context manager exit. Cleans up resources.
+        """
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the JsonWriter.
+        """
+        return f"<JsonWriter encoded_size={self.encoded_size} context={self.context.name}>"

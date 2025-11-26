@@ -24,11 +24,17 @@ class JsonContext(IntEnum):
     whether it is at the root level, inside an object, or inside an array.
     """
 
-    # The writer is at the root level (no context set).
     ROOT = 0
+    """
+    The writer is at the root level (no context set).
+    """
 
-    # The writer is inside an object context.
     OBJECT = 1
+    """
+    The writer is inside an object context.
+    """
 
-    # The writer is inside an array context.
     ARRAY = 2
+    """
+    The writer is inside an array context.
+    """

@@ -30,30 +30,29 @@ class CborReader:
     This class provides a stream-like interface to decode CBOR data items sequentially.
     """
 
-    def __init__(self, ptr) -> None:
-        """Internal constructor. Use factories like `from_bytes` or `from_hex`."""
-        if ptr == ffi.NULL:
-            raise CardanoError("CBOR reader pointer is NULL")
-        self._ptr = ptr
+    @property
+    def refcount(self) -> int:
+        """Returns the number of active references to the underlying C object."""
+        return int(lib.cardano_cbor_reader_refcount(self._ptr))
 
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_cbor_reader_t**", self._ptr)
-            lib.cardano_cbor_reader_unref(ptr_ptr)
-            self._ptr = ffi.NULL
+    @property
+    def remaining_bytes(self) -> int:
+        """Returns the number of unread bytes remaining in the buffer."""
+        remaining = ffi.new("size_t*")
+        err = lib.cardano_cbor_reader_get_bytes_remaining(self._ptr, remaining)
+        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
+        return int(remaining[0])
 
-    def __enter__(self) -> CborReader:
-        return self
+    @property
+    def last_error(self) -> str:
+        """Returns the last error message recorded for this reader."""
+        return ffi.string(lib.cardano_cbor_reader_get_last_error(self._ptr)).decode("utf-8")
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
-
-    def __repr__(self) -> str:
-        try:
-            remaining = self.remaining_bytes
-        except CardanoError:
-            remaining = "?"
-        return f"<CborReader at 0x{id(self):x}, remaining={remaining}>"
+    @last_error.setter
+    def last_error(self, message: str) -> None:
+        """Manually sets the last error message."""
+        c_msg = ffi.new("char[]", message.encode("utf-8"))
+        lib.cardano_cbor_reader_set_last_error(self._ptr, c_msg)
 
     # --------------------------------------------------------------------------
     # Factories
@@ -95,33 +94,8 @@ class CborReader:
         return cls(ptr)
 
     # --------------------------------------------------------------------------
-    # Properties & State
+    # State
     # --------------------------------------------------------------------------
-
-    @property
-    def refcount(self) -> int:
-        """Returns the number of active references to the underlying C object."""
-        return int(lib.cardano_cbor_reader_refcount(self._ptr))
-
-    @property
-    def remaining_bytes(self) -> int:
-        """Returns the number of unread bytes remaining in the buffer."""
-        remaining = ffi.new("size_t*")
-        err = lib.cardano_cbor_reader_get_bytes_remaining(self._ptr, remaining)
-        check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
-        return int(remaining[0])
-
-    @property
-    def last_error(self) -> str:
-        """Returns the last error message recorded for this reader."""
-        return ffi.string(lib.cardano_cbor_reader_get_last_error(self._ptr)).decode("utf-8")
-
-    @last_error.setter
-    def last_error(self, message: str) -> None:
-        """Manually sets the last error message."""
-        c_msg = ffi.new("char[]", message.encode("utf-8"))
-        lib.cardano_cbor_reader_set_last_error(self._ptr, c_msg)
-
     def peek_state(self) -> CborReaderState:
         """
         Inspects the type of the next CBOR token without consuming it.
@@ -299,3 +273,31 @@ class CborReader:
         err = lib.cardano_cbor_reader_peek_tag(self._ptr, tag)
         check_error(err, lib.cardano_cbor_reader_get_last_error, self._ptr)
         return int(tag[0])
+
+    def __init__(self, ptr) -> None:
+        """Internal constructor. Use factories like `from_bytes` or `from_hex`."""
+        if ptr == ffi.NULL:
+            raise CardanoError("CBOR reader pointer is NULL")
+        self._ptr = ptr
+
+    def __del__(self) -> None:
+        """Cleans up the underlying C object when the Python object is garbage collected."""
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_cbor_reader_t**", self._ptr)
+            lib.cardano_cbor_reader_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> CborReader:
+        """Enables use as a context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Cleans up when exiting a context manager."""
+
+    def __repr__(self) -> str:
+        """Returns a string representation of the CborReader."""
+        try:
+            remaining = self.remaining_bytes
+        except CardanoError:
+            remaining = "?"
+        return f"<CborReader at 0x{id(self):x}, remaining={remaining}>"

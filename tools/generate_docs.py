@@ -5,6 +5,7 @@ import shutil
 import inspect
 import importlib
 import re
+from enum import Enum
 from pathlib import Path
 
 # 1. Setup Paths
@@ -27,16 +28,19 @@ MAGIC_WHITELIST = {
     "__init__", "__len__", "__getitem__", "__setitem__",
     "__iter__", "__eq__", "__add__", "__bytes__",
     "__enter__", "__exit__", "__str__", "__repr__",
-    "__int__", "__float__", "__bool__", "__index__", "__format__"
+    "__int__", "__float__", "__bool__", "__index__", "__format__",
+    "__contains__", "__hash__", "__call__", "__sub__", "__mul__",
+    "__truediv__", "__floordiv__", "__mod__", "__divmod__", "__pow__",
+    "__abs__", "__neg__", "__pos__", "__invert__", "__lshift__", "__rshift__",
+    "__lt__", "__le__", "__gt__", "__ge__", "__and__", "__or__", "__xor__"
 }
-
 
 def discover_modules():
     """
     Recursively finds all public python modules in the package.
-    Returns a list of module strings (e.g., 'biglup.cometa.common.buffer').
+    Returns a list of module strings (e.g., 'cometa.common.buffer').
     """
-    base_path = PROJECT_ROOT / "src" / "biglup" / "cometa"
+    base_path = PROJECT_ROOT / "src" / "cometa"
     modules = []
 
     if not base_path.exists():
@@ -76,22 +80,40 @@ def camel_to_snake(name):
 
 
 def get_members_in_order(cls):
+    """Returns (name, object, kind) tuples sorted by source line number."""
     members = []
+
+    # Handle Enums specifically: __members__ preserves definition order
+    if issubclass(cls, Enum):
+        for name, member in cls.__members__.items():
+            # For Enums, we treat members as attributes
+            members.append((0, name, member))
+        return members
+
+    # Handle Standard Classes
     for name, kind in inspect.getmembers(cls):
         if name.startswith("_") and name not in MAGIC_WHITELIST:
             continue
+
         if not (inspect.isfunction(kind) or inspect.ismethod(kind) or isinstance(kind, property)):
             continue
+
         try:
             line_no = inspect.getsourcelines(kind)[1]
         except (OSError, TypeError):
             line_no = float('inf')
+
         members.append((line_no, name, kind))
+
     members.sort(key=lambda x: x[0])
     return members
 
 
 def generate_rst_for_class(cls, module_name):
+    """
+    Generates a standard Sphinx .rst file for a class.
+    Uses :members: to document properties and methods as part of the class body.
+    """
     filename = OUTPUT_DIR / f"{camel_to_snake(cls.__name__)}.rst"
     content = []
 
@@ -101,22 +123,16 @@ def generate_rst_for_class(cls, module_name):
     content.append("")
     content.append(f".. currentmodule:: {module_name}")
     content.append("")
-    content.append(f".. autoclass:: {cls.__name__}")
-    content.append("   :no-members:")
-    content.append("   :show-inheritance:")
-    content.append("")
-    content.append("------------")
-    content.append("")
 
-    members = get_members_in_order(cls)
-    for _, name, kind in members:
-        directive = "automethod"
-        if isinstance(kind, property):
-            directive = "autoattribute"
-        content.append(f".. {directive}:: {cls.__name__}.{name}")
-        content.append("")
-        content.append("------------")
-        content.append("")
+    # Join magic methods for the :special-members: option
+    special_members_list = ", ".join(sorted(MAGIC_WHITELIST))
+
+    content.append(f".. autoclass:: {cls.__name__}")
+    content.append("   :members:")  # Include all public members
+    content.append("   :undoc-members:")  # Include members even if they don't have docstrings
+    content.append("   :show-inheritance:")  # Show base classes
+    # Include the specific magic methods we care about
+    content.append(f"   :special-members: {special_members_list}")
 
     print(f"Generating {filename}...")
     with open(filename, "w") as f:

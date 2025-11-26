@@ -41,21 +41,6 @@ class CborWriter:
         else:
             self._ptr = ptr
 
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_cbor_writer_t**", self._ptr)
-            lib.cardano_cbor_writer_unref(ptr_ptr)
-            self._ptr = ffi.NULL
-
-    def __enter__(self) -> CborWriter:
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
-
-    def __repr__(self) -> str:
-        return f"<CborWriter size={self.encoded_size}>"
-
     # --------------------------------------------------------------------------
     # Properties & State
     # --------------------------------------------------------------------------
@@ -263,3 +248,26 @@ class CborWriter:
         c_data = ffi.from_buffer("byte_t[]", data)
         err = lib.cardano_cbor_writer_write_encoded(self._ptr, c_data, len(data))
         check_error(err, lib.cardano_cbor_writer_get_last_error, self._ptr)
+
+    def __del__(self) -> None:
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_cbor_writer_t**", self._ptr)
+            lib.cardano_cbor_writer_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> CborWriter:
+        """
+        Enters the runtime context related to this object.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Exits the runtime context related to this object.
+        """
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the CborWriter.
+        """
+        return f"<CborWriter size={self.encoded_size}>"

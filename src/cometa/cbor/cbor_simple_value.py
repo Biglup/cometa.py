@@ -26,19 +26,27 @@ class CborSimpleValue(IntEnum):
     and interpretation process.
     """
 
-    # Represents the value 'false'.
-    # This value is used to represent the boolean false in CBOR-encoded data.
     FALSE = 20
+    """
+    Represents the value 'false'.
+    This value is used to represent the boolean false in CBOR-encoded data.
+    """
 
-    # Represents the value 'true'.
-    # This value is used to represent the boolean true in CBOR-encoded data.
     TRUE = 21
+    """
+    Represents the value 'true'.
+    This value is used to represent the boolean true in CBOR-encoded data.
+    """
 
-    # Represents the value 'null'.
-    # This value signifies a null reference or the absence of data in CBOR-encoded data.
     NULL = 22
+    """
+    Represents the value 'null'.
+    This value signifies a null reference or the absence of data in CBOR-encoded data.
+    """
 
-    # Represents an undefined value.
-    # This value is used by an encoder as a substitute for a data item with an encoding problem,
-    # indicating the absence of meaningful or correct data.
     UNDEFINED = 23
+    """
+    Represents an undefined value.
+    This value is used by an encoder as a substitute for a data item with an encoding problem,
+    indicating the absence of meaningful or correct data.
+    """

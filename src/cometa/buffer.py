@@ -30,29 +30,6 @@ class Buffer:
     binary data manipulation.
     """
 
-    def __init__(self, ptr) -> None:
-        """
-        Internal constructor.
-
-        Use factories like `Buffer.new()`, `Buffer.from_bytes()`, etc. instead.
-        """
-        if ptr == ffi.NULL:
-            raise CardanoError("Buffer pointer is NULL")
-        self._ptr = ptr
-
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_buffer_t**", self._ptr)
-            lib.cardano_buffer_unref(ptr_ptr)
-            self._ptr = ffi.NULL
-
-    def __enter__(self) -> Buffer:
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        # Memory is managed by __del__, but this allows usage in 'with' statements.
-        pass
-
     # --------------------------------------------------------------------------
     # Factories
     # --------------------------------------------------------------------------
@@ -121,109 +98,6 @@ class Buffer:
         """Returns the total allocated memory capacity of the buffer."""
         return int(lib.cardano_buffer_get_capacity(self._ptr))
 
-    def __len__(self) -> int:
-        """Returns the number of bytes in the buffer."""
-        return self.size
-
-    def __bool__(self) -> bool:
-        """Returns True if the buffer is not empty, False otherwise."""
-        return self.size > 0
-
-    def __bytes__(self) -> bytes:
-        """Converts the buffer content to a Python immutable `bytes` object."""
-        return self.to_bytes()
-
-    @overload
-    def __getitem__(self, key: int) -> int:
-        ...
-
-    @overload
-    def __getitem__(self, key: slice) -> Buffer:
-        ...
-
-    def __getitem__(self, key: Union[int, slice]) -> Union[int, Buffer]:
-        """
-        Retrieve a byte or a slice of the buffer.
-
-        Args:
-            key (int | slice): The index or slice range.
-
-        Returns:
-            int: If key is an int, returns the byte value (0-255).
-            Buffer: If key is a slice, returns a new Buffer containing the slice.
-        """
-        length = self.size
-
-        if isinstance(key, int):
-            if key < 0:
-                key += length
-            if not 0 <= key < length:
-                raise IndexError("Buffer index out of range")
-
-            raw_ptr = lib.cardano_buffer_get_data(self._ptr)
-            return raw_ptr[key]
-
-        if isinstance(key, slice):
-            start, stop, stride = key.indices(length)
-            if stride != 1:
-                raise ValueError("Buffer slicing does not support strides")
-
-            # Use the underlying C slice function for efficiency
-            ptr = lib.cardano_buffer_slice(self._ptr, start, stop)
-            if ptr == ffi.NULL:
-                raise CardanoError("Failed to slice buffer")
-            return Buffer(ptr)
-
-        raise TypeError(f"Invalid argument type: {type(key)}")
-
-    def __setitem__(self, key: int, value: int) -> None:
-        """
-        Modifies a byte at the specified index.
-
-        Args:
-            key (int): The index to modify.
-            value (int): The new byte value (0-255).
-        """
-        if not isinstance(key, int):
-            raise TypeError("Buffer assignment only supports integer indices")
-
-        length = self.size
-        if key < 0:
-            key += length
-        if not 0 <= key < length:
-            raise IndexError("Buffer assignment index out of range")
-
-        if not 0 <= value <= 255:
-            raise ValueError("Byte value must be in range(0, 256)")
-
-        raw_ptr = lib.cardano_buffer_get_data(self._ptr)
-        raw_ptr[key] = value
-
-    def __iter__(self) -> Iterator[int]:
-        """Iterates over the bytes in the buffer."""
-        raw_ptr = lib.cardano_buffer_get_data(self._ptr)
-        length = self.size
-        for i in range(length):
-            yield raw_ptr[i]
-
-    def __eq__(self, other: object) -> bool:
-        """Checks if two buffers contain identical data."""
-        if not isinstance(other, Buffer):
-            return False
-        return bool(lib.cardano_buffer_equals(self._ptr, other._ptr))
-
-    def __add__(self, other: Buffer) -> Buffer:
-        """Concatenates two buffers (lhs + rhs) into a new Buffer."""
-        if not isinstance(other, Buffer):
-            raise TypeError(f"Cannot concatenate Buffer with {type(other)}")
-        ptr = lib.cardano_buffer_concat(self._ptr, other._ptr)
-        if ptr == ffi.NULL:
-            raise CardanoError("Failed to concatenate buffers")
-        return Buffer(ptr)
-
-    def __repr__(self) -> str:
-        return f"<Buffer size={self.size} capacity={self.capacity}>"
-
     def compare(self, other: Buffer) -> int:
         """
         Compares two buffer objects lexicographically.
@@ -232,18 +106,6 @@ class Buffer:
             int: < 0 if self < other, 0 if equal, > 0 if self > other.
         """
         return int(lib.cardano_buffer_compare(self._ptr, other._ptr))
-
-    def __lt__(self, other: Buffer) -> bool:
-        return self.compare(other) < 0
-
-    def __le__(self, other: Buffer) -> bool:
-        return self.compare(other) <= 0
-
-    def __gt__(self, other: Buffer) -> bool:
-        return self.compare(other) > 0
-
-    def __ge__(self, other: Buffer) -> bool:
-        return self.compare(other) >= 0
 
     # --------------------------------------------------------------------------
     # Utility Methods
@@ -512,3 +374,163 @@ class Buffer:
     def get_last_error(self) -> str:
         """Retrieves the last error message recorded for this buffer."""
         return ffi.string(lib.cardano_buffer_get_last_error(self._ptr)).decode("utf-8")
+
+    def __init__(self, ptr) -> None:
+        """
+        Internal constructor.
+
+        Use factories like `Buffer.new()`, `Buffer.from_bytes()`, etc. instead.
+        """
+        if ptr == ffi.NULL:
+            raise CardanoError("Buffer pointer is NULL")
+        self._ptr = ptr
+
+    def __del__(self) -> None:
+        """
+        Destructor to release the underlying C buffer.
+        """
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_buffer_t**", self._ptr)
+            lib.cardano_buffer_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> Buffer:
+        """
+        Context manager entry (no-op).
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Context manager exit (no-op).
+        """
+
+    def __len__(self) -> int:
+        """Returns the number of bytes in the buffer."""
+        return self.size
+
+    def __bool__(self) -> bool:
+        """Returns True if the buffer is not empty, False otherwise."""
+        return self.size > 0
+
+    def __bytes__(self) -> bytes:
+        """Converts the buffer content to a Python immutable `bytes` object."""
+        return self.to_bytes()
+
+    @overload
+    def __getitem__(self, key: int) -> int:
+        ...
+
+    @overload
+    def __getitem__(self, key: slice) -> Buffer:
+        ...
+
+    def __getitem__(self, key: Union[int, slice]) -> Union[int, Buffer]:
+        """
+        Retrieve a byte or a slice of the buffer.
+
+        Args:
+            key (int | slice): The index or slice range.
+
+        Returns:
+            int: If key is an int, returns the byte value (0-255).
+            Buffer: If key is a slice, returns a new Buffer containing the slice.
+        """
+        length = self.size
+
+        if isinstance(key, int):
+            if key < 0:
+                key += length
+            if not 0 <= key < length:
+                raise IndexError("Buffer index out of range")
+
+            raw_ptr = lib.cardano_buffer_get_data(self._ptr)
+            return raw_ptr[key]
+
+        if isinstance(key, slice):
+            start, stop, stride = key.indices(length)
+            if stride != 1:
+                raise ValueError("Buffer slicing does not support strides")
+
+            # Use the underlying C slice function for efficiency
+            ptr = lib.cardano_buffer_slice(self._ptr, start, stop)
+            if ptr == ffi.NULL:
+                raise CardanoError("Failed to slice buffer")
+            return Buffer(ptr)
+
+        raise TypeError(f"Invalid argument type: {type(key)}")
+
+    def __setitem__(self, key: int, value: int) -> None:
+        """
+        Modifies a byte at the specified index.
+
+        Args:
+            key (int): The index to modify.
+            value (int): The new byte value (0-255).
+        """
+        if not isinstance(key, int):
+            raise TypeError("Buffer assignment only supports integer indices")
+
+        length = self.size
+        if key < 0:
+            key += length
+        if not 0 <= key < length:
+            raise IndexError("Buffer assignment index out of range")
+
+        if not 0 <= value <= 255:
+            raise ValueError("Byte value must be in range(0, 256)")
+
+        raw_ptr = lib.cardano_buffer_get_data(self._ptr)
+        raw_ptr[key] = value
+
+    def __iter__(self) -> Iterator[int]:
+        """Iterates over the bytes in the buffer."""
+        raw_ptr = lib.cardano_buffer_get_data(self._ptr)
+        length = self.size
+        for i in range(length):
+            yield raw_ptr[i]
+
+    def __eq__(self, other: object) -> bool:
+        """Checks if two buffers contain identical data."""
+        if not isinstance(other, Buffer):
+            return False
+        return bool(lib.cardano_buffer_equals(self._ptr, other._ptr))
+
+    def __add__(self, other: Buffer) -> Buffer:
+        """Concatenates two buffers (lhs + rhs) into a new Buffer."""
+        if not isinstance(other, Buffer):
+            raise TypeError(f"Cannot concatenate Buffer with {type(other)}")
+        ptr = lib.cardano_buffer_concat(self._ptr, other._ptr)
+        if ptr == ffi.NULL:
+            raise CardanoError("Failed to concatenate buffers")
+        return Buffer(ptr)
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the buffer.
+        """
+        return f"<Buffer size={self.size} capacity={self.capacity}>"
+
+    def __lt__(self, other: Buffer) -> bool:
+        """
+        Returns True if this buffer is lexicographically less than the other.
+        """
+        return self.compare(other) < 0
+
+    def __le__(self, other: Buffer) -> bool:
+        """
+        Returns True if this buffer is lexicographically less than or equal to the other.
+        """
+        return self.compare(other) <= 0
+
+    def __gt__(self, other: Buffer) -> bool:
+        """
+        Returns True if this buffer is lexicographically greater than the other.
+        """
+        return self.compare(other) > 0
+
+    def __ge__(self, other: Buffer) -> bool:
+        """
+        Returns True if this buffer is lexicographically greater than or equal to the other.
+        """
+        return self.compare(other) >= 0

@@ -35,31 +35,6 @@ class ProtocolVersion:
     and allows for the decentralized updating of the protocol parameters without requiring a hard fork.
     """
 
-    def __init__(self, ptr) -> None:
-        if ptr == ffi.NULL:
-            raise CardanoError("ProtocolVersion pointer is NULL")
-        self._ptr = ptr
-
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_protocol_version_t**", self._ptr)
-            lib.cardano_protocol_version_unref(ptr_ptr)
-            self._ptr = ffi.NULL
-
-    def __enter__(self) -> ProtocolVersion:
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
-
-    def __repr__(self) -> str:
-        return f"<ProtocolVersion major={self.major} minor={self.minor}>"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, ProtocolVersion):
-            return self.major == other.major and self.minor == other.minor
-        return False
-
     # --------------------------------------------------------------------------
     # Factories
     # --------------------------------------------------------------------------
@@ -102,6 +77,9 @@ class ProtocolVersion:
 
     @major.setter
     def major(self, value: int) -> None:
+        """
+        Sets the major version number.
+        """
         err = lib.cardano_protocol_version_set_major(self._ptr, value)
         check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
 
@@ -112,6 +90,9 @@ class ProtocolVersion:
 
     @minor.setter
     def minor(self, value: int) -> None:
+        """
+        Sets the minor version number.
+        """
         err = lib.cardano_protocol_version_set_minor(self._ptr, value)
         check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
 
@@ -159,3 +140,45 @@ class ProtocolVersion:
         """Manually sets the last error message."""
         c_msg = ffi.new("char[]", message.encode("utf-8"))
         lib.cardano_protocol_version_set_last_error(self._ptr, c_msg)
+
+    def __init__(self, ptr) -> None:
+        """
+        Initializes the ProtocolVersion with a given C pointer.
+        """
+        if ptr == ffi.NULL:
+            raise CardanoError("ProtocolVersion pointer is NULL")
+        self._ptr = ptr
+
+    def __del__(self) -> None:
+        """
+        Cleans up the ProtocolVersion instance by decrementing the reference count
+        """
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_protocol_version_t**", self._ptr)
+            lib.cardano_protocol_version_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> ProtocolVersion:
+        """
+        Enters the runtime context related to this object.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Exits the runtime context related to this object.
+        """
+
+    def __repr__(self) -> str:
+        """
+        Returns a string representation of the ProtocolVersion.
+        """
+        return f"<ProtocolVersion major={self.major} minor={self.minor}>"
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Compares two ProtocolVersion instances for equality.
+        """
+        if isinstance(other, ProtocolVersion):
+            return self.major == other.major and self.minor == other.minor
+        return False

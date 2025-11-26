@@ -1,7 +1,7 @@
-biglup-cometa 0.1.1
+biglup-cometa 0.1.3
 ===================
 
-.. include:: ./README_docs.md
+.. include:: README_docs.md
    :parser: myst_parser.sphinx_
 
 .. toctree::

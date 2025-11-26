@@ -33,33 +33,6 @@ class JsonObject:
     JSON objects are immutable once created in this context.
     """
 
-    def __init__(self, ptr) -> None:
-        """
-        Internal constructor. Use factories like `parse` instead.
-        """
-        if ptr == ffi.NULL:
-            raise CardanoError("JsonObject pointer is NULL")
-        self._ptr = ptr
-
-    def __del__(self) -> None:
-        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
-            ptr_ptr = ffi.new("cardano_json_object_t**", self._ptr)
-            lib.cardano_json_object_unref(ptr_ptr)
-            self._ptr = ffi.NULL
-
-    def __enter__(self) -> JsonObject:
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
-
-    def __repr__(self) -> str:
-        return f"<JsonObject type={self.type.name} value={str(self)}>"
-
-    def __str__(self) -> str:
-        """Returns the compact JSON string representation."""
-        return self.to_json(JsonFormat.COMPACT)
-
     # --------------------------------------------------------------------------
     # Factories
     # --------------------------------------------------------------------------
@@ -350,3 +323,41 @@ class JsonObject:
         if json_type in (JsonObjectType.ARRAY, JsonObjectType.OBJECT):
             return len(self) > 0
         return True
+
+    def __init__(self, ptr) -> None:
+        """
+        Internal constructor. Use factories like `parse` instead.
+        """
+        if ptr == ffi.NULL:
+            raise CardanoError("JsonObject pointer is NULL")
+        self._ptr = ptr
+
+    def __del__(self) -> None:
+        """
+        Destructor to release the underlying C object.
+        """
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_json_object_t**", self._ptr)
+            lib.cardano_json_object_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> JsonObject:
+        """
+        Context manager entry (no-op).
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Context manager exit (no-op).
+        """
+
+    def __repr__(self) -> str:
+        """
+        Returns a detailed string representation for debugging.
+        """
+        return f"<JsonObject type={self.type.name} value={str(self)}>"
+
+    def __str__(self) -> str:
+        """Returns the compact JSON string representation."""
+        return self.to_json(JsonFormat.COMPACT)
