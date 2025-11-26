@@ -15,8 +15,8 @@ OUTPUT_DIR = PROJECT_ROOT / "docs" / "api"
 INDEX_FILE = PROJECT_ROOT / "docs" / "index.rst"
 
 ASSETS_DIR = PROJECT_ROOT / "assets"
-# Sphinx expects static assets here
-DOCS_STATIC_ASSETS_DIR = PROJECT_ROOT / "docs" / "_static" / "assets"
+# Copy to docs/assets so Sphinx finds them as source files
+DOCS_ASSETS_DIR = PROJECT_ROOT / "docs" / "assets"
 
 # Source README and the temporary one we will create for docs
 README_SRC = PROJECT_ROOT / "README.md"
@@ -43,12 +43,8 @@ def discover_modules():
         return []
 
     for path in base_path.rglob("*.py"):
-        # Skip __init__.py and private files starting with _
         if path.name.startswith("_"):
             continue
-
-        # Convert path to module notation
-        # e.g., src/biglup/cometa/cbor/cbor_reader.py -> biglup.cometa.cbor.cbor_reader
         rel_path = path.relative_to(PROJECT_ROOT / "src")
         module_name = ".".join(rel_path.with_suffix("").parts)
         modules.append(module_name)
@@ -75,37 +71,28 @@ def get_project_info():
 
 
 def camel_to_snake(name):
-    """Converts CamelCase to snake_case for filenames."""
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
 
 def get_members_in_order(cls):
-    """Returns (name, object, kind) tuples sorted by source line number."""
     members = []
-
     for name, kind in inspect.getmembers(cls):
         if name.startswith("_") and name not in MAGIC_WHITELIST:
             continue
-
         if not (inspect.isfunction(kind) or inspect.ismethod(kind) or isinstance(kind, property)):
             continue
-
         try:
             line_no = inspect.getsourcelines(kind)[1]
         except (OSError, TypeError):
             line_no = float('inf')
-
         members.append((line_no, name, kind))
-
     members.sort(key=lambda x: x[0])
     return members
 
 
 def generate_rst_for_class(cls, module_name):
-    """Generates a .rst file for a specific class and returns the Path."""
     filename = OUTPUT_DIR / f"{camel_to_snake(cls.__name__)}.rst"
-
     content = []
 
     title = cls.__name__
@@ -114,22 +101,18 @@ def generate_rst_for_class(cls, module_name):
     content.append("")
     content.append(f".. currentmodule:: {module_name}")
     content.append("")
-
     content.append(f".. autoclass:: {cls.__name__}")
     content.append("   :no-members:")
     content.append("   :show-inheritance:")
     content.append("")
-
     content.append("------------")
     content.append("")
 
     members = get_members_in_order(cls)
-
     for _, name, kind in members:
         directive = "automethod"
         if isinstance(kind, property):
             directive = "autoattribute"
-
         content.append(f".. {directive}:: {cls.__name__}.{name}")
         content.append("")
         content.append("------------")
@@ -138,44 +121,56 @@ def generate_rst_for_class(cls, module_name):
     print(f"Generating {filename}...")
     with open(filename, "w") as f:
         f.write("\n".join(content))
-
     return filename
 
 
 def prepare_assets_and_readme():
     """
-    Copies assets to _static and creates a patched README_docs.md
-    with corrected image links for Sphinx.
+    Copies assets to docs/assets and patches README_docs.md to use MyST image syntax.
     """
-    # 1. Copy Assets to docs/_static/assets
+    # 1. Copy Assets to docs/assets (Source directory for Sphinx)
     if ASSETS_DIR.exists():
-        print(f"Copying assets from {ASSETS_DIR} to {DOCS_STATIC_ASSETS_DIR}...")
-        if not DOCS_STATIC_ASSETS_DIR.parent.exists():
-            DOCS_STATIC_ASSETS_DIR.parent.mkdir(parents=True, exist_ok=True)
-
-        if DOCS_STATIC_ASSETS_DIR.exists():
-            shutil.rmtree(DOCS_STATIC_ASSETS_DIR)
-        shutil.copytree(ASSETS_DIR, DOCS_STATIC_ASSETS_DIR)
+        print(f"Copying assets from {ASSETS_DIR} to {DOCS_ASSETS_DIR}...")
+        if DOCS_ASSETS_DIR.exists():
+            shutil.rmtree(DOCS_ASSETS_DIR)
+        # Parent should exist, but good to be safe
+        if not DOCS_ASSETS_DIR.parent.exists():
+            DOCS_ASSETS_DIR.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(ASSETS_DIR, DOCS_ASSETS_DIR)
+    else:
+        print(f"Warning: Assets directory {ASSETS_DIR} not found.")
 
     # 2. Patch README
-    # We replace 'assets/' with '_static/assets/' so the HTML build finds them.
     if README_SRC.exists():
-        print(f"Creating patched README for docs at {README_DOCS}...")
+        print(f"Processing README from {README_SRC} -> {README_DOCS}...")
         with open(README_SRC, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Replace standard markdown image links [alt](assets/...)
-        content = content.replace("](assets/", "](_static/assets/")
-        # Replace HTML image tags src="assets/..."
-        content = content.replace('src="assets/', 'src="_static/assets/')
+        # Regex to replace the specific HTML image block with MyST directive.
+        html_img_pattern = r'<div align="center">\s*<a[^>]*>\s*<img[^>]*src="assets/([^"]+)"[^>]*>\s*</a>\s*</div>'
+
+        def myst_replacement(match):
+            filename = match.group(1)
+            return f"""
+```{{image}} assets/{filename}
+:width: 300px
+:align: center
+```
+"""
+
+        # Apply regex replacement
+        new_content = re.sub(html_img_pattern, myst_replacement, content, flags=re.DOTALL)
+
+        if new_content == content:
+            print("Info: No HTML image blocks found to replace in README.")
 
         with open(README_DOCS, "w", encoding="utf-8") as f:
-            f.write(content)
+            f.write(new_content)
+    else:
+        print(f"Error: Source README not found at {README_SRC}")
 
 
 def generate_index(generated_files):
-    """Generates the root index.rst file."""
-
     entries = []
     for p in generated_files:
         rel_path = p.relative_to(PROJECT_ROOT / "docs").with_suffix('')
@@ -185,8 +180,10 @@ def generate_index(generated_files):
     toctree_content = "\n   ".join(entries)
     name, version = get_project_info()
 
-    # Note: We include README_docs.md instead of ../README.md
     content = f"""
+{name} {version}
+{'=' * (len(name) + len(version) + 1)}
+
 .. include:: README_docs.md
    :parser: myst_parser.sphinx_
 
@@ -204,11 +201,36 @@ def generate_index(generated_files):
         f.write(content.strip())
 
 
+def update_conf_py():
+    """
+    Updates docs/conf.py with the version from pyproject.toml.
+    Writing to the file invalidates the Sphinx cache, forcing a rebuild
+    of the index which includes the README.
+    """
+    conf_path = PROJECT_ROOT / "docs" / "conf.py"
+    if conf_path.exists():
+        _, version = get_project_info()
+        print(f"Updating {conf_path} release to {version}...")
+
+        with open(conf_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Regex to update release = '...'
+        new_content = re.sub(
+            r"^release\s*=\s*['\"].*['\"]",
+            f"release = '{version}'",
+            content,
+            flags=re.MULTILINE
+        )
+
+        with open(conf_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+
+
 def main():
     if not OUTPUT_DIR.exists():
         os.makedirs(OUTPUT_DIR)
 
-    # Pre-processing: Fix assets and README
     prepare_assets_and_readme()
 
     generated_files = []
@@ -225,13 +247,14 @@ def main():
             for cls in classes:
                 file_path = generate_rst_for_class(cls, mod_name)
                 generated_files.append(file_path)
-
         except ImportError as e:
             print(f"Error importing {mod_name}: {e}")
 
-    # Update the main index
     if generated_files:
         generate_index(generated_files)
+
+    # Crucial step for RTD: Sync version and force rebuild
+    update_conf_py()
 
 
 if __name__ == "__main__":

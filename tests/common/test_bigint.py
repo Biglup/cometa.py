@@ -1,5 +1,5 @@
 import pytest
-from cometa.common import BigInt
+from cometa import BigInt
 from cometa import ByteOrder
 from cometa import CardanoError
 
