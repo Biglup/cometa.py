@@ -14,7 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from importlib.abc import Traversable
+try:
+    from importlib.resources.abc import Traversable
+except ImportError:
+    from importlib.abc import Traversable
+
 from importlib import resources as importlib_resources
 
 import sys
@@ -31,7 +35,6 @@ def _load_all_cdef() -> str:
     # cometa/_cdef/all.cdef
     cdef_path = importlib_resources.files("cometa") / "_cdef" / "cardano-c.cdef"
     return cdef_path.read_text(encoding="utf-8")
-
 
 ffi.cdef(_load_all_cdef())
 

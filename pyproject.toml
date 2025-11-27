@@ -68,4 +68,5 @@ disable = [
     "R0904", # Too many public methods
     "R0911", # Too many return statements
     "R0801", # Similar lines in X files
+    "W4904", # Using deprecated module
 ]
