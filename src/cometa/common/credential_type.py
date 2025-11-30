@@ -14,12 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .bip39 import (
-    entropy_to_mnemonic,
-    mnemonic_to_entropy,
-)
+from enum import IntEnum
 
-__all__ = [
-    "entropy_to_mnemonic",
-    "mnemonic_to_entropy",
-]
+
+class CredentialType(IntEnum):
+    """
+    Types of credentials used in Cardano addresses.
+
+    A credential identifies the owner of funds or staking rights, either
+    through a public key hash or a script hash.
+    """
+
+    KEY_HASH = 0
+    """Credential is a hash of a public key."""
+
+    SCRIPT_HASH = 1
+    """Credential is a hash of a script."""

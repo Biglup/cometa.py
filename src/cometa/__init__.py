@@ -17,6 +17,10 @@ from .json.json_object import JsonObject
 from .json.json_context import JsonContext
 from .json.json_writer import JsonWriter
 from .json.json_object_type import JsonObjectType
+from .bip39.bip39 import (
+    entropy_to_mnemonic,
+    mnemonic_to_entropy,
+)
 from .buffer import Buffer
 from .errors import CardanoError
 
@@ -37,4 +41,7 @@ __all__ = [
     "JsonWriter",
     "Buffer",
     "CardanoError",
+    # BIP39
+    "entropy_to_mnemonic",
+    "mnemonic_to_entropy",
 ]

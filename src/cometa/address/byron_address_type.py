@@ -14,12 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .bip39 import (
-    entropy_to_mnemonic,
-    mnemonic_to_entropy,
-)
+from enum import IntEnum
 
-__all__ = [
-    "entropy_to_mnemonic",
-    "mnemonic_to_entropy",
-]
+
+class ByronAddressType(IntEnum):
+    """
+    Types of spending data associated with Byron-era addresses.
+
+    Each type corresponds to a different method of controlling the spending of funds.
+    """
+
+    PUBKEY = 0
+    """Address controlled by a public key."""
+
+    SCRIPT = 1
+    """Address controlled by a script."""
+
+    REDEEM = 2
+    """Redeem address used during the initial ADA distribution phase."""

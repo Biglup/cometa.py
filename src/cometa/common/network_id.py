@@ -14,12 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .bip39 import (
-    entropy_to_mnemonic,
-    mnemonic_to_entropy,
-)
+from enum import IntEnum
 
-__all__ = [
-    "entropy_to_mnemonic",
-    "mnemonic_to_entropy",
-]
+
+class NetworkId(IntEnum):
+    """
+    Network identifiers used within the Cardano ecosystem.
+
+    Specifies the network for which a Cardano transaction or address is intended.
+    """
+
+    TESTNET = 0
+    """The test network (testnet)."""
+
+    MAINNET = 1
+    """The main network (mainnet)."""
