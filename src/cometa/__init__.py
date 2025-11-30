@@ -34,6 +34,16 @@ from .bip39.bip39 import (
     mnemonic_to_entropy,
 )
 from .cryptography.blake2b_hash import Blake2bHash
+from .cryptography.blake2b_hash_size import Blake2bHashSize
+from .cryptography.blake2b_hash_set import Blake2bHashSet
+from .cryptography.ed25519_signature import Ed25519Signature
+from .cryptography.ed25519_public_key import Ed25519PublicKey
+from .cryptography.ed25519_private_key import Ed25519PrivateKey
+from .cryptography.bip32_public_key import Bip32PublicKey
+from .cryptography.bip32_private_key import Bip32PrivateKey, harden
+from .cryptography.crc32 import crc32
+from .cryptography.pbkdf2 import pbkdf2_hmac_sha512
+from .cryptography.emip3 import emip3_encrypt, emip3_decrypt
 from .address import (
     Address,
     AddressType,
@@ -83,7 +93,19 @@ __all__ = [
     "entropy_to_mnemonic",
     "mnemonic_to_entropy",
     # Cryptography
+    "Bip32PrivateKey",
+    "Bip32PublicKey",
     "Blake2bHash",
+    "Blake2bHashSet",
+    "Blake2bHashSize",
+    "Ed25519PrivateKey",
+    "Ed25519PublicKey",
+    "Ed25519Signature",
+    "crc32",
+    "emip3_decrypt",
+    "emip3_encrypt",
+    "harden",
+    "pbkdf2_hmac_sha512",
     # Address
     "Address",
     "AddressType",
