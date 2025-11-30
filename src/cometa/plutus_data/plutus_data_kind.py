@@ -14,16 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .plutus_data_kind import PlutusDataKind
-from .plutus_data import PlutusData
-from .plutus_list import PlutusList
-from .plutus_map import PlutusMap
-from .constr_plutus_data import ConstrPlutusData
+from enum import IntEnum
 
-__all__ = [
-    "PlutusDataKind",
-    "PlutusData",
-    "PlutusList",
-    "PlutusMap",
-    "ConstrPlutusData",
-]
+
+class PlutusDataKind(IntEnum):
+    """
+    The Plutus data type kind.
+
+    Plutus data can be one of five types: constructor, map, list, integer, or bytes.
+    """
+
+    CONSTR = 0
+    """Represents a specific constructor of a 'Sum Type' along with its arguments."""
+
+    MAP = 1
+    """A map of PlutusData as both key and values."""
+
+    LIST = 2
+    """A list of PlutusData."""
+
+    INTEGER = 3
+    """An integer (BigInt)."""
+
+    BYTES = 4
+    """Bounded bytes."""

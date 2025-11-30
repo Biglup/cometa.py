@@ -47,6 +47,13 @@ from .cryptography.emip3 import emip3_encrypt, emip3_decrypt
 from .encoding.base58 import Base58
 from .encoding.bech32 import Bech32
 from .message_signing.cip8 import CIP8SignResult, sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
+from .plutus_data import (
+    PlutusDataKind,
+    PlutusData,
+    PlutusList,
+    PlutusMap,
+    ConstrPlutusData,
+)
 from .assets import (
     AssetId,
     AssetIdList,
@@ -135,6 +142,12 @@ __all__ = [
     "CIP8SignResult",
     "cip8_sign",
     "cip8_sign_with_key_hash",
+    # Plutus Data
+    "ConstrPlutusData",
+    "PlutusData",
+    "PlutusDataKind",
+    "PlutusList",
+    "PlutusMap",
     # Assets
     "AssetId",
     "AssetIdList",
