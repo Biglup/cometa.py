@@ -85,6 +85,21 @@ from .address import (
     RewardAddress,
     StakePointer,
 )
+from .pool_params import (
+    IPv4,
+    IPv6,
+    MultiHostNameRelay,
+    PoolMetadata,
+    PoolOwners,
+    PoolParams,
+    Relay,
+    RelayLike,
+    Relays,
+    RelayType,
+    SingleHostAddrRelay,
+    SingleHostNameRelay,
+    to_relay,
+)
 from .buffer import Buffer
 from .errors import CardanoError
 
@@ -176,6 +191,20 @@ __all__ = [
     "PointerAddress",
     "RewardAddress",
     "StakePointer",
+    # Pool Params
+    "IPv4",
+    "IPv6",
+    "MultiHostNameRelay",
+    "PoolMetadata",
+    "PoolOwners",
+    "PoolParams",
+    "Relay",
+    "RelayLike",
+    "Relays",
+    "RelayType",
+    "SingleHostAddrRelay",
+    "SingleHostNameRelay",
+    "to_relay",
     # Core
     "Buffer",
     "CardanoError",
