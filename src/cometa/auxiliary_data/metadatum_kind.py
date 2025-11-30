@@ -14,22 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .asset_name import AssetName
-from .asset_name_list import AssetNameList
-from .asset_id import AssetId
-from .asset_id_list import AssetIdList
-from .asset_id_map import AssetIdMap
-from .asset_name_map import AssetNameMap
-from .multi_asset import MultiAsset
-from .policy_id_list import PolicyIdList
+from enum import IntEnum
 
-__all__ = [
-    "AssetId",
-    "AssetIdList",
-    "AssetIdMap",
-    "AssetName",
-    "AssetNameList",
-    "AssetNameMap",
-    "MultiAsset",
-    "PolicyIdList",
-]
+
+class MetadatumKind(IntEnum):
+    """
+    Represents the type of transaction metadatum.
+
+    Transaction metadata in Cardano can be one of five types:
+    maps, lists, integers, byte strings, or text strings.
+    """
+
+    MAP = 0
+    """A map with metadatum keys and values."""
+
+    LIST = 1
+    """A list of metadatum values."""
+
+    INTEGER = 2
+    """An arbitrary-precision integer."""
+
+    BYTES = 3
+    """A bounded byte string (max 64 bytes)."""
+
+    TEXT = 4
+    """A text string (max 64 bytes when UTF-8 encoded)."""

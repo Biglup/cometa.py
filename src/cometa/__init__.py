@@ -44,6 +44,25 @@ from .cryptography.bip32_private_key import Bip32PrivateKey, harden
 from .cryptography.crc32 import crc32
 from .cryptography.pbkdf2 import pbkdf2_hmac_sha512
 from .cryptography.emip3 import emip3_encrypt, emip3_decrypt
+from .assets import (
+    AssetId,
+    AssetIdList,
+    AssetIdMap,
+    AssetName,
+    AssetNameList,
+    AssetNameMap,
+    MultiAsset,
+    PolicyIdList,
+)
+from .auxiliary_data import (
+    AuxiliaryData,
+    Metadatum,
+    MetadatumKind,
+    MetadatumLabelList,
+    MetadatumList,
+    MetadatumMap,
+    TransactionMetadata,
+)
 from .address import (
     Address,
     AddressType,
@@ -106,6 +125,23 @@ __all__ = [
     "emip3_encrypt",
     "harden",
     "pbkdf2_hmac_sha512",
+    # Assets
+    "AssetId",
+    "AssetIdList",
+    "AssetIdMap",
+    "AssetName",
+    "AssetNameList",
+    "AssetNameMap",
+    "MultiAsset",
+    "PolicyIdList",
+    # Auxiliary Data
+    "AuxiliaryData",
+    "Metadatum",
+    "MetadatumKind",
+    "MetadatumLabelList",
+    "MetadatumList",
+    "MetadatumMap",
+    "TransactionMetadata",
     # Address
     "Address",
     "AddressType",
