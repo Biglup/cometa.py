@@ -100,6 +100,13 @@ from .pool_params import (
     SingleHostNameRelay,
     to_relay,
 )
+from .voting_procedures import (
+    Vote,
+    Voter,
+    VoterType,
+    VotingProcedure,
+    VotingProcedures,
+)
 from .buffer import Buffer
 from .errors import CardanoError
 
@@ -205,6 +212,12 @@ __all__ = [
     "SingleHostAddrRelay",
     "SingleHostNameRelay",
     "to_relay",
+    # Voting Procedures
+    "Vote",
+    "Voter",
+    "VoterType",
+    "VotingProcedure",
+    "VotingProcedures",
     # Core
     "Buffer",
     "CardanoError",

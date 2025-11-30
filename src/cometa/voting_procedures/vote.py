@@ -14,16 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .vote import Vote
-from .voter_type import VoterType
-from .voter import Voter
-from .voting_procedure import VotingProcedure
-from .voting_procedures import VotingProcedures
+from enum import IntEnum
 
-__all__ = [
-    "Vote",
-    "VoterType",
-    "Voter",
-    "VotingProcedure",
-    "VotingProcedures",
-]
+
+class Vote(IntEnum):
+    """
+    Represents possible voting choices in a Cardano voting procedure.
+
+    In the Cardano governance system, participants can cast votes on proposals
+    using one of three options: No, Yes, or Abstain.
+    """
+
+    NO = 0
+    """Represents a 'No' vote - the voter is against the proposal."""
+
+    YES = 1
+    """Represents a 'Yes' vote - the voter supports the proposal."""
+
+    ABSTAIN = 2
+    """Represents an 'Abstain' vote - the voter neither supports nor opposes."""
