@@ -44,6 +44,9 @@ from .cryptography.bip32_private_key import Bip32PrivateKey, harden
 from .cryptography.crc32 import crc32
 from .cryptography.pbkdf2 import pbkdf2_hmac_sha512
 from .cryptography.emip3 import emip3_encrypt, emip3_decrypt
+from .encoding.base58 import Base58
+from .encoding.bech32 import Bech32
+from .message_signing.cip8 import CIP8SignResult, sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
 from .assets import (
     AssetId,
     AssetIdList,
@@ -125,6 +128,13 @@ __all__ = [
     "emip3_encrypt",
     "harden",
     "pbkdf2_hmac_sha512",
+    # Encoding
+    "Base58",
+    "Bech32",
+    # Message Signing
+    "CIP8SignResult",
+    "cip8_sign",
+    "cip8_sign_with_key_hash",
     # Assets
     "AssetId",
     "AssetIdList",
