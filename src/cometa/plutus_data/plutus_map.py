@@ -153,9 +153,7 @@ class PlutusMap:
 
     def __iter__(self) -> Iterator["PlutusData"]:
         """Iterates over all keys in the map (like Python dict)."""
-        keys_list = self.get_keys()
-        for item in keys_list:
-            yield item
+        yield from self.get_keys()
 
     @classmethod
     def from_cbor(cls, reader: CborReader) -> PlutusMap:
@@ -282,9 +280,7 @@ class PlutusMap:
         Returns:
             An iterator over PlutusData values.
         """
-        values_list = self.get_values()
-        for item in values_list:
-            yield item
+        yield from self.get_values()
 
     def items(self) -> Iterator[Tuple["PlutusData", "PlutusData"]]:
         """
