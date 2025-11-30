@@ -63,10 +63,10 @@ class Relay:
         if relay_type == RelayType.SINGLE_HOST_ADDRESS:
             inner = self.to_single_host_addr()
             return f"Relay({inner!r})"
-        elif relay_type == RelayType.SINGLE_HOST_NAME:
+        if relay_type == RelayType.SINGLE_HOST_NAME:
             inner = self.to_single_host_name()
             return f"Relay({inner!r})"
-        elif relay_type == RelayType.MULTI_HOST_NAME:
+        if relay_type == RelayType.MULTI_HOST_NAME:
             inner = self.to_multi_host_name()
             return f"Relay({inner!r})"
         return "Relay(unknown)"
@@ -243,11 +243,10 @@ def to_relay(relay: RelayLike) -> Relay:
     """
     if isinstance(relay, Relay):
         return relay
-    elif isinstance(relay, SingleHostAddrRelay):
+    if isinstance(relay, SingleHostAddrRelay):
         return Relay.from_single_host_addr(relay)
-    elif isinstance(relay, SingleHostNameRelay):
+    if isinstance(relay, SingleHostNameRelay):
         return Relay.from_single_host_name(relay)
-    elif isinstance(relay, MultiHostNameRelay):
+    if isinstance(relay, MultiHostNameRelay):
         return Relay.from_multi_host_name(relay)
-    else:
-        raise TypeError(f"Cannot convert {type(relay).__name__} to Relay")
+    raise TypeError(f"Cannot convert {type(relay).__name__} to Relay")

@@ -70,4 +70,5 @@ disable = [
     "R0801", # Similar lines in X files
     "W4904", # Using deprecated module
     "C0415", # Import outside toplevel (needed for circular import avoidance)
+    "R0913", # Too many arguments
 ]
