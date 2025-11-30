@@ -9,6 +9,15 @@ from .common.byte_order import ByteOrder
 from .common.network_id import NetworkId
 from .common.credential_type import CredentialType
 from .common.credential import Credential
+from .common.datum_type import DatumType
+from .common.drep_type import DRepType
+from .common.governance_key_type import GovernanceKeyType
+from .common.unit_interval import UnitInterval
+from .common.ex_units import ExUnits
+from .common.anchor import Anchor
+from .common.drep import DRep
+from .common.governance_action_id import GovernanceActionId
+from .common.datum import Datum
 from .cbor.cbor_reader import CborReader
 from .cbor.cbor_major_type import CborMajorType
 from .cbor.cbor_reader_state import CborReaderState
@@ -42,12 +51,21 @@ from .errors import CardanoError
 
 __all__ = [
     # Common
+    "Anchor",
     "BigInt",
     "ByteOrder",
-    "ProtocolVersion",
-    "NetworkId",
-    "CredentialType",
     "Credential",
+    "CredentialType",
+    "Datum",
+    "DatumType",
+    "DRep",
+    "DRepType",
+    "ExUnits",
+    "GovernanceActionId",
+    "GovernanceKeyType",
+    "NetworkId",
+    "ProtocolVersion",
+    "UnitInterval",
     # CBOR
     "CborReader",
     "CborMajorType",

@@ -20,12 +20,30 @@ from .byte_order import ByteOrder
 from .network_id import NetworkId
 from .credential_type import CredentialType
 from .credential import Credential
+from .datum_type import DatumType
+from .drep_type import DRepType
+from .governance_key_type import GovernanceKeyType
+from .unit_interval import UnitInterval
+from .ex_units import ExUnits
+from .anchor import Anchor
+from .drep import DRep
+from .governance_action_id import GovernanceActionId
+from .datum import Datum
 
 __all__ = [
+    "Anchor",
     "BigInt",
     "ByteOrder",
     "Credential",
     "CredentialType",
+    "Datum",
+    "DatumType",
+    "DRep",
+    "DRepType",
+    "ExUnits",
+    "GovernanceActionId",
+    "GovernanceKeyType",
     "NetworkId",
     "ProtocolVersion",
+    "UnitInterval",
 ]
