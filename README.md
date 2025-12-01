@@ -10,7 +10,7 @@
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 ![Post-Integration](https://github.com/Biglup/cometa.py/actions/workflows/ci.yml/badge.svg)
-[![Documentation Status](https://app.readthedocs.org/projects/cometajs/badge/?version=latest)](https://cometajs.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://app.readthedocs.org/projects/cometapy/badge/?version=latest)](https://cometapy.readthedocs.io/en/latest/?badge=latest)
 [![Twitter Follow](https://img.shields.io/twitter/follow/BiglupLabs?style=social)](https://x.com/BiglupLabs)
 
 </div>
