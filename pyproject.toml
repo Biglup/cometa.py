@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biglup-cometa"
-version = "0.1.32"
+version = "0.1.33"
 description = "Python bindings for libcardano-c (Cometa project)"
 authors = [
     { name = "Angel Castillo", email = "angel.castillob@prototnmail.io" },
@@ -43,8 +43,11 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-"biglup.cometa" = [
-    "_native/**/*",
+cometa = [
+    "_cdef/*.cdef",
+    "_native/**/*.so",
+    "_native/**/*.dylib",
+    "_native/**/*.dll",
 ]
 
 [project.urls]
