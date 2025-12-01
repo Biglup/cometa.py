@@ -23,6 +23,7 @@ from .datum_type import DatumType
 from ..cryptography.blake2b_hash import Blake2bHash
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
+from ..plutus_data.plutus_data import PlutusData
 
 
 class Datum:
@@ -236,13 +237,6 @@ class Datum:
         Raises:
             ImportError: If PlutusData module is not available.
         """
-        try:
-            from ..plutus_data.plutus_data import PlutusData
-        except ImportError as err:
-            raise ImportError(
-                "PlutusData module is required for inline datum access. "
-                "This feature will be available once PlutusData bindings are implemented."
-            ) from err
         ptr = lib.cardano_datum_get_inline_data(self._ptr)
         if ptr == ffi.NULL:
             return None
