@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .plutus_scripts import PlutusLanguageVersion
+from .plutus_language_version import PlutusLanguageVersion
 
 __all__ = [
     "PlutusLanguageVersion",

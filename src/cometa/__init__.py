@@ -107,6 +107,18 @@ from .voting_procedures import (
     VotingProcedure,
     VotingProcedures,
 )
+from .scripts import PlutusLanguageVersion
+from .protocol_params import (
+    ExUnitPrices,
+    CostModel,
+    Costmdls,
+    PoolVotingThresholds,
+    DRepVotingThresholds,
+    ProtocolParameters,
+    ProtocolParamUpdate,
+    ProposedParamUpdates,
+    Update,
+)
 from .buffer import Buffer
 from .errors import CardanoError
 
@@ -218,6 +230,17 @@ __all__ = [
     "VoterType",
     "VotingProcedure",
     "VotingProcedures",
+    # Protocol Params
+    "PlutusLanguageVersion",
+    "ExUnitPrices",
+    "CostModel",
+    "Costmdls",
+    "PoolVotingThresholds",
+    "DRepVotingThresholds",
+    "ProtocolParameters",
+    "ProtocolParamUpdate",
+    "ProposedParamUpdates",
+    "Update",
     # Core
     "Buffer",
     "CardanoError",
