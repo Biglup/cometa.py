@@ -7,6 +7,7 @@ from .common.protocol_version import ProtocolVersion
 from .common.bigint import BigInt
 from .common.byte_order import ByteOrder
 from .common.network_id import NetworkId
+from .common.network_magic import NetworkMagic
 from .common.credential_type import CredentialType
 from .common.credential import Credential
 from .common.datum_type import DatumType
@@ -199,6 +200,8 @@ from .witness_set import (
 )
 from .buffer import Buffer
 from .errors import CardanoError
+from .cardano import get_lib_version, memzero
+from .time import slot_from_unix_time, unix_time_from_slot, epoch_from_unix_time
 from .transaction_body import (
     Value,
     TransactionInput,
@@ -224,6 +227,7 @@ __all__ = [
     "GovernanceActionId",
     "GovernanceKeyType",
     "NetworkId",
+    "NetworkMagic",
     "ProtocolVersion",
     "UnitInterval",
     # CBOR
@@ -405,6 +409,12 @@ __all__ = [
     # Core
     "Buffer",
     "CardanoError",
+    "get_lib_version",
+    "memzero",
+    # Time
+    "slot_from_unix_time",
+    "unix_time_from_slot",
+    "epoch_from_unix_time",
     # Transaction Body
     "Value",
     "TransactionInput",
