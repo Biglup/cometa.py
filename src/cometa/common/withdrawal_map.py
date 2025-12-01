@@ -1,0 +1,252 @@
+"""
+Copyright 2025 Biglup Labs.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+from __future__ import annotations
+
+from typing import Iterator, Tuple, TYPE_CHECKING
+
+from .._ffi import ffi, lib
+from ..errors import CardanoError
+from ..cbor.cbor_reader import CborReader
+from ..cbor.cbor_writer import CborWriter
+
+if TYPE_CHECKING:
+    from ..address.reward_address import RewardAddress
+
+
+class WithdrawalMap:
+    """
+    Represents a map of reward addresses to lovelace amounts.
+
+    This collection type is used for staking reward withdrawals in Cardano
+    transactions and treasury withdrawal governance actions.
+    """
+
+    def __init__(self, ptr=None) -> None:
+        if ptr is None:
+            out = ffi.new("cardano_withdrawal_map_t**")
+            err = lib.cardano_withdrawal_map_new(out)
+            if err != 0:
+                raise CardanoError(f"Failed to create WithdrawalMap (error code: {err})")
+            self._ptr = out[0]
+        else:
+            if ptr == ffi.NULL:
+                raise CardanoError("WithdrawalMap: invalid handle")
+            self._ptr = ptr
+
+    def __del__(self) -> None:
+        if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
+            ptr_ptr = ffi.new("cardano_withdrawal_map_t**", self._ptr)
+            lib.cardano_withdrawal_map_unref(ptr_ptr)
+            self._ptr = ffi.NULL
+
+    def __enter__(self) -> WithdrawalMap:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+    def __repr__(self) -> str:
+        return f"WithdrawalMap(len={len(self)})"
+
+    @classmethod
+    def from_cbor(cls, reader: CborReader) -> WithdrawalMap:
+        """
+        Deserializes a WithdrawalMap from CBOR data.
+
+        Args:
+            reader: A CborReader positioned at the withdrawal map data.
+
+        Returns:
+            A new WithdrawalMap deserialized from the CBOR data.
+
+        Raises:
+            CardanoError: If deserialization fails.
+        """
+        out = ffi.new("cardano_withdrawal_map_t**")
+        err = lib.cardano_withdrawal_map_from_cbor(reader._ptr, out)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to deserialize WithdrawalMap from CBOR (error code: {err})"
+            )
+        return cls(out[0])
+
+    def to_cbor(self, writer: CborWriter) -> None:
+        """
+        Serializes the withdrawal map to CBOR format.
+
+        Args:
+            writer: A CborWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        err = lib.cardano_withdrawal_map_to_cbor(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to serialize WithdrawalMap to CBOR (error code: {err})"
+            )
+
+    def insert(self, key: RewardAddress, value: int) -> None:
+        """
+        Inserts or updates a reward address with its withdrawal amount.
+
+        Args:
+            key: The reward address.
+            value: The amount in lovelace to withdraw.
+
+        Raises:
+            CardanoError: If insertion fails.
+        """
+        err = lib.cardano_withdrawal_map_insert(self._ptr, key._ptr, value)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to insert into WithdrawalMap (error code: {err})"
+            )
+
+    def insert_ex(self, reward_address: str, value: int) -> None:
+        """
+        Inserts a withdrawal using a Bech32-encoded reward address string.
+
+        Args:
+            reward_address: Bech32-encoded reward address (e.g., "stake1...").
+            value: The amount in lovelace to withdraw.
+
+        Raises:
+            CardanoError: If insertion fails.
+        """
+        addr_bytes = reward_address.encode("utf-8")
+        err = lib.cardano_withdrawal_map_insert_ex(
+            self._ptr, addr_bytes, len(addr_bytes), value
+        )
+        if err != 0:
+            raise CardanoError(
+                f"Failed to insert into WithdrawalMap (error code: {err})"
+            )
+
+    def get(self, key: RewardAddress) -> int:
+        """
+        Retrieves the withdrawal amount for a given reward address.
+
+        Args:
+            key: The reward address to look up.
+
+        Returns:
+            The withdrawal amount in lovelace.
+
+        Raises:
+            CardanoError: If the key is not found or retrieval fails.
+        """
+        value = ffi.new("uint64_t*")
+        err = lib.cardano_withdrawal_map_get(self._ptr, key._ptr, value)
+        if err != 0:
+            raise CardanoError(f"Failed to get from WithdrawalMap (error code: {err})")
+        return int(value[0])
+
+    def get_key_at(self, index: int) -> RewardAddress:
+        """
+        Retrieves the reward address at a specific index.
+
+        Args:
+            index: The index of the reward address to retrieve.
+
+        Returns:
+            The RewardAddress at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        from ..address.reward_address import RewardAddress
+
+        if index < 0 or index >= len(self):
+            raise IndexError(
+                f"Index {index} out of range for map of length {len(self)}"
+            )
+        out = ffi.new("cardano_reward_address_t**")
+        err = lib.cardano_withdrawal_map_get_key_at(self._ptr, index, out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key at index {index} (error code: {err})")
+        return RewardAddress(out[0])
+
+    def get_value_at(self, index: int) -> int:
+        """
+        Retrieves the withdrawal amount at a specific index.
+
+        Args:
+            index: The index of the amount to retrieve.
+
+        Returns:
+            The withdrawal amount in lovelace at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        if index < 0 or index >= len(self):
+            raise IndexError(
+                f"Index {index} out of range for map of length {len(self)}"
+            )
+        value = ffi.new("uint64_t*")
+        err = lib.cardano_withdrawal_map_get_value_at(self._ptr, index, value)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to get value at index {index} (error code: {err})"
+            )
+        return int(value[0])
+
+    def __len__(self) -> int:
+        """Returns the number of entries in the map."""
+        return int(lib.cardano_withdrawal_map_get_length(self._ptr))
+
+    def __iter__(self) -> Iterator[RewardAddress]:
+        """Iterates over all keys (like Python dict)."""
+        for i in range(len(self)):
+            yield self.get_key_at(i)
+
+    def __getitem__(self, key: RewardAddress) -> int:
+        """Gets a value by key using bracket notation."""
+        return self.get(key)
+
+    def __setitem__(self, key: RewardAddress, value: int) -> None:
+        """Sets a value by key using bracket notation."""
+        self.insert(key, value)
+
+    def __bool__(self) -> bool:
+        """Returns True if the map is not empty."""
+        return len(self) > 0
+
+    def __contains__(self, item: RewardAddress) -> bool:
+        """Checks if a reward address is in the map."""
+        try:
+            self.get(item)
+            return True
+        except CardanoError:
+            return False
+
+    def keys(self) -> Iterator[RewardAddress]:
+        """Returns an iterator over keys (like Python dict)."""
+        return iter(self)
+
+    def values(self) -> Iterator[int]:
+        """Returns an iterator over values (like Python dict)."""
+        for i in range(len(self)):
+            yield self.get_value_at(i)
+
+    def items(self) -> Iterator[Tuple[RewardAddress, int]]:
+        """Returns an iterator over (key, value) pairs (like Python dict)."""
+        for i in range(len(self)):
+            yield self.get_key_at(i), self.get_value_at(i)

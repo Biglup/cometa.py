@@ -29,6 +29,7 @@ from .anchor import Anchor
 from .drep import DRep
 from .governance_action_id import GovernanceActionId
 from .datum import Datum
+from .withdrawal_map import WithdrawalMap
 
 __all__ = [
     "Anchor",
@@ -46,4 +47,5 @@ __all__ = [
     "NetworkId",
     "ProtocolVersion",
     "UnitInterval",
+    "WithdrawalMap",
 ]

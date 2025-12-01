@@ -147,6 +147,24 @@ from .certificates import (
     VoteDelegationCert,
     VoteRegistrationDelegationCert,
 )
+from .proposal_procedures import (
+    Committee,
+    CommitteeMembersMap,
+    Constitution,
+    CredentialSet,
+    GovernanceAction,
+    GovernanceActionType,
+    HardForkInitiationAction,
+    InfoAction,
+    NewConstitutionAction,
+    NoConfidenceAction,
+    ParameterChangeAction,
+    ProposalProcedure,
+    ProposalProcedureSet,
+    TreasuryWithdrawalsAction,
+    UpdateCommitteeAction,
+)
+from .common.withdrawal_map import WithdrawalMap
 from .buffer import Buffer
 from .errors import CardanoError
 
@@ -296,6 +314,23 @@ __all__ = [
     "UpdateDRepCert",
     "VoteDelegationCert",
     "VoteRegistrationDelegationCert",
+    # Proposal Procedures
+    "Committee",
+    "CommitteeMembersMap",
+    "Constitution",
+    "CredentialSet",
+    "GovernanceAction",
+    "GovernanceActionType",
+    "HardForkInitiationAction",
+    "InfoAction",
+    "NewConstitutionAction",
+    "NoConfidenceAction",
+    "ParameterChangeAction",
+    "ProposalProcedure",
+    "ProposalProcedureSet",
+    "TreasuryWithdrawalsAction",
+    "UpdateCommitteeAction",
+    "WithdrawalMap",
     # Core
     "Buffer",
     "CardanoError",
