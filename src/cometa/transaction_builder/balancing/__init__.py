@@ -16,9 +16,12 @@ limitations under the License.
 
 from .input_to_redeemer_map import InputToRedeemerMap
 from .transaction_balancing import balance_transaction, is_transaction_balanced
+from .implicit_coin import ImplicitCoin, compute_implicit_coin
 
 __all__ = [
     "InputToRedeemerMap",
     "balance_transaction",
     "is_transaction_balanced",
+    "ImplicitCoin",
+    "compute_implicit_coin",
 ]

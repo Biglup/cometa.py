@@ -36,6 +36,8 @@ from .balancing import (
     InputToRedeemerMap,
     balance_transaction,
     is_transaction_balanced,
+    ImplicitCoin,
+    compute_implicit_coin,
 )
 
 # Coin selection
@@ -62,6 +64,8 @@ __all__ = [
     "InputToRedeemerMap",
     "balance_transaction",
     "is_transaction_balanced",
+    "ImplicitCoin",
+    "compute_implicit_coin",
     # Coin selection
     "CoinSelector",
     "LargeFirstCoinSelector",

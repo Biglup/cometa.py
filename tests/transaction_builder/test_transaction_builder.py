@@ -29,6 +29,8 @@ from cometa.transaction_builder import (
     CoinSelector,
     LargeFirstCoinSelector,
     TxEvaluator,
+    ImplicitCoin,
+    compute_implicit_coin,
 )
 from cometa.transaction_builder.balancing import balance_transaction
 from cometa.transaction_builder.coin_selection import CoinSelector, LargeFirstCoinSelector
@@ -300,11 +302,15 @@ class TestModuleImports:
             InputToRedeemerMap,
             balance_transaction,
             is_transaction_balanced,
+            ImplicitCoin,
+            compute_implicit_coin,
         )
 
         assert InputToRedeemerMap is not None
         assert callable(balance_transaction)
         assert callable(is_transaction_balanced)
+        assert ImplicitCoin is not None
+        assert callable(compute_implicit_coin)
 
     def test_coin_selection_imports(self):
         """Test that coin selection imports work."""
@@ -335,6 +341,84 @@ class TestTxEvaluator:
 
         assert TxEvaluator is not None
         # TxEvaluator requires an implementation, so we just verify the class exists
+
+
+class TestImplicitCoin:
+    """Tests for ImplicitCoin and compute_implicit_coin."""
+
+    def test_implicit_coin_dataclass(self):
+        """Test ImplicitCoin dataclass creation and properties."""
+        implicit = ImplicitCoin(
+            withdrawals=1000000,
+            deposits=500000,
+            reclaim_deposits=200000,
+        )
+
+        assert implicit.withdrawals == 1000000
+        assert implicit.deposits == 500000
+        assert implicit.reclaim_deposits == 200000
+
+    def test_implicit_coin_net_value(self):
+        """Test ImplicitCoin net_value calculation."""
+        # Net positive: withdrawals + reclaim > deposits
+        implicit = ImplicitCoin(
+            withdrawals=1000000,
+            deposits=500000,
+            reclaim_deposits=200000,
+        )
+        assert implicit.net_value == 700000  # 1000000 + 200000 - 500000
+
+        # Net negative: deposits > withdrawals + reclaim
+        implicit2 = ImplicitCoin(
+            withdrawals=100000,
+            deposits=500000,
+            reclaim_deposits=50000,
+        )
+        assert implicit2.net_value == -350000  # 100000 + 50000 - 500000
+
+        # Net zero
+        implicit3 = ImplicitCoin(
+            withdrawals=300000,
+            deposits=500000,
+            reclaim_deposits=200000,
+        )
+        assert implicit3.net_value == 0  # 300000 + 200000 - 500000
+
+    def test_compute_implicit_coin_simple_transaction(self):
+        """Test computing implicit coin for a simple transaction."""
+        addr = Address.from_string(
+            "addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer"
+            "3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp"
+        )
+
+        # Create a simple transaction without withdrawals/deposits
+        tx_input = TransactionInput.from_hex(
+            "0000000000000000000000000000000000000000000000000000000000000000", 0
+        )
+        inputs = TransactionInputSet.from_list([tx_input])
+
+        output = TransactionOutput.new(addr, 1000000)
+        outputs = TransactionOutputList.from_list([output])
+
+        body = TransactionBody.new(inputs, outputs, 200000)
+        witness = WitnessSet()
+        tx = Transaction.new(body, witness)
+
+        from cometa.protocol_params import ProtocolParameters
+
+        params = ProtocolParameters.new()
+
+        # Compute implicit coin
+        implicit = compute_implicit_coin(tx, params)
+
+        assert isinstance(implicit, ImplicitCoin)
+        assert isinstance(implicit.withdrawals, int)
+        assert isinstance(implicit.deposits, int)
+        assert isinstance(implicit.reclaim_deposits, int)
+        # Simple transaction should have no implicit coins
+        assert implicit.withdrawals == 0
+        assert implicit.deposits == 0
+        assert implicit.reclaim_deposits == 0
 
 
 class TestAllExports:
