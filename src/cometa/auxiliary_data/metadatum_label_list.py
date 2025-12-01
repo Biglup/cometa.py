@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -47,6 +47,25 @@ class MetadatumLabelList:
             if ptr == ffi.NULL:
                 raise CardanoError("MetadatumLabelList: invalid handle")
             self._ptr = ptr
+
+    @classmethod
+    def from_list(cls, labels: Iterable[int]) -> MetadatumLabelList:
+        """
+        Creates a MetadatumLabelList from an iterable of integers.
+
+        Args:
+            labels: An iterable of metadata labels (unsigned 64-bit integers).
+
+        Returns:
+            A new MetadatumLabelList containing all the labels.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        label_list = cls()
+        for label in labels:
+            label_list.add(label)
+        return label_list
 
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):

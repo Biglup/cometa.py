@@ -252,6 +252,34 @@ class TestScriptAll:
         assert script_all is not None
         assert len(script_all) == 1
 
+    def test_new_accepts_python_list(self):
+        """Test that ScriptAll.new() accepts a Python list."""
+        pubkey1 = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        pubkey2 = ScriptPubkey.new(
+            bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538")
+        )
+
+        # Pass Python list directly
+        script_all = ScriptAll.new([pubkey1, pubkey2])
+        assert script_all is not None
+        assert len(script_all) == 2
+
+    def test_scripts_setter_accepts_python_list(self):
+        """Test that scripts setter accepts a Python list."""
+        pubkey = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        script_all = ScriptAll.new([pubkey])
+
+        # Update with Python list
+        pubkey2 = ScriptPubkey.new(
+            bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538")
+        )
+        script_all.scripts = [pubkey, pubkey2]
+        assert len(script_all) == 2
+
 
 class TestScriptAny:
     def test_new(self):
@@ -264,6 +292,34 @@ class TestScriptAny:
         script_any = ScriptAny.new(scripts)
         assert script_any is not None
         assert len(script_any) == 1
+
+    def test_new_accepts_python_list(self):
+        """Test that ScriptAny.new() accepts a Python list."""
+        pubkey1 = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        pubkey2 = ScriptPubkey.new(
+            bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538")
+        )
+
+        # Pass Python list directly
+        script_any = ScriptAny.new([pubkey1, pubkey2])
+        assert script_any is not None
+        assert len(script_any) == 2
+
+    def test_scripts_setter_accepts_python_list(self):
+        """Test that scripts setter accepts a Python list."""
+        pubkey = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        script_any = ScriptAny.new([pubkey])
+
+        # Update with Python list
+        pubkey2 = ScriptPubkey.new(
+            bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538")
+        )
+        script_any.scripts = [pubkey, pubkey2]
+        assert len(script_any) == 2
 
 
 class TestScriptNOfK:
@@ -279,6 +335,35 @@ class TestScriptNOfK:
         assert script_nofk is not None
         assert script_nofk.required == 1
         assert len(script_nofk.scripts) == 1
+
+    def test_new_accepts_python_list(self):
+        """Test that ScriptNOfK.new() accepts a Python list."""
+        pubkey1 = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        pubkey2 = ScriptPubkey.new(
+            bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538")
+        )
+
+        # Pass Python list directly
+        script_nofk = ScriptNOfK.new([pubkey1, pubkey2], 1)
+        assert script_nofk is not None
+        assert script_nofk.required == 1
+        assert len(script_nofk.scripts) == 2
+
+    def test_scripts_setter_accepts_python_list(self):
+        """Test that scripts setter accepts a Python list."""
+        pubkey = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        script_nofk = ScriptNOfK.new([pubkey], 1)
+
+        # Update with Python list
+        pubkey2 = ScriptPubkey.new(
+            bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538")
+        )
+        script_nofk.scripts = [pubkey, pubkey2]
+        assert len(script_nofk.scripts) == 2
 
 
 class TestNativeScriptList:
@@ -312,6 +397,25 @@ class TestNativeScriptList:
         for script in scripts:
             count += 1
         assert count == 2
+
+    def test_from_list(self):
+        """Test NativeScriptList.from_list() with various script types."""
+        pubkey = ScriptPubkey.new(
+            bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
+        )
+        invalid_before = ScriptInvalidBefore.new(3000)
+        invalid_after = ScriptInvalidAfter.new(4000)
+
+        scripts = NativeScriptList.from_list([pubkey, invalid_before, invalid_after])
+        assert len(scripts) == 3
+
+    def test_from_list_with_native_scripts(self):
+        """Test NativeScriptList.from_list() with NativeScript objects."""
+        native1 = NativeScript.from_json(PUBKEY_SCRIPT_JSON)
+        native2 = NativeScript.from_json(BEFORE_SCRIPT_JSON)
+
+        scripts = NativeScriptList.from_list([native1, native2])
+        assert len(scripts) == 2
 
 
 class TestPlutusV1Script:

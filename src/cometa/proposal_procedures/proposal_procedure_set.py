@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -83,6 +83,25 @@ class ProposalProcedureSet:
                 f"Failed to deserialize ProposalProcedureSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, proposals: Iterable[ProposalProcedure]) -> ProposalProcedureSet:
+        """
+        Creates a ProposalProcedureSet from an iterable of ProposalProcedure objects.
+
+        Args:
+            proposals: An iterable of ProposalProcedure objects.
+
+        Returns:
+            A new ProposalProcedureSet containing all the proposals.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        proposal_set = cls()
+        for proposal in proposals:
+            proposal_set.add(proposal)
+        return proposal_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

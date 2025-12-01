@@ -186,3 +186,37 @@ class TestWitnessSet:
         retrieved = witness_set.redeemers
         assert retrieved is not None
         assert len(retrieved) == 1
+
+    def test_vkey_witnesses_setter_accepts_python_list(self):
+        """Test that vkey_witnesses setter accepts a Python list."""
+        witness_set = WitnessSet()
+
+        # Create vkey witnesses as a list
+        vkey = bytes.fromhex(VKEY_HEX)
+        signature = bytes.fromhex(SIGNATURE_HEX)
+        witness1 = VkeyWitness.new(vkey, signature)
+        witness2 = VkeyWitness.new(vkey, signature)
+
+        # Set using Python list
+        witness_set.vkey_witnesses = [witness1, witness2]
+
+        retrieved = witness_set.vkey_witnesses
+        assert retrieved is not None
+        assert len(retrieved) == 2
+
+    def test_redeemers_setter_accepts_python_list(self):
+        """Test that redeemers setter accepts a Python list."""
+        witness_set = WitnessSet()
+
+        # Create redeemers as a list
+        reader1 = CborReader.from_hex(REDEEMER_CBOR)
+        redeemer1 = Redeemer.from_cbor(reader1)
+        reader2 = CborReader.from_hex(REDEEMER_CBOR)
+        redeemer2 = Redeemer.from_cbor(reader2)
+
+        # Set using Python list
+        witness_set.redeemers = [redeemer1, redeemer2]
+
+        retrieved = witness_set.redeemers
+        assert retrieved is not None
+        assert len(retrieved) == 2

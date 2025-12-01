@@ -195,6 +195,26 @@ class PlutusList:
         return self
 
     @classmethod
+    def from_list(cls, elements: Iterable[Union["PlutusData", int, str, bytes]]) -> PlutusList:
+        """
+        Creates a PlutusList from an iterable of values.
+
+        Args:
+            elements: An iterable of PlutusData objects or Python primitives
+                     (int, str, bytes).
+
+        Returns:
+            A new PlutusList containing all the elements.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        plist = cls()
+        for element in elements:
+            plist.append(element)
+        return plist
+
+    @classmethod
     def from_cbor(cls, reader: CborReader) -> PlutusList:
         """
         Deserializes a PlutusList from CBOR data.

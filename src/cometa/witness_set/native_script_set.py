@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, Union
+from typing import TYPE_CHECKING, Iterator, Union, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -102,6 +102,25 @@ class NativeScriptSet:
                 f"Failed to deserialize NativeScriptSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, scripts: Iterable[NativeScriptLike]) -> NativeScriptSet:
+        """
+        Creates a NativeScriptSet from an iterable of native script objects.
+
+        Args:
+            scripts: An iterable of NativeScript or native script type objects.
+
+        Returns:
+            A new NativeScriptSet containing all the scripts.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        script_set = cls()
+        for script in scripts:
+            script_set.add(script)
+        return script_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

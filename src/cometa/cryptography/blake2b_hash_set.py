@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -84,6 +84,25 @@ class Blake2bHashSet:
         if err != 0:
             raise CardanoError(f"Failed to deserialize Blake2bHashSet from CBOR (error code: {err})")
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, hashes: Iterable[Blake2bHash]) -> Blake2bHashSet:
+        """
+        Creates a Blake2bHashSet from an iterable of Blake2bHash objects.
+
+        Args:
+            hashes: An iterable of Blake2bHash objects.
+
+        Returns:
+            A new Blake2bHashSet containing all the hashes.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        hash_set = cls()
+        for hash_value in hashes:
+            hash_set.add(hash_value)
+        return hash_set
 
     def add(self, hash_value: Blake2bHash) -> None:
         """

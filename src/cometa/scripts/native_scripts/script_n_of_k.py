@@ -16,11 +16,13 @@ limitations under the License.
 
 from __future__ import annotations
 
+from typing import Union, List
+
 from ..._ffi import ffi, lib
 from ...errors import CardanoError
 from ...cbor.cbor_reader import CborReader
 from ...cbor.cbor_writer import CborWriter
-from .native_script_list import NativeScriptList
+from .native_script_list import NativeScriptList, NativeScriptLike
 
 
 class ScriptNOfK:
@@ -53,12 +55,13 @@ class ScriptNOfK:
         return f"ScriptNOfK(required={self.required}, len={len(self)})"
 
     @classmethod
-    def new(cls, scripts: NativeScriptList, required: int) -> ScriptNOfK:
+    def new(cls, scripts: Union[NativeScriptList, List[NativeScriptLike]], required: int) -> ScriptNOfK:
         """
         Creates a new ScriptNOfK with the given sub-scripts and required count.
 
         Args:
             scripts: The list of native scripts.
+                Can be a NativeScriptList or a Python list of native scripts.
             required: The number of sub-scripts that must evaluate to true.
 
         Returns:
@@ -67,6 +70,8 @@ class ScriptNOfK:
         Raises:
             CardanoError: If creation fails.
         """
+        if isinstance(scripts, list):
+            scripts = NativeScriptList.from_list(scripts)
         out = ffi.new("cardano_script_n_of_k_t**")
         err = lib.cardano_script_n_of_k_new(scripts._ptr, required, out)
         if err != 0:
@@ -151,16 +156,18 @@ class ScriptNOfK:
         return NativeScriptList(out[0])
 
     @scripts.setter
-    def scripts(self, value: NativeScriptList) -> None:
+    def scripts(self, value: Union[NativeScriptList, List[NativeScriptLike]]) -> None:
         """
         Sets the list of sub-scripts.
 
         Args:
-            value: The NativeScriptList to set.
+            value: The NativeScriptList or a Python list of native scripts to set.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = NativeScriptList.from_list(value)
         err = lib.cardano_script_n_of_k_set_scripts(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set scripts (error code: {err})")

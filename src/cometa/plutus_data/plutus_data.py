@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, List
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -251,19 +251,26 @@ class PlutusData:
         return cls.from_bytes(value.encode("utf-8"))
 
     @classmethod
-    def from_list(cls, plutus_list: PlutusList) -> PlutusData:
+    def from_list(cls, plutus_list: Union[PlutusList, List[Union["PlutusData", int, str, bytes]]]) -> PlutusData:
         """
-        Creates PlutusData from a PlutusList.
+        Creates PlutusData from a PlutusList or a Python list.
 
         Args:
-            plutus_list: The PlutusList.
+            plutus_list: The PlutusList or a Python list of PlutusData/native values.
 
         Returns:
             A new PlutusData containing the list.
 
         Raises:
             CardanoError: If creation fails.
+
+        Example:
+            >>> # Using a Python list directly
+            >>> data = PlutusData.from_list([42, "hello", b"bytes"])
         """
+        from .plutus_list import PlutusList as PL
+        if isinstance(plutus_list, list):
+            plutus_list = PL.from_list(plutus_list)
         out = ffi.new("cardano_plutus_data_t**")
         err = lib.cardano_plutus_data_new_list(plutus_list._ptr, out)
         if err != 0:

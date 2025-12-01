@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union, List
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -24,6 +24,7 @@ from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 from ..common.governance_action_id import GovernanceActionId
 from ..common.unit_interval import UnitInterval
+from ..common.credential import Credential
 from .credential_set import CredentialSet
 from .committee_members_map import CommitteeMembersMap
 
@@ -60,7 +61,7 @@ class UpdateCommitteeAction:
     @classmethod
     def new(
         cls,
-        members_to_be_removed: CredentialSet,
+        members_to_be_removed: Union[CredentialSet, List[Credential]],
         members_to_be_added: CommitteeMembersMap,
         new_quorum: UnitInterval,
         governance_action_id: Optional[GovernanceActionId] = None,
@@ -70,6 +71,7 @@ class UpdateCommitteeAction:
 
         Args:
             members_to_be_removed: Credentials of committee members to remove.
+                Can be a CredentialSet or a Python list of Credential objects.
             members_to_be_added: Map of new committee member credentials to term epochs.
             new_quorum: The new quorum threshold for the committee.
             governance_action_id: Optional ID of a previous governance action
@@ -81,6 +83,8 @@ class UpdateCommitteeAction:
         Raises:
             CardanoError: If creation fails.
         """
+        if isinstance(members_to_be_removed, list):
+            members_to_be_removed = CredentialSet.from_list(members_to_be_removed)
         out = ffi.new("cardano_update_committee_action_t**")
         gov_id_ptr = (
             governance_action_id._ptr if governance_action_id is not None else ffi.NULL
@@ -151,16 +155,18 @@ class UpdateCommitteeAction:
         return CredentialSet(ptr)
 
     @members_to_be_removed.setter
-    def members_to_be_removed(self, value: CredentialSet) -> None:
+    def members_to_be_removed(self, value: Union[CredentialSet, List[Credential]]) -> None:
         """
         Sets the members to be removed.
 
         Args:
-            value: The CredentialSet to set.
+            value: The CredentialSet or a Python list of Credential objects to set.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = CredentialSet.from_list(value)
         err = lib.cardano_update_committee_action_set_members_to_be_removed(
             self._ptr, value._ptr
         )

@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -86,6 +86,25 @@ class PlutusV1ScriptSet:
                 f"Failed to deserialize PlutusV1ScriptSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, scripts: Iterable[PlutusV1Script]) -> PlutusV1ScriptSet:
+        """
+        Creates a PlutusV1ScriptSet from an iterable of PlutusV1Script objects.
+
+        Args:
+            scripts: An iterable of PlutusV1Script objects.
+
+        Returns:
+            A new PlutusV1ScriptSet containing all the scripts.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        script_set = cls()
+        for script in scripts:
+            script_set.add(script)
+        return script_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

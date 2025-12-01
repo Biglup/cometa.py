@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -45,6 +45,25 @@ class AssetNameList:
             if ptr == ffi.NULL:
                 raise CardanoError("AssetNameList: invalid handle")
             self._ptr = ptr
+
+    @classmethod
+    def from_list(cls, names: Iterable[AssetName]) -> AssetNameList:
+        """
+        Creates an AssetNameList from an iterable of AssetName objects.
+
+        Args:
+            names: An iterable of AssetName objects.
+
+        Returns:
+            A new AssetNameList containing all the names.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        name_list = cls()
+        for name in names:
+            name_list.add(name)
+        return name_list
 
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):

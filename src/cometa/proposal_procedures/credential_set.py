@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -83,6 +83,25 @@ class CredentialSet:
                 f"Failed to deserialize CredentialSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, credentials: Iterable[Credential]) -> CredentialSet:
+        """
+        Creates a CredentialSet from an iterable of Credential objects.
+
+        Args:
+            credentials: An iterable of Credential objects.
+
+        Returns:
+            A new CredentialSet containing all the credentials.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        cred_set = cls()
+        for cred in credentials:
+            cred_set.add(cred)
+        return cred_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

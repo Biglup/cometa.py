@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -83,6 +83,25 @@ class BootstrapWitnessSet:
                 f"Failed to deserialize BootstrapWitnessSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, witnesses: Iterable[BootstrapWitness]) -> BootstrapWitnessSet:
+        """
+        Creates a BootstrapWitnessSet from an iterable of BootstrapWitness objects.
+
+        Args:
+            witnesses: An iterable of BootstrapWitness objects.
+
+        Returns:
+            A new BootstrapWitnessSet containing all the witnesses.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        witness_set = cls()
+        for witness in witnesses:
+            witness_set.add(witness)
+        return witness_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

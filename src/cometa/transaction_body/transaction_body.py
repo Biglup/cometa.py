@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union, List, TYPE_CHECKING
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -29,11 +29,16 @@ from ..cryptography.blake2b_hash_set import Blake2bHashSet
 from ..assets.multi_asset import MultiAsset
 from ..certificates.certificate_set import CertificateSet
 from ..proposal_procedures.proposal_procedure_set import ProposalProcedureSet
+from ..proposal_procedures.proposal_procedure import ProposalProcedure
 from ..protocol_params.update import Update
 from ..voting_procedures.voting_procedures import VotingProcedures
+from .transaction_input import TransactionInput
 from .transaction_input_set import TransactionInputSet
 from .transaction_output_list import TransactionOutputList
 from .transaction_output import TransactionOutput
+
+if TYPE_CHECKING:
+    from ..certificates.certificate import Certificate, CertificateUnion
 
 
 class TransactionBody:
@@ -71,8 +76,8 @@ class TransactionBody:
     @classmethod
     def new(
         cls,
-        inputs: TransactionInputSet,
-        outputs: TransactionOutputList,
+        inputs: Union[TransactionInputSet, List[TransactionInput]],
+        outputs: Union[TransactionOutputList, List[TransactionOutput]],
         fee: int,
         ttl: Optional[int] = None,
     ) -> TransactionBody:
@@ -81,7 +86,9 @@ class TransactionBody:
 
         Args:
             inputs: The set of transaction inputs (UTXOs being spent).
+                Can be a TransactionInputSet or a Python list of TransactionInput.
             outputs: The list of transaction outputs.
+                Can be a TransactionOutputList or a Python list of TransactionOutput.
             fee: The transaction fee in lovelace.
             ttl: Optional time-to-live slot number.
 
@@ -90,7 +97,19 @@ class TransactionBody:
 
         Raises:
             CardanoError: If creation fails.
+
+        Example:
+            >>> # Using Python lists directly
+            >>> input1 = TransactionInput.from_hex(tx_hash, 0)
+            >>> output1 = TransactionOutput.new(address, 1000000)
+            >>> body = TransactionBody.new([input1], [output1], 200000)
         """
+        # Convert Python lists to wrapper types if needed
+        if isinstance(inputs, list):
+            inputs = TransactionInputSet.from_list(inputs)
+        if isinstance(outputs, list):
+            outputs = TransactionOutputList.from_list(outputs)
+
         out = ffi.new("cardano_transaction_body_t**")
         ttl_ptr = ffi.NULL
         if ttl is not None:
@@ -187,16 +206,18 @@ class TransactionBody:
         return TransactionInputSet(ptr)
 
     @inputs.setter
-    def inputs(self, value: TransactionInputSet) -> None:
+    def inputs(self, value: Union[TransactionInputSet, List[TransactionInput]]) -> None:
         """
         Sets the transaction inputs.
 
         Args:
-            value: The TransactionInputSet to set.
+            value: The TransactionInputSet or a Python list of TransactionInput to set.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = TransactionInputSet.from_list(value)
         err = lib.cardano_transaction_body_set_inputs(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set inputs (error code: {err})")
@@ -215,16 +236,18 @@ class TransactionBody:
         return TransactionOutputList(ptr)
 
     @outputs.setter
-    def outputs(self, value: TransactionOutputList) -> None:
+    def outputs(self, value: Union[TransactionOutputList, List[TransactionOutput]]) -> None:
         """
         Sets the transaction outputs.
 
         Args:
-            value: The TransactionOutputList to set.
+            value: The TransactionOutputList or a Python list of TransactionOutput to set.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = TransactionOutputList.from_list(value)
         err = lib.cardano_transaction_body_set_outputs(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set outputs (error code: {err})")
@@ -336,16 +359,18 @@ class TransactionBody:
         return CertificateSet(ptr)
 
     @certificates.setter
-    def certificates(self, value: Optional[CertificateSet]) -> None:
+    def certificates(self, value: Optional[Union[CertificateSet, List[Union[Certificate, CertificateUnion]]]]) -> None:
         """
         Sets the certificates for this transaction.
 
         Args:
-            value: The CertificateSet to set, or None to clear.
+            value: The CertificateSet, a Python list of Certificate objects, or None to clear.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = CertificateSet.from_list(value)
         cert_ptr = value._ptr if value is not None else ffi.NULL
         err = lib.cardano_transaction_body_set_certificates(self._ptr, cert_ptr)
         if err != 0:
@@ -510,16 +535,18 @@ class TransactionBody:
         return TransactionInputSet(ptr)
 
     @collateral.setter
-    def collateral(self, value: Optional[TransactionInputSet]) -> None:
+    def collateral(self, value: Optional[Union[TransactionInputSet, List[TransactionInput]]]) -> None:
         """
         Sets the collateral inputs.
 
         Args:
-            value: The TransactionInputSet to set, or None to clear.
+            value: The TransactionInputSet, a Python list of TransactionInput, or None to clear.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = TransactionInputSet.from_list(value)
         coll_ptr = value._ptr if value is not None else ffi.NULL
         err = lib.cardano_transaction_body_set_collateral(self._ptr, coll_ptr)
         if err != 0:
@@ -539,16 +566,18 @@ class TransactionBody:
         return Blake2bHashSet(ptr)
 
     @required_signers.setter
-    def required_signers(self, value: Optional[Blake2bHashSet]) -> None:
+    def required_signers(self, value: Optional[Union[Blake2bHashSet, List[Blake2bHash]]]) -> None:
         """
         Sets the required signers.
 
         Args:
-            value: The Blake2bHashSet to set, or None to clear.
+            value: The Blake2bHashSet, a Python list of Blake2bHash, or None to clear.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = Blake2bHashSet.from_list(value)
         signers_ptr = value._ptr if value is not None else ffi.NULL
         err = lib.cardano_transaction_body_set_required_signers(self._ptr, signers_ptr)
         if err != 0:
@@ -661,16 +690,18 @@ class TransactionBody:
         return TransactionInputSet(ptr)
 
     @reference_inputs.setter
-    def reference_inputs(self, value: Optional[TransactionInputSet]) -> None:
+    def reference_inputs(self, value: Optional[Union[TransactionInputSet, List[TransactionInput]]]) -> None:
         """
         Sets the reference inputs.
 
         Args:
-            value: The TransactionInputSet to set, or None to clear.
+            value: The TransactionInputSet, a Python list of TransactionInput, or None to clear.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = TransactionInputSet.from_list(value)
         ref_ptr = value._ptr if value is not None else ffi.NULL
         err = lib.cardano_transaction_body_set_reference_inputs(self._ptr, ref_ptr)
         if err != 0:
@@ -719,16 +750,18 @@ class TransactionBody:
         return ProposalProcedureSet(ptr)
 
     @proposal_procedures.setter
-    def proposal_procedures(self, value: Optional[ProposalProcedureSet]) -> None:
+    def proposal_procedures(self, value: Optional[Union[ProposalProcedureSet, List[ProposalProcedure]]]) -> None:
         """
         Sets the proposal procedures.
 
         Args:
-            value: The ProposalProcedureSet to set, or None to clear.
+            value: The ProposalProcedureSet, a Python list of ProposalProcedure, or None to clear.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = ProposalProcedureSet.from_list(value)
         proposal_ptr = value._ptr if value is not None else ffi.NULL
         err = lib.cardano_transaction_body_set_proposal_procedure(self._ptr, proposal_ptr)
         if err != 0:

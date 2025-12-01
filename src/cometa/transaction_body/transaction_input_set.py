@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -83,6 +83,30 @@ class TransactionInputSet:
                 f"Failed to deserialize TransactionInputSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, inputs: Iterable[TransactionInput]) -> TransactionInputSet:
+        """
+        Creates a TransactionInputSet from an iterable of TransactionInput objects.
+
+        Args:
+            inputs: An iterable of TransactionInput objects.
+
+        Returns:
+            A new TransactionInputSet containing all the inputs.
+
+        Raises:
+            CardanoError: If creation fails.
+
+        Example:
+            >>> input1 = TransactionInput.from_hex(tx_hash1, 0)
+            >>> input2 = TransactionInput.from_hex(tx_hash2, 1)
+            >>> input_set = TransactionInputSet.from_list([input1, input2])
+        """
+        input_set = cls()
+        for tx_input in inputs:
+            input_set.add(tx_input)
+        return input_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

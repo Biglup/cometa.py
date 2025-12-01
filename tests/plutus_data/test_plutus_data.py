@@ -498,6 +498,24 @@ class TestConstrPlutusData:
         assert len(constr.data) == 1
         assert constr.data[0].to_int() == 99
 
+    def test_init_accepts_python_list(self):
+        """Test that __init__ accepts a Python list for data."""
+        constr = ConstrPlutusData(0, [42, "hello", b"\x01\x02"])
+        assert constr.alternative == 0
+        assert len(constr.data) == 3
+        assert constr.data[0].to_int() == 42
+        assert constr.data[1].to_string() == "hello"
+        assert constr.data[2].to_bytes() == b"\x01\x02"
+
+    def test_data_setter_accepts_python_list(self):
+        """Test that data setter accepts a Python list."""
+        constr = ConstrPlutusData(0)
+        constr.data = [1, 2, 3]
+        assert len(constr.data) == 3
+        assert constr.data[0].to_int() == 1
+        assert constr.data[1].to_int() == 2
+        assert constr.data[2].to_int() == 3
+
     def test_equality(self):
         """Test constructor equality."""
         constr1 = ConstrPlutusData.new(0, 42)
@@ -541,6 +559,16 @@ class TestPlutusDataComposite:
         assert data.kind == PlutusDataKind.LIST
         restored_list = data.to_list()
         assert len(restored_list) == 2
+
+    def test_plutus_data_from_list_accepts_python_list(self):
+        """Test that PlutusData.from_list() accepts a Python list."""
+        data = PlutusData.from_list([1, "hello", b"\x01"])
+        assert data.kind == PlutusDataKind.LIST
+        restored_list = data.to_list()
+        assert len(restored_list) == 3
+        assert restored_list[0].to_int() == 1
+        assert restored_list[1].to_string() == "hello"
+        assert restored_list[2].to_bytes() == b"\x01"
 
     def test_plutus_data_from_map(self):
         """Test creating PlutusData from PlutusMap."""

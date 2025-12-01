@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Union
+from typing import Union, List
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -58,7 +58,7 @@ class ConstrPlutusData:
     def __init__(
         self,
         alternative: int = None,
-        data: PlutusList = None,
+        data: Union[PlutusList, List[Union["PlutusData", int, str, bytes]]] = None,
         ptr=None
     ) -> None:
         """
@@ -66,7 +66,7 @@ class ConstrPlutusData:
 
         Args:
             alternative: The constructor alternative number (nth constructor of Sum Type).
-            data: The arguments as a PlutusList. If None, an empty list is used.
+            data: The arguments as a PlutusList or a Python list. If None, an empty list is used.
             ptr: Internal pointer for wrapping existing C objects.
 
         Raises:
@@ -79,6 +79,8 @@ class ConstrPlutusData:
         elif alternative is not None:
             if data is None:
                 data = PlutusList()
+            elif isinstance(data, list):
+                data = PlutusList.from_list(data)
             out = ffi.new("cardano_constr_plutus_data_t**")
             err = lib.cardano_constr_plutus_data_new(alternative, data._ptr, out)
             if err != 0:
@@ -149,13 +151,15 @@ class ConstrPlutusData:
         return PlutusList(out[0])
 
     @data.setter
-    def data(self, value: PlutusList) -> None:
+    def data(self, value: Union[PlutusList, List[Union["PlutusData", int, str, bytes]]]) -> None:
         """
         Sets the arguments of this constructor.
 
         Args:
-            value: A PlutusList containing the new arguments.
+            value: A PlutusList or a Python list containing the new arguments.
         """
+        if isinstance(value, list):
+            value = PlutusList.from_list(value)
         err = lib.cardano_constr_plutus_data_set_data(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set data (error code: {err})")

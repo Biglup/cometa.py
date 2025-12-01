@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Union
+from typing import Iterator, Union, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -69,6 +69,26 @@ class MetadatumList:
             if ptr == ffi.NULL:
                 raise CardanoError("MetadatumList: invalid handle")
             self._ptr = ptr
+
+    @classmethod
+    def from_list(cls, elements: Iterable[MetadatumLike]) -> MetadatumList:
+        """
+        Creates a MetadatumList from an iterable of metadatum values.
+
+        Args:
+            elements: An iterable of Metadatum objects or Python primitives
+                     (int, str, bytes, bytearray).
+
+        Returns:
+            A new MetadatumList containing all the elements.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        meta_list = cls()
+        for element in elements:
+            meta_list.add(element)
+        return meta_list
 
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):

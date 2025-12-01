@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -83,6 +83,25 @@ class VkeyWitnessSet:
                 f"Failed to deserialize VkeyWitnessSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, witnesses: Iterable[VkeyWitness]) -> VkeyWitnessSet:
+        """
+        Creates a VkeyWitnessSet from an iterable of VkeyWitness objects.
+
+        Args:
+            witnesses: An iterable of VkeyWitness objects.
+
+        Returns:
+            A new VkeyWitnessSet containing all the witnesses.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        witness_set = cls()
+        for witness in witnesses:
+            witness_set.add(witness)
+        return witness_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -46,6 +46,25 @@ class PolicyIdList:
             if ptr == ffi.NULL:
                 raise CardanoError("PolicyIdList: invalid handle")
             self._ptr = ptr
+
+    @classmethod
+    def from_list(cls, policy_ids: Iterable[Blake2bHash]) -> PolicyIdList:
+        """
+        Creates a PolicyIdList from an iterable of Blake2bHash objects.
+
+        Args:
+            policy_ids: An iterable of Blake2bHash objects (policy IDs).
+
+        Returns:
+            A new PolicyIdList containing all the policy IDs.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        policy_list = cls()
+        for policy_id in policy_ids:
+            policy_list.add(policy_id)
+        return policy_list
 
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):

@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -84,6 +84,25 @@ class RedeemerList:
                 f"Failed to deserialize RedeemerList from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, redeemers: Iterable[Redeemer]) -> RedeemerList:
+        """
+        Creates a RedeemerList from an iterable of Redeemer objects.
+
+        Args:
+            redeemers: An iterable of Redeemer objects.
+
+        Returns:
+            A new RedeemerList containing all the redeemers.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        redeemer_list = cls()
+        for redeemer in redeemers:
+            redeemer_list.add(redeemer)
+        return redeemer_list
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

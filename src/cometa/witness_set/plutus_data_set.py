@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -84,6 +84,25 @@ class PlutusDataSet:
                 f"Failed to deserialize PlutusDataSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, data_items: Iterable[PlutusData]) -> PlutusDataSet:
+        """
+        Creates a PlutusDataSet from an iterable of PlutusData objects.
+
+        Args:
+            data_items: An iterable of PlutusData objects.
+
+        Returns:
+            A new PlutusDataSet containing all the data items.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        data_set = cls()
+        for data in data_items:
+            data_set.add(data)
+        return data_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

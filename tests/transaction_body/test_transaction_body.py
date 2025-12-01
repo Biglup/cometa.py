@@ -180,6 +180,14 @@ class TestTransactionInputSet:
             assert inp.index == 5
         assert count == 1
 
+    def test_from_list(self):
+        input1 = TransactionInput.from_hex(TX_ID_HASH, 0)
+        input2 = TransactionInput.from_hex(TX_ID_HASH, 1)
+        input_set = TransactionInputSet.from_list([input1, input2])
+        assert len(input_set) == 2
+        assert input_set[0].index == 0
+        assert input_set[1].index == 1
+
 
 class TestTransactionOutput:
     def test_from_cbor(self):
@@ -266,3 +274,46 @@ class TestTransactionBody:
         assert len(body.inputs) == 1
         assert len(body.outputs) == 1
         assert body.fee == 200000
+
+    def test_inputs_setter_accepts_python_list(self):
+        """Test that inputs setter accepts a Python list."""
+        # Create initial body
+        input_set = TransactionInputSet()
+        tx_input = TransactionInput.from_hex(TX_ID_HASH, 0)
+        input_set.add(tx_input)
+
+        output_list = TransactionOutputList()
+        address = Address.from_string(ADDRESS_BECH32)
+        output = TransactionOutput.new(address, 1000000)
+        output_list.add(output)
+
+        body = TransactionBody.new(input_set, output_list, 200000)
+
+        # Update inputs using a Python list
+        new_input1 = TransactionInput.from_hex(TX_ID_HASH, 1)
+        new_input2 = TransactionInput.from_hex(TX_ID_HASH, 2)
+        body.inputs = [new_input1, new_input2]
+
+        assert len(body.inputs) == 2
+        assert body.inputs[0].index == 1
+        assert body.inputs[1].index == 2
+
+    def test_outputs_setter_accepts_python_list(self):
+        """Test that outputs setter accepts a Python list."""
+        input_set = TransactionInputSet()
+        tx_input = TransactionInput.from_hex(TX_ID_HASH, 0)
+        input_set.add(tx_input)
+
+        output_list = TransactionOutputList()
+        address = Address.from_string(ADDRESS_BECH32)
+        output = TransactionOutput.new(address, 1000000)
+        output_list.add(output)
+
+        body = TransactionBody.new(input_set, output_list, 200000)
+
+        # Update outputs using a Python list
+        new_output1 = TransactionOutput.new(address, 2000000)
+        new_output2 = TransactionOutput.new(address, 3000000)
+        body.outputs = [new_output1, new_output2]
+
+        assert len(body.outputs) == 2

@@ -29,6 +29,10 @@ from cometa import (
     ProtocolVersion,
     ProposalProcedureSet,
     Blake2bHash,
+    UnitInterval,
+    UpdateCommitteeAction,
+    CredentialSet,
+    CommitteeMembersMap,
 )
 
 
@@ -133,3 +137,37 @@ class TestProposalProcedureSet:
     def test_create_empty(self):
         procedure_set = ProposalProcedureSet()
         assert len(procedure_set) == 0
+
+
+class TestUpdateCommitteeAction:
+    def test_new_accepts_python_list_for_members_to_be_removed(self):
+        """Test that UpdateCommitteeAction.new() accepts a Python list for members_to_be_removed."""
+        # Create credentials
+        cred1 = Credential.from_key_hash(bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37"))
+        cred2 = Credential.from_key_hash(bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538"))
+
+        # Create members to be added (empty)
+        members_to_add = CommitteeMembersMap()
+
+        # Create quorum
+        quorum = UnitInterval.new(1, 2)
+
+        # Pass Python list directly
+        action = UpdateCommitteeAction.new([cred1, cred2], members_to_add, quorum, None)
+        assert action is not None
+        assert len(action.members_to_be_removed) == 2
+
+    def test_members_to_be_removed_setter_accepts_python_list(self):
+        """Test that members_to_be_removed setter accepts a Python list."""
+        # Create initial action with CredentialSet
+        cred1 = Credential.from_key_hash(bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37"))
+        members_to_remove = CredentialSet.from_list([cred1])
+        members_to_add = CommitteeMembersMap()
+        quorum = UnitInterval.new(1, 2)
+
+        action = UpdateCommitteeAction.new(members_to_remove, members_to_add, quorum, None)
+
+        # Update using Python list
+        cred2 = Credential.from_key_hash(bytes.fromhex("b275b08c999097247f7c17e77007c7010cd19f20cc086ad99d398538"))
+        action.members_to_be_removed = [cred1, cred2]
+        assert len(action.members_to_be_removed) == 2

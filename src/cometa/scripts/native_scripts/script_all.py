@@ -16,11 +16,13 @@ limitations under the License.
 
 from __future__ import annotations
 
+from typing import Union, List
+
 from ..._ffi import ffi, lib
 from ...errors import CardanoError
 from ...cbor.cbor_reader import CborReader
 from ...cbor.cbor_writer import CborWriter
-from .native_script_list import NativeScriptList
+from .native_script_list import NativeScriptList, NativeScriptLike
 
 
 class ScriptAll:
@@ -52,12 +54,13 @@ class ScriptAll:
         return f"ScriptAll(len={len(self)})"
 
     @classmethod
-    def new(cls, scripts: NativeScriptList) -> ScriptAll:
+    def new(cls, scripts: Union[NativeScriptList, List[NativeScriptLike]]) -> ScriptAll:
         """
         Creates a new ScriptAll with the given sub-scripts.
 
         Args:
             scripts: The list of native scripts that must all evaluate to true.
+                Can be a NativeScriptList or a Python list of native scripts.
 
         Returns:
             A new ScriptAll instance.
@@ -65,6 +68,8 @@ class ScriptAll:
         Raises:
             CardanoError: If creation fails.
         """
+        if isinstance(scripts, list):
+            scripts = NativeScriptList.from_list(scripts)
         out = ffi.new("cardano_script_all_t**")
         err = lib.cardano_script_all_new(scripts._ptr, out)
         if err != 0:
@@ -124,16 +129,18 @@ class ScriptAll:
         return NativeScriptList(out[0])
 
     @scripts.setter
-    def scripts(self, value: NativeScriptList) -> None:
+    def scripts(self, value: Union[NativeScriptList, List[NativeScriptLike]]) -> None:
         """
         Sets the list of sub-scripts.
 
         Args:
-            value: The NativeScriptList to set.
+            value: The NativeScriptList or a Python list of native scripts to set.
 
         Raises:
             CardanoError: If setting fails.
         """
+        if isinstance(value, list):
+            value = NativeScriptList.from_list(value)
         err = lib.cardano_script_all_set_scripts(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set scripts (error code: {err})")

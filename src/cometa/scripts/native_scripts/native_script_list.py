@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, Union
+from typing import TYPE_CHECKING, Iterator, Union, Iterable, Any
 
 from ..._ffi import ffi, lib
 from ...errors import CardanoError
@@ -41,6 +41,9 @@ if TYPE_CHECKING:
         ScriptInvalidBefore,
         ScriptInvalidAfter,
     ]
+else:
+    # At runtime, we use Any to avoid circular imports
+    NativeScriptLike = Any
 
 
 class NativeScriptList:
@@ -101,6 +104,25 @@ class NativeScriptList:
                 f"Failed to deserialize NativeScriptList from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, scripts: Iterable[NativeScriptLike]) -> NativeScriptList:
+        """
+        Creates a NativeScriptList from an iterable of native script objects.
+
+        Args:
+            scripts: An iterable of NativeScript or native script type objects.
+
+        Returns:
+            A new NativeScriptList containing all the scripts.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        script_list = cls()
+        for script in scripts:
+            script_list.add(script)
+        return script_list
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

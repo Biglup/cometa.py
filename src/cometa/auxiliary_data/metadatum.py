@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING
+from typing import Union, List, TYPE_CHECKING
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -26,7 +26,7 @@ from ..common.bigint import BigInt
 from .metadatum_kind import MetadatumKind
 
 if TYPE_CHECKING:
-    from .metadatum_list import MetadatumList
+    from .metadatum_list import MetadatumList, MetadatumLike
     from .metadatum_map import MetadatumMap
 
 
@@ -305,12 +305,12 @@ class Metadatum:
         return cls(out[0])
 
     @classmethod
-    def from_list(cls, metadatum_list: MetadatumList) -> Metadatum:
+    def from_list(cls, metadatum_list: Union[MetadatumList, List[MetadatumLike]]) -> Metadatum:
         """
-        Creates a metadatum from a MetadatumList.
+        Creates a metadatum from a MetadatumList or a Python list.
 
         Args:
-            metadatum_list: The MetadatumList to convert.
+            metadatum_list: The MetadatumList or a Python list of metadatum values to convert.
 
         Returns:
             A new Metadatum containing the list.
@@ -325,7 +325,13 @@ class Metadatum:
             >>> meta = Metadatum.from_list(meta_list)
             >>> meta.kind
             <MetadatumKind.LIST: 1>
+
+            >>> # Or using a Python list directly
+            >>> meta = Metadatum.from_list([1, "hello", b"bytes"])
         """
+        from .metadatum_list import MetadatumList as ML
+        if isinstance(metadatum_list, list):
+            metadatum_list = ML.from_list(metadatum_list)
         out = ffi.new("cardano_metadatum_t**")
         err = lib.cardano_metadatum_new_list(metadatum_list._ptr, out)
         if err != 0:

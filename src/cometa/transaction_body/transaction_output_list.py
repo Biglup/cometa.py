@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator
+from typing import Iterator, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -83,6 +83,30 @@ class TransactionOutputList:
                 f"Failed to deserialize TransactionOutputList from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, outputs: Iterable[TransactionOutput]) -> TransactionOutputList:
+        """
+        Creates a TransactionOutputList from an iterable of TransactionOutput objects.
+
+        Args:
+            outputs: An iterable of TransactionOutput objects.
+
+        Returns:
+            A new TransactionOutputList containing all the outputs.
+
+        Raises:
+            CardanoError: If creation fails.
+
+        Example:
+            >>> output1 = TransactionOutput.new(address1, 1000000)
+            >>> output2 = TransactionOutput.new(address2, 2000000)
+            >>> output_list = TransactionOutputList.from_list([output1, output2])
+        """
+        output_list = cls()
+        for output in outputs:
+            output_list.add(output)
+        return output_list
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

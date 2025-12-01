@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Iterator, Union
+from typing import Iterator, Union, Iterable
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -109,6 +109,25 @@ class CertificateSet:
                 f"Failed to deserialize CertificateSet from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_list(cls, certificates: Iterable[Union[Certificate, CertificateUnion]]) -> CertificateSet:
+        """
+        Creates a CertificateSet from an iterable of Certificate objects.
+
+        Args:
+            certificates: An iterable of Certificate or specific certificate type objects.
+
+        Returns:
+            A new CertificateSet containing all the certificates.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        cert_set = cls.new()
+        for cert in certificates:
+            cert_set.add(cert)
+        return cert_set
 
     def to_cbor(self, writer: CborWriter) -> None:
         """
