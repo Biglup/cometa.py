@@ -41,7 +41,13 @@ from .balancing import (
 )
 
 # Coin selection
-from .coin_selection import CoinSelector, LargeFirstCoinSelector
+from .coin_selection import (
+    CoinSelectorProtocol,
+    CoinSelector,
+    CoinSelectorHandle,
+    CCoinSelectorWrapper,
+    LargeFirstCoinSelector,
+)
 
 # Evaluation
 from .evaluation import TxEvaluator
@@ -67,7 +73,10 @@ __all__ = [
     "ImplicitCoin",
     "compute_implicit_coin",
     # Coin selection
+    "CoinSelectorProtocol",
     "CoinSelector",
+    "CoinSelectorHandle",
+    "CCoinSelectorWrapper",
     "LargeFirstCoinSelector",
     # Evaluation
     "TxEvaluator",

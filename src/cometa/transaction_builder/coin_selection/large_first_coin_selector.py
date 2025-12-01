@@ -18,10 +18,10 @@ from __future__ import annotations
 
 from ..._ffi import ffi, lib
 from ...errors import CardanoError
-from .coin_selector import CoinSelector
+from .c_coin_selector_wrapper import CCoinSelectorWrapper
 
 
-class LargeFirstCoinSelector(CoinSelector):
+class LargeFirstCoinSelector(CCoinSelectorWrapper):
     """
     Coin selector using the "large first" strategy.
 
@@ -30,12 +30,29 @@ class LargeFirstCoinSelector(CoinSelector):
     can be more efficient for reducing the number of UTXOs involved in
     transactions, but may result in lower UTXO fragmentation.
 
+    This is a C-based implementation wrapped for Python use.
+
     Example:
         >>> from cometa.transaction_builder.coin_selection import LargeFirstCoinSelector
         >>> selector = LargeFirstCoinSelector.new()
-        >>> selected, remaining = selector.select(available_utxos, target_value)
+        >>> selected, remaining = selector.select(None, available_utxos, target_value)
         >>> print(f"Selected {len(selected)} UTXOs using largest-first strategy")
     """
+
+    def __init__(self, ptr) -> None:
+        """
+        Create a LargeFirstCoinSelector from a C pointer.
+
+        Args:
+            ptr: A cardano_coin_selector_t* pointer.
+
+        Note:
+            Use LargeFirstCoinSelector.new() to create a new instance.
+        """
+        # Don't increment ref, we take ownership from new()
+        super().__init__(ptr, owns_ref=False)
+        # But we do own the ref for cleanup
+        self._owns_ref = True
 
     @classmethod
     def new(cls) -> LargeFirstCoinSelector:

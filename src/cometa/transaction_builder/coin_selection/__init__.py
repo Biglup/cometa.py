@@ -14,10 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .coin_selector import CoinSelector
+from .coin_selector import CoinSelectorProtocol, CoinSelector
+from .python_coin_selector_adapter import CoinSelectorHandle
+from .c_coin_selector_wrapper import CCoinSelectorWrapper
 from .large_first_coin_selector import LargeFirstCoinSelector
 
 __all__ = [
-    "CoinSelector",
+    # Protocol/Interface
+    "CoinSelectorProtocol",
+    "CoinSelector",  # Alias for CoinSelectorProtocol
+    # Python -> C adapter
+    "CoinSelectorHandle",
+    # C -> Python wrapper
+    "CCoinSelectorWrapper",
+    # C-based implementations
     "LargeFirstCoinSelector",
 ]

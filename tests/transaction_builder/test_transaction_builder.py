@@ -26,14 +26,23 @@ from cometa.transaction_builder import (
     compute_script_data_hash,
     InputToRedeemerMap,
     is_transaction_balanced,
+    CoinSelectorProtocol,
     CoinSelector,
+    CoinSelectorHandle,
+    CCoinSelectorWrapper,
     LargeFirstCoinSelector,
     TxEvaluator,
     ImplicitCoin,
     compute_implicit_coin,
 )
 from cometa.transaction_builder.balancing import balance_transaction
-from cometa.transaction_builder.coin_selection import CoinSelector, LargeFirstCoinSelector
+from cometa.transaction_builder.coin_selection import (
+    CoinSelectorProtocol,
+    CoinSelector,
+    CoinSelectorHandle,
+    CCoinSelectorWrapper,
+    LargeFirstCoinSelector,
+)
 from cometa.transaction_builder.evaluation import TxEvaluator
 from cometa.transaction_body import (
     TransactionInput,
@@ -178,9 +187,9 @@ class TestCoinSelector:
         selector = LargeFirstCoinSelector.new()
 
         assert isinstance(selector, LargeFirstCoinSelector)
-        assert isinstance(selector, CoinSelector)
+        assert isinstance(selector, CCoinSelectorWrapper)
         assert "Large" in selector.name or len(selector.name) > 0
-        assert repr(selector).startswith("CoinSelector")
+        assert repr(selector).startswith("CCoinSelectorWrapper")
 
     def test_large_first_selector_context_manager(self):
         """Test coin selector as context manager."""
@@ -212,13 +221,61 @@ class TestCoinSelector:
         # Create target value (less than total available)
         target = Value.from_coin(3000000)
 
-        # Select coins
-        selected, remaining = selector.select(available, target)
+        # Select coins (new signature: pre_selected, available, target)
+        selected, remaining = selector.select(None, available, target)
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
         # With large-first, we should have selected at least one UTXO
         assert len(selected) > 0 or len(remaining) > 0
+
+    def test_python_coin_selector_handle(self):
+        """Test creating a Python coin selector and wrapping it."""
+
+        class SimpleLargestFirstSelector:
+            """Simple Python implementation of largest-first selector."""
+
+            def get_name(self) -> str:
+                return "SimpleLargestFirst"
+
+            def select(self, pre_selected, available, target):
+                # Sort by coin value descending
+                sorted_utxos = sorted(
+                    available,
+                    key=lambda u: u.output.value.coin,
+                    reverse=True,
+                )
+
+                selected = list(pre_selected) if pre_selected else []
+                remaining = []
+                total = sum(u.output.value.coin for u in selected)
+                target_coin = target.coin
+
+                for utxo in sorted_utxos:
+                    if total >= target_coin:
+                        remaining.append(utxo)
+                    else:
+                        selected.append(utxo)
+                        total += utxo.output.value.coin
+
+                return selected, remaining
+
+        # Create Python selector
+        py_selector = SimpleLargestFirstSelector()
+
+        # Wrap it for C interop
+        handle = CoinSelectorHandle(py_selector)
+
+        # Verify we have a valid pointer
+        assert handle.ptr is not None
+
+    def test_coin_selector_protocol(self):
+        """Test that CoinSelectorProtocol is a Protocol type."""
+        from typing import runtime_checkable, Protocol
+
+        # CoinSelectorProtocol should be a Protocol
+        assert CoinSelectorProtocol is CoinSelector
+        # Note: Protocols aren't runtime checkable by default
 
 
 class TestTransactionBalancing:
@@ -314,15 +371,27 @@ class TestModuleImports:
 
     def test_coin_selection_imports(self):
         """Test that coin selection imports work."""
-        from cometa.transaction_builder import CoinSelector, LargeFirstCoinSelector
-        from cometa.transaction_builder.coin_selection import (
+        from cometa.transaction_builder import (
+            CoinSelectorProtocol,
             CoinSelector,
+            CoinSelectorHandle,
+            CCoinSelectorWrapper,
+            LargeFirstCoinSelector,
+        )
+        from cometa.transaction_builder.coin_selection import (
+            CoinSelectorProtocol,
+            CoinSelector,
+            CoinSelectorHandle,
+            CCoinSelectorWrapper,
             LargeFirstCoinSelector,
         )
 
-        assert CoinSelector is not None
+        assert CoinSelectorProtocol is not None
+        assert CoinSelector is CoinSelectorProtocol  # Alias
+        assert CoinSelectorHandle is not None
+        assert CCoinSelectorWrapper is not None
         assert LargeFirstCoinSelector is not None
-        assert issubclass(LargeFirstCoinSelector, CoinSelector)
+        assert issubclass(LargeFirstCoinSelector, CCoinSelectorWrapper)
 
     def test_evaluation_imports(self):
         """Test that evaluation imports work."""
