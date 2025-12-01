@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union, Dict, List
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -154,6 +154,112 @@ class Value:
                 f"Failed to deserialize Value from CBOR (error code: {err})"
             )
         return cls(out[0])
+
+    @classmethod
+    def from_dict(
+        cls, data: Union[int, List[Union[int, Dict[bytes, Dict[bytes, int]]]]]
+    ) -> Value:
+        """
+        Creates a Value from a Python dict representation.
+
+        Args:
+            data: Either:
+                - An integer representing lovelace amount (ADA only)
+                - A list of [lovelace, {policy_id: {asset_name: amount}}]
+
+        Returns:
+            A new Value instance.
+
+        Raises:
+            CardanoError: If creation fails.
+            ValueError: If the format is invalid.
+
+        Example:
+            >>> # ADA only
+            >>> value = Value.from_dict(1500000)
+
+            >>> # ADA with native tokens
+            >>> value = Value.from_dict([
+            ...     1500000,
+            ...     {
+            ...         bytes.fromhex("57fca08..."): {
+            ...             b"CHOC": 2000
+            ...         }
+            ...     }
+            ... ])
+        """
+        if isinstance(data, int):
+            return cls.from_coin(data)
+
+        if not isinstance(data, (list, tuple)) or len(data) != 2:
+            raise ValueError(
+                "Value must be an int or a list of [lovelace, multi_asset_dict]"
+            )
+
+        lovelace, multi_asset_dict = data
+
+        if not isinstance(lovelace, int):
+            raise ValueError("First element (lovelace) must be an integer")
+
+        if not isinstance(multi_asset_dict, dict):
+            raise ValueError(
+                "Second element must be a dict of {policy_id: {asset_name: amount}}"
+            )
+
+        # Create the value with coin
+        value = cls.from_coin(lovelace)
+
+        # Add each policy and its assets
+        for policy_id_bytes, assets in multi_asset_dict.items():
+            if not isinstance(policy_id_bytes, bytes):
+                raise ValueError("Policy ID must be bytes")
+            if not isinstance(assets, dict):
+                raise ValueError("Assets must be a dict of {asset_name: amount}")
+
+            for asset_name_bytes, amount in assets.items():
+                if not isinstance(asset_name_bytes, bytes):
+                    raise ValueError("Asset name must be bytes")
+                if not isinstance(amount, int):
+                    raise ValueError("Asset amount must be an integer")
+
+                value.add_asset(policy_id_bytes, asset_name_bytes, amount)
+
+        return value
+
+    def to_dict(self) -> Union[int, List[Union[int, Dict[bytes, Dict[bytes, int]]]]]:
+        """
+        Converts this Value to a Python dict representation.
+
+        Returns:
+            Either an integer (if ADA only) or a list of [lovelace, multi_asset_dict].
+
+        Example:
+            >>> value = Value.from_coin(1500000)
+            >>> value.to_dict()
+            1500000
+
+            >>> value.add_asset(policy_id, b"TOKEN", 100)
+            >>> value.to_dict()
+            [1500000, {policy_id: {b"TOKEN": 100}}]
+        """
+        multi_asset = self.multi_asset
+
+        if multi_asset is None or multi_asset.policy_count == 0:
+            return self.coin
+
+        result_dict: Dict[bytes, Dict[bytes, int]] = {}
+
+        for policy_id in multi_asset:
+            policy_bytes = policy_id.to_bytes()
+            assets = multi_asset.get_assets(policy_id)
+            asset_dict: Dict[bytes, int] = {}
+
+            for asset_name, amount in assets.items():
+                asset_dict[asset_name.to_bytes()] = amount
+
+            result_dict[policy_bytes] = asset_dict
+
+        return [self.coin, result_dict]
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

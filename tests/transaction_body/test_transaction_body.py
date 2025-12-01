@@ -68,6 +68,62 @@ class TestValue:
         value.to_cbor(writer)
         assert len(writer.to_hex()) > 0
 
+    def test_from_dict_int(self):
+        value = Value.from_dict(1500000)
+        assert value is not None
+        assert value.coin == 1500000
+        assert value.multi_asset is None or value.multi_asset.policy_count == 0
+
+    def test_from_dict_with_assets(self):
+        policy_id = bytes.fromhex("57fca08abbaddee36da742a839f7d83a7e1d2419f1507fcbf3916522")
+        value = Value.from_dict([
+            1500000,
+            {
+                policy_id: {
+                    b"CHOC": 2000
+                }
+            }
+        ])
+        assert value is not None
+        assert value.coin == 1500000
+        assert value.asset_count == 2  # lovelace + CHOC
+
+    def test_from_dict_multiple_assets(self):
+        policy_id = bytes.fromhex("57fca08abbaddee36da742a839f7d83a7e1d2419f1507fcbf3916522")
+        value = Value.from_dict([
+            2000000,
+            {
+                policy_id: {
+                    b"TOKEN1": 100,
+                    b"TOKEN2": 200
+                }
+            }
+        ])
+        assert value is not None
+        assert value.coin == 2000000
+        assert value.asset_count == 3  # lovelace + TOKEN1 + TOKEN2
+
+    def test_to_dict_coin_only(self):
+        value = Value.from_coin(1500000)
+        result = value.to_dict()
+        assert result == 1500000
+
+    def test_to_dict_with_assets(self):
+        policy_id = bytes.fromhex("57fca08abbaddee36da742a839f7d83a7e1d2419f1507fcbf3916522")
+        value = Value.from_dict([
+            1500000,
+            {
+                policy_id: {
+                    b"CHOC": 2000
+                }
+            }
+        ])
+        result = value.to_dict()
+        assert isinstance(result, list)
+        assert result[0] == 1500000
+        assert policy_id in result[1]
+        assert result[1][policy_id][b"CHOC"] == 2000
+
 
 class TestTransactionInput:
     def test_new(self):
