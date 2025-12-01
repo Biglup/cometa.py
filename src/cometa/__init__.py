@@ -8,6 +8,8 @@ from .common.bigint import BigInt
 from .common.byte_order import ByteOrder
 from .common.network_id import NetworkId
 from .common.network_magic import NetworkMagic
+from .common.utxo import Utxo
+from .common.utxo_list import UtxoList
 from .common.credential_type import CredentialType
 from .common.credential import Credential
 from .common.datum_type import DatumType
@@ -230,6 +232,8 @@ __all__ = [
     "NetworkMagic",
     "ProtocolVersion",
     "UnitInterval",
+    "Utxo",
+    "UtxoList",
     # CBOR
     "CborReader",
     "CborMajorType",

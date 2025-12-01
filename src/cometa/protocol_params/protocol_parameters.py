@@ -29,6 +29,7 @@ from .pool_voting_thresholds import PoolVotingThresholds
 from .drep_voting_thresholds import DRepVotingThresholds
 
 
+# pylint: disable=too-many-instance-attributes
 class ProtocolParameters:
     """
     Protocol parameters that govern the Cardano network.
