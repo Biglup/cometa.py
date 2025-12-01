@@ -199,6 +199,15 @@ from .witness_set import (
 )
 from .buffer import Buffer
 from .errors import CardanoError
+from .transaction_body import (
+    Value,
+    TransactionInput,
+    TransactionInputSet,
+    TransactionOutput,
+    TransactionOutputList,
+    TransactionBody,
+)
+from .transaction import Transaction
 
 __all__ = [
     # Common
@@ -396,4 +405,13 @@ __all__ = [
     # Core
     "Buffer",
     "CardanoError",
+    # Transaction Body
+    "Value",
+    "TransactionInput",
+    "TransactionInputSet",
+    "TransactionOutput",
+    "TransactionOutputList",
+    "TransactionBody",
+    # Transaction
+    "Transaction",
 ]
