@@ -3,6 +3,7 @@
 # Install dependencies and the package in editable mode
 install:
 	python -m pip install --upgrade pip
+	python -m pip install --upgrade build twine
 	pip install pylint pytest cffi
 	pip install -e .
 	pip install -r docs/requirements.txt
@@ -24,6 +25,14 @@ docs:
 	mkdir -p docs/_static
 	python tools/generate_docs.py
 	cd docs && make html
+
+publish:
+	cp README.md README.md.bak
+	sed -i 's|src="assets/|src="https://raw.githubusercontent.com/Biglup/cometa.py/main/assets/|g' README.md
+	rm -rf dist/*
+	python -m build
+	python -m twine upload dist/*
+	mv README.md.bak README.md
 
 # Cleanup build artifacts
 clean:

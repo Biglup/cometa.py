@@ -1,6 +1,6 @@
 <div align="center">
   <a href="" target="_blank">
-    <img align="center" width="300" src="assets/cometa_py.png">
+    <img align="center" width="300" src="https://raw.githubusercontent.com/Biglup/cometa.py/main/assets/cometa_py.png">
   </a>
 </div>
 
@@ -62,7 +62,7 @@ See the [Documentation](https://cometapy.readthedocs.io/) for more information o
 You can install Cometa.py using pip:
 
 ```bash
-pip install cometa-py
+pip install biglup-cometa
 ```
 
 Once installed, you can import it into your application:
