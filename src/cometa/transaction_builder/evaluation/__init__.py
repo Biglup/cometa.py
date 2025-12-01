@@ -14,8 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .tx_evaluator import TxEvaluator
+from .tx_evaluator import TxEvaluatorProtocol, TxEvaluator
+from .python_tx_evaluator_adapter import TxEvaluatorHandle
+from .c_tx_evaluator_wrapper import CTxEvaluatorWrapper
 
 __all__ = [
-    "TxEvaluator",
+    # Protocol/Interface
+    "TxEvaluatorProtocol",
+    "TxEvaluator",  # Alias for TxEvaluatorProtocol
+    # Python -> C adapter
+    "TxEvaluatorHandle",
+    # C -> Python wrapper
+    "CTxEvaluatorWrapper",
 ]

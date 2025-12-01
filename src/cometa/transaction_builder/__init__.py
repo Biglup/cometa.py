@@ -50,7 +50,12 @@ from .coin_selection import (
 )
 
 # Evaluation
-from .evaluation import TxEvaluator
+from .evaluation import (
+    TxEvaluatorProtocol,
+    TxEvaluator,
+    TxEvaluatorHandle,
+    CTxEvaluatorWrapper,
+)
 
 __all__ = [
     # Fee functions
@@ -79,5 +84,8 @@ __all__ = [
     "CCoinSelectorWrapper",
     "LargeFirstCoinSelector",
     # Evaluation
+    "TxEvaluatorProtocol",
     "TxEvaluator",
+    "TxEvaluatorHandle",
+    "CTxEvaluatorWrapper",
 ]

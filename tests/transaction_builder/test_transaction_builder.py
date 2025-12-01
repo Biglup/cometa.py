@@ -31,7 +31,10 @@ from cometa.transaction_builder import (
     CoinSelectorHandle,
     CCoinSelectorWrapper,
     LargeFirstCoinSelector,
+    TxEvaluatorProtocol,
     TxEvaluator,
+    TxEvaluatorHandle,
+    CTxEvaluatorWrapper,
     ImplicitCoin,
     compute_implicit_coin,
 )
@@ -43,7 +46,12 @@ from cometa.transaction_builder.coin_selection import (
     CCoinSelectorWrapper,
     LargeFirstCoinSelector,
 )
-from cometa.transaction_builder.evaluation import TxEvaluator
+from cometa.transaction_builder.evaluation import (
+    TxEvaluatorProtocol,
+    TxEvaluator,
+    TxEvaluatorHandle,
+    CTxEvaluatorWrapper,
+)
 from cometa.transaction_body import (
     TransactionInput,
     TransactionOutput,
@@ -395,21 +403,61 @@ class TestModuleImports:
 
     def test_evaluation_imports(self):
         """Test that evaluation imports work."""
-        from cometa.transaction_builder import TxEvaluator
-        from cometa.transaction_builder.evaluation import TxEvaluator
+        from cometa.transaction_builder import (
+            TxEvaluatorProtocol,
+            TxEvaluator,
+            TxEvaluatorHandle,
+            CTxEvaluatorWrapper,
+        )
+        from cometa.transaction_builder.evaluation import (
+            TxEvaluatorProtocol,
+            TxEvaluator,
+            TxEvaluatorHandle,
+            CTxEvaluatorWrapper,
+        )
 
-        assert TxEvaluator is not None
+        assert TxEvaluatorProtocol is not None
+        assert TxEvaluator is TxEvaluatorProtocol  # Alias
+        assert TxEvaluatorHandle is not None
+        assert CTxEvaluatorWrapper is not None
 
 
 class TestTxEvaluator:
-    """Tests for TxEvaluator class."""
+    """Tests for TxEvaluator classes."""
 
-    def test_tx_evaluator_class_exists(self):
-        """Test that TxEvaluator class is properly defined."""
-        from cometa.transaction_builder.evaluation import TxEvaluator
+    def test_tx_evaluator_protocol_exists(self):
+        """Test that TxEvaluatorProtocol is properly defined."""
+        from cometa.transaction_builder.evaluation import TxEvaluatorProtocol
 
-        assert TxEvaluator is not None
-        # TxEvaluator requires an implementation, so we just verify the class exists
+        assert TxEvaluatorProtocol is not None
+
+    def test_python_tx_evaluator_handle(self):
+        """Test creating a Python tx evaluator and wrapping it."""
+
+        class MockEvaluator:
+            """Mock Python implementation of tx evaluator."""
+
+            def get_name(self) -> str:
+                return "MockEvaluator"
+
+            def evaluate(self, transaction, additional_utxos):
+                # Return empty list of redeemers for simple test
+                return []
+
+        # Create Python evaluator
+        py_evaluator = MockEvaluator()
+
+        # Wrap it for C interop
+        handle = TxEvaluatorHandle(py_evaluator)
+
+        # Verify we have a valid pointer
+        assert handle.ptr is not None
+
+    def test_tx_evaluator_protocol_alias(self):
+        """Test that TxEvaluator is an alias for TxEvaluatorProtocol."""
+        from cometa.transaction_builder.evaluation import TxEvaluatorProtocol, TxEvaluator
+
+        assert TxEvaluator is TxEvaluatorProtocol
 
 
 class TestImplicitCoin:
