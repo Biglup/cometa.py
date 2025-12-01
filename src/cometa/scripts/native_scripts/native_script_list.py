@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     ]
 else:
     # At runtime, we use Any to avoid circular imports
-    NativeScriptLike = Any
+    NativeScriptLike = Any # pylint: disable=invalid-name
 
 
 class NativeScriptList:

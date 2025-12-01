@@ -22,6 +22,7 @@ from typing import Union, List, Optional, Any, Dict
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+from .. import CardanoError
 from ..common.network_magic import NetworkMagic
 
 
@@ -101,9 +102,9 @@ class BlockfrostProvider:
             if http_err.code == 404:
                 return None
             body = http_err.read().decode("utf-8") if http_err.fp else ""
-            raise Exception(f"Blockfrost API error {http_err.code}: {body}") from http_err
+            raise CardanoError(f"Blockfrost API error {http_err.code}: {body}") from http_err
         except URLError as url_err:
-            raise Exception(f"Network error: {url_err.reason}") from url_err
+            raise CardanoError(f"Network error: {url_err.reason}") from url_err
 
     def _post(self, endpoint: str, data: bytes, content_type: str = "application/json") -> Any:
         """Make a POST request to the Blockfrost API."""
@@ -118,15 +119,15 @@ class BlockfrostProvider:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as http_err:
             body = http_err.read().decode("utf-8") if http_err.fp else ""
-            raise Exception(f"Blockfrost API error {http_err.code}: {body}") from http_err
+            raise CardanoError(f"Blockfrost API error {http_err.code}: {body}") from http_err
         except URLError as url_err:
-            raise Exception(f"Network error: {url_err.reason}") from url_err
+            raise CardanoError(f"Network error: {url_err.reason}") from url_err
 
     # -------------------------------------------------------------------------
     # Provider Protocol Implementation
     # -------------------------------------------------------------------------
 
-    def get_name(self) -> str:  # pylint: disable=no-self-use
+    def get_name(self) -> str:
         """Get the provider name."""
         return "Blockfrost"
 
@@ -143,17 +144,17 @@ class BlockfrostProvider:
             The current ProtocolParameters.
 
         Raises:
-            Exception: If the request fails.
+            CardanoError: If the request fails.
         """
         from ..protocol_params import ProtocolParameters, ExUnitPrices
         from ..common import UnitInterval, ExUnits, ProtocolVersion
 
         data = self._get("epochs/latest/parameters")
         if data is None:
-            raise Exception("Failed to fetch protocol parameters")
+            raise CardanoError("Failed to fetch protocol parameters")
 
         if "message" in data:
-            raise Exception(f"Blockfrost error: {data['message']}")
+            raise CardanoError(f"Blockfrost error: {data['message']}")
 
         # Build ProtocolParameters by setting individual properties
         params = ProtocolParameters.new()
@@ -278,7 +279,7 @@ class BlockfrostProvider:
                 return []
 
             if isinstance(data, dict) and "message" in data:
-                raise Exception(f"Blockfrost error: {data['message']}")
+                raise CardanoError(f"Blockfrost error: {data['message']}")
 
             for utxo_data in data:
                 utxo = self._parse_utxo(addr_str, utxo_data)
@@ -290,7 +291,7 @@ class BlockfrostProvider:
 
         return results
 
-    # pylint: disable=too-many-locals,no-self-use
+    # pylint: disable=too-many-locals
     def _parse_utxo(self, address: str, utxo_data: Dict) -> "Utxo":
         """Parse a Blockfrost UTXO response into a Utxo object."""
         from ..common.utxo import Utxo
@@ -346,14 +347,14 @@ class BlockfrostProvider:
                 try:
                     datum = Datum.from_data_hash_hex(datum_hash)
                     tx_output.datum = datum
-                except Exception:  # pylint: disable=broad-except
+                except CardanoError:  # pylint: disable=broad-except
                     pass  # If we can't parse datum, continue without it
         elif datum_hash:
             # Datum hash reference
             try:
                 datum = Datum.from_data_hash_hex(datum_hash)
                 tx_output.datum = datum
-            except Exception:  # pylint: disable=broad-except
+            except CardanoError:  # pylint: disable=broad-except
                 pass  # If we can't parse datum, continue without it
 
         # Handle script reference if present
@@ -383,7 +384,7 @@ class BlockfrostProvider:
             return 0
 
         if isinstance(data, dict) and "message" in data:
-            raise Exception(f"Blockfrost error: {data['message']}")
+            raise CardanoError(f"Blockfrost error: {data['message']}")
 
         return int(data.get("withdrawable_amount", 0))
 
@@ -415,7 +416,7 @@ class BlockfrostProvider:
                 return []
 
             if isinstance(data, dict) and "message" in data:
-                raise Exception(f"Blockfrost error: {data['message']}")
+                raise CardanoError(f"Blockfrost error: {data['message']}")
 
             for utxo_data in data:
                 utxo = self._parse_utxo(addr_str, utxo_data)
@@ -438,26 +439,26 @@ class BlockfrostProvider:
             The Utxo containing the NFT.
 
         Raises:
-            Exception: If the NFT is not found or held by multiple addresses/UTXOs.
+            CardanoError: If the NFT is not found or held by multiple addresses/UTXOs.
         """
         asset_str = str(asset_id) if not isinstance(asset_id, str) else asset_id
 
         data = self._get(f"assets/{asset_str}/addresses")
 
         if data is None or len(data) == 0:
-            raise Exception("NFT not found")
+            raise CardanoError("NFT not found")
 
         if isinstance(data, dict) and "message" in data:
-            raise Exception(f"Blockfrost error: {data['message']}")
+            raise CardanoError(f"Blockfrost error: {data['message']}")
 
         if len(data) > 1:
-            raise Exception("NFT must be held by only one address")
+            raise CardanoError("NFT must be held by only one address")
 
         holder_address = data[0]["address"]
         utxos = self.get_unspent_outputs_with_asset(holder_address, asset_str)
 
         if len(utxos) != 1:
-            raise Exception("NFT must be present in only one UTXO")
+            raise CardanoError("NFT must be present in only one UTXO")
 
         return utxos[0]
 
@@ -492,7 +493,7 @@ class BlockfrostProvider:
                 continue
 
             if isinstance(data, dict) and "message" in data:
-                raise Exception(f"Blockfrost error: {data['message']}")
+                raise CardanoError(f"Blockfrost error: {data['message']}")
 
             for output in data.get("outputs", []):
                 if output["output_index"] == index:
@@ -518,10 +519,10 @@ class BlockfrostProvider:
         data = self._get(f"scripts/datum/{hash_str}/cbor")
 
         if data is None:
-            raise Exception(f"Datum not found: {hash_str}")
+            raise CardanoError(f"Datum not found: {hash_str}")
 
         if isinstance(data, dict) and "message" in data:
-            raise Exception(f"Blockfrost error: {data['message']}")
+            raise CardanoError(f"Blockfrost error: {data['message']}")
 
         return data.get("cbor", "")
 
@@ -582,7 +583,7 @@ class BlockfrostProvider:
                 return result if isinstance(result, str) else str(result)
         except HTTPError as http_err:
             body = http_err.read().decode("utf-8") if http_err.fp else ""
-            raise Exception(f"Failed to submit transaction: {body}") from http_err
+            raise CardanoError(f"Failed to submit transaction: {body}") from http_err
 
     # pylint: disable=too-many-locals
     def evaluate_transaction(
@@ -616,17 +617,17 @@ class BlockfrostProvider:
         )
 
         if isinstance(data, dict) and "message" in data:
-            raise Exception(f"Blockfrost error: {data['message']}")
+            raise CardanoError(f"Blockfrost error: {data['message']}")
 
         if isinstance(data, dict) and "fault" in data:
-            raise Exception(f"Evaluation fault: {data['fault']}")
+            raise CardanoError(f"Evaluation fault: {data['fault']}")
 
         if not isinstance(data, dict) or "result" not in data:
-            raise Exception(f"Unexpected evaluation response: {data}")
+            raise CardanoError(f"Unexpected evaluation response: {data}")
 
         result = data["result"]
         if "EvaluationResult" not in result:
-            raise Exception(f"Evaluation failed: {result}")
+            raise CardanoError(f"Evaluation failed: {result}")
 
         eval_result = result["EvaluationResult"]
         redeemers = []
@@ -662,7 +663,7 @@ class BlockfrostProvider:
 
         return redeemers
 
-    def _prepare_utxos_for_evaluation(self, utxos: List["Utxo"]) -> List:  # pylint: disable=no-self-use
+    def _prepare_utxos_for_evaluation(self, utxos: List["Utxo"]) -> List:
         """Prepare UTXOs for the evaluation endpoint."""
         result = []
         for utxo in utxos:

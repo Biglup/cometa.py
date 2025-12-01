@@ -214,6 +214,36 @@ from .transaction_body import (
 )
 from .transaction import Transaction
 
+
+from .transaction_builder import (
+    CoinSelectorProtocol,
+    CoinSelector,
+    CoinSelectorHandle,
+    CCoinSelectorWrapper,
+    LargeFirstCoinSelector,
+    TxEvaluatorProtocol,
+    TxEvaluator,
+    TxEvaluatorHandle,
+    CTxEvaluatorWrapper,
+    InputToRedeemerMap,
+    balance_transaction,
+    is_transaction_balanced,
+    ImplicitCoin,
+    compute_implicit_coin,
+    compute_script_data_hash,
+    compute_transaction_fee,
+    compute_min_ada_required,
+    compute_min_script_fee,
+    compute_min_fee_without_scripts,
+    compute_script_ref_fee,
+    get_total_ex_units_in_redeemers,
+    get_serialized_coin_size,
+    get_serialized_output_size,
+    get_serialized_script_size,
+    get_serialized_transaction_size,
+    TxBuilder,
+)
+
 __all__ = [
     # Common
     "Anchor",
@@ -428,4 +458,31 @@ __all__ = [
     "TransactionBody",
     # Transaction
     "Transaction",
+    # Transaction Builder
+    "compute_transaction_fee",
+    "compute_min_ada_required",
+    "compute_min_script_fee",
+    "compute_min_fee_without_scripts",
+    "compute_script_ref_fee",
+    "get_total_ex_units_in_redeemers",
+    "get_serialized_coin_size",
+    "get_serialized_output_size",
+    "get_serialized_script_size",
+    "get_serialized_transaction_size",
+    "compute_script_data_hash",
+    "InputToRedeemerMap",
+    "balance_transaction",
+    "is_transaction_balanced",
+    "ImplicitCoin",
+    "compute_implicit_coin",
+    "CoinSelectorProtocol",
+    "CoinSelector",
+    "CoinSelectorHandle",
+    "CCoinSelectorWrapper",
+    "LargeFirstCoinSelector",
+    "TxEvaluatorProtocol",
+    "TxEvaluator",
+    "TxEvaluatorHandle",
+    "CTxEvaluatorWrapper",
+    "TxBuilder",
 ]

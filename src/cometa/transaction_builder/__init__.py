@@ -57,6 +57,9 @@ from .evaluation import (
     CTxEvaluatorWrapper,
 )
 
+# Transaction Builder
+from .tx_builder import TxBuilder
+
 __all__ = [
     # Fee functions
     "compute_transaction_fee",
@@ -88,4 +91,6 @@ __all__ = [
     "TxEvaluator",
     "TxEvaluatorHandle",
     "CTxEvaluatorWrapper",
+    # Transaction Builder
+    "TxBuilder",
 ]
