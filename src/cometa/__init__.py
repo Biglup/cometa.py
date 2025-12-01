@@ -107,7 +107,24 @@ from .voting_procedures import (
     VotingProcedure,
     VotingProcedures,
 )
-from .scripts import PlutusLanguageVersion
+from .scripts import (
+    PlutusLanguageVersion,
+    Script,
+    ScriptLanguage,
+    NativeScriptType,
+    NativeScriptList,
+    NativeScript,
+    NativeScriptLike,
+    ScriptPubkey,
+    ScriptAll,
+    ScriptAny,
+    ScriptNOfK,
+    ScriptInvalidBefore,
+    ScriptInvalidAfter,
+    PlutusV1Script,
+    PlutusV2Script,
+    PlutusV3Script,
+)
 from .protocol_params import (
     ExUnitPrices,
     CostModel,
@@ -165,6 +182,21 @@ from .proposal_procedures import (
     UpdateCommitteeAction,
 )
 from .common.withdrawal_map import WithdrawalMap
+from .witness_set import (
+    BootstrapWitness,
+    BootstrapWitnessSet,
+    NativeScriptSet,
+    PlutusDataSet,
+    PlutusV1ScriptSet,
+    PlutusV2ScriptSet,
+    PlutusV3ScriptSet,
+    Redeemer,
+    RedeemerList,
+    RedeemerTag,
+    VkeyWitness,
+    VkeyWitnessSet,
+    WitnessSet,
+)
 from .buffer import Buffer
 from .errors import CardanoError
 
@@ -276,8 +308,24 @@ __all__ = [
     "VoterType",
     "VotingProcedure",
     "VotingProcedures",
-    # Protocol Params
+    # Scripts
     "PlutusLanguageVersion",
+    "Script",
+    "ScriptLanguage",
+    "NativeScriptType",
+    "NativeScriptList",
+    "NativeScript",
+    "NativeScriptLike",
+    "ScriptPubkey",
+    "ScriptAll",
+    "ScriptAny",
+    "ScriptNOfK",
+    "ScriptInvalidBefore",
+    "ScriptInvalidAfter",
+    "PlutusV1Script",
+    "PlutusV2Script",
+    "PlutusV3Script",
+    # Protocol Params
     "ExUnitPrices",
     "CostModel",
     "Costmdls",
@@ -331,6 +379,20 @@ __all__ = [
     "TreasuryWithdrawalsAction",
     "UpdateCommitteeAction",
     "WithdrawalMap",
+    # Witness Set
+    "BootstrapWitness",
+    "BootstrapWitnessSet",
+    "NativeScriptSet",
+    "PlutusDataSet",
+    "PlutusV1ScriptSet",
+    "PlutusV2ScriptSet",
+    "PlutusV3ScriptSet",
+    "Redeemer",
+    "RedeemerList",
+    "RedeemerTag",
+    "VkeyWitness",
+    "VkeyWitnessSet",
+    "WitnessSet",
     # Core
     "Buffer",
     "CardanoError",

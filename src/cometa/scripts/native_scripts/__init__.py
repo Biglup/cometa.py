@@ -14,34 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .script_language import ScriptLanguage
-from .script import Script
+from typing import Union
 
-from .native_scripts import (
-    NativeScriptType,
-    NativeScriptList,
+from .native_script_type import NativeScriptType
+from .native_script_list import NativeScriptList
+from .native_script import NativeScript
+from .script_pubkey import ScriptPubkey
+from .script_all import ScriptAll
+from .script_any import ScriptAny
+from .script_n_of_k import ScriptNOfK
+from .script_invalid_before import ScriptInvalidBefore
+from .script_invalid_after import ScriptInvalidAfter
+
+# Type alias for any native script type
+NativeScriptLike = Union[
     NativeScript,
-    NativeScriptLike,
     ScriptPubkey,
     ScriptAll,
     ScriptAny,
     ScriptNOfK,
     ScriptInvalidBefore,
     ScriptInvalidAfter,
-)
-
-from .plutus_scripts import (
-    PlutusLanguageVersion,
-    PlutusV1Script,
-    PlutusV2Script,
-    PlutusV3Script,
-)
+]
 
 __all__ = [
-    # Script types
-    "ScriptLanguage",
-    "Script",
-    # Native scripts
     "NativeScriptType",
     "NativeScriptList",
     "NativeScript",
@@ -52,9 +48,4 @@ __all__ = [
     "ScriptNOfK",
     "ScriptInvalidBefore",
     "ScriptInvalidAfter",
-    # Plutus scripts
-    "PlutusLanguageVersion",
-    "PlutusV1Script",
-    "PlutusV2Script",
-    "PlutusV3Script",
 ]

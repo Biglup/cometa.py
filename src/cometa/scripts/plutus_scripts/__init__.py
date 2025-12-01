@@ -15,7 +15,13 @@ limitations under the License.
 """
 
 from .plutus_language_version import PlutusLanguageVersion
+from .plutus_v1_script import PlutusV1Script
+from .plutus_v2_script import PlutusV2Script
+from .plutus_v3_script import PlutusV3Script
 
 __all__ = [
     "PlutusLanguageVersion",
+    "PlutusV1Script",
+    "PlutusV2Script",
+    "PlutusV3Script",
 ]
