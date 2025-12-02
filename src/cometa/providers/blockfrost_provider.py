@@ -669,6 +669,7 @@ class BlockfrostProvider:
 
         redeemer_map = {}
         if original_redeemers:
+            # pylint: disable=not-an-iterable
             for original_redeemer in original_redeemers:
                 redeemer_map[(original_redeemer.tag, original_redeemer.index)] = original_redeemer
 

@@ -1,4 +1,4 @@
-biglup-cometa 0.1.33
+biglup-cometa 0.1.34
 ====================
 
 .. include:: README_docs.md

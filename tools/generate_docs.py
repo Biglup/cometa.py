@@ -2,10 +2,7 @@
 import os
 import sys
 import shutil
-import inspect
-import importlib
 import re
-from enum import Enum
 from pathlib import Path
 
 # 1. Setup Paths
@@ -22,38 +19,6 @@ DOCS_ASSETS_DIR = PROJECT_ROOT / "docs" / "assets"
 # Source README and the temporary one we will create for docs
 README_SRC = PROJECT_ROOT / "README.md"
 README_DOCS = PROJECT_ROOT / "docs" / "README_docs.md"
-
-# Magic methods we explicitly want to document if they exist
-MAGIC_WHITELIST = {
-    "__init__", "__len__", "__getitem__", "__setitem__",
-    "__iter__", "__eq__", "__add__", "__bytes__",
-    "__enter__", "__exit__", "__str__", "__repr__",
-    "__int__", "__float__", "__bool__", "__index__", "__format__",
-    "__contains__", "__hash__", "__call__", "__sub__", "__mul__",
-    "__truediv__", "__floordiv__", "__mod__", "__divmod__", "__pow__",
-    "__abs__", "__neg__", "__pos__", "__invert__", "__lshift__", "__rshift__",
-    "__lt__", "__le__", "__gt__", "__ge__", "__and__", "__or__", "__xor__"
-}
-
-def discover_modules():
-    """
-    Recursively finds all public python modules in the package.
-    Returns a list of module strings (e.g., 'cometa.common.buffer').
-    """
-    base_path = PROJECT_ROOT / "src" / "cometa"
-    modules = []
-
-    if not base_path.exists():
-        return []
-
-    for path in base_path.rglob("*.py"):
-        if path.name.startswith("_"):
-            continue
-        rel_path = path.relative_to(PROJECT_ROOT / "src")
-        module_name = ".".join(rel_path.with_suffix("").parts)
-        modules.append(module_name)
-
-    return sorted(modules)
 
 
 def get_project_info():
@@ -72,72 +37,6 @@ def get_project_info():
             if n_match: name = n_match.group(1)
 
     return name, version
-
-
-def camel_to_snake(name):
-    name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
-
-
-def get_members_in_order(cls):
-    """Returns (name, object, kind) tuples sorted by source line number."""
-    members = []
-
-    # Handle Enums specifically: __members__ preserves definition order
-    if issubclass(cls, Enum):
-        for name, member in cls.__members__.items():
-            # For Enums, we treat members as attributes
-            members.append((0, name, member))
-        return members
-
-    # Handle Standard Classes
-    for name, kind in inspect.getmembers(cls):
-        if name.startswith("_") and name not in MAGIC_WHITELIST:
-            continue
-
-        if not (inspect.isfunction(kind) or inspect.ismethod(kind) or isinstance(kind, property)):
-            continue
-
-        try:
-            line_no = inspect.getsourcelines(kind)[1]
-        except (OSError, TypeError):
-            line_no = float('inf')
-
-        members.append((line_no, name, kind))
-
-    members.sort(key=lambda x: x[0])
-    return members
-
-
-def generate_rst_for_class(cls, module_name):
-    """
-    Generates a standard Sphinx .rst file for a class.
-    Uses :members: to document properties and methods as part of the class body.
-    """
-    filename = OUTPUT_DIR / f"{camel_to_snake(cls.__name__)}.rst"
-    content = []
-
-    title = cls.__name__
-    content.append(title)
-    content.append("=" * len(title))
-    content.append("")
-    content.append(f".. currentmodule:: {module_name}")
-    content.append("")
-
-    # Join magic methods for the :special-members: option
-    special_members_list = ", ".join(sorted(MAGIC_WHITELIST))
-
-    content.append(f".. autoclass:: {cls.__name__}")
-    content.append("   :members:")  # Include all public members
-    content.append("   :undoc-members:")  # Include members even if they don't have docstrings
-    content.append("   :show-inheritance:")  # Show base classes
-    # Include the specific magic methods we care about
-    content.append(f"   :special-members: {special_members_list}")
-
-    print(f"Generating {filename}...")
-    with open(filename, "w") as f:
-        f.write("\n".join(content))
-    return filename
 
 
 def prepare_assets_and_readme():
@@ -186,35 +85,46 @@ def prepare_assets_and_readme():
         print(f"Error: Source README not found at {README_SRC}")
 
 
-def generate_index(generated_files):
-    entries = []
-    for p in generated_files:
-        rel_path = p.relative_to(PROJECT_ROOT / "docs").with_suffix('')
-        entries.append(str(rel_path))
+def update_index_version():
+    """
+    Updates the header (Title and Version) of docs/index.rst without
+    regenerating the rest of the file.
+    """
+    if not INDEX_FILE.exists():
+        print(f"Error: {INDEX_FILE} not found. Cannot update version header.")
+        return
 
-    entries.sort()
-    toctree_content = "\n   ".join(entries)
     name, version = get_project_info()
+    new_title = f"{name} {version}"
+    new_underline = "=" * len(new_title)
 
-    content = f"""
-{name} {version}
-{'=' * (len(name) + len(version) + 1)}
+    print(f"Checking {INDEX_FILE}...")
+    with open(INDEX_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
 
-.. include:: README_docs.md
-   :parser: myst_parser.sphinx_
+    if not lines:
+        print("Error: index.rst is empty.")
+        return
 
-.. toctree::
-   :maxdepth: 1
-   :caption: API Reference
-   :titlesonly:
-   :hidden:
+    # Check if update is actually needed
+    current_title_line = lines[0].strip()
+    if current_title_line == new_title:
+        print(f"Index header already up to date: {new_title}")
+        return
 
-   {toctree_content}
-"""
+    print(f"Updating index header to: {new_title}")
 
-    print(f"Updating {INDEX_FILE}...")
-    with open(INDEX_FILE, "w") as f:
-        f.write(content.strip())
+    # Replace the first two lines (Title + Underline)
+    # We assume standard RST format where line 0 is title and line 1 is underline
+    if len(lines) >= 2:
+        lines[0] = new_title + "\n"
+        lines[1] = new_underline + "\n"
+    else:
+        # Edge case: file is too short, just prepend/overwrite
+        lines = [new_title + "\n", new_underline + "\n"] + lines
+
+    with open(INDEX_FILE, "w", encoding="utf-8") as f:
+        f.writelines(lines)
 
 
 def update_conf_py():
@@ -248,7 +158,9 @@ def main():
         os.makedirs(OUTPUT_DIR)
 
     prepare_assets_and_readme()
+    update_index_version()
     update_conf_py()
+
 
 if __name__ == "__main__":
     main()
