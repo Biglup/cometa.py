@@ -214,7 +214,19 @@ from .transaction_body import (
     TransactionBody,
 )
 from .transaction import Transaction
-
+from .key_handler import (
+    harden as key_harden,
+    CoinType,
+    KeyDerivationPurpose,
+    KeyDerivationRole,
+    AccountDerivationPath,
+    DerivationPath,
+    Bip32SecureKeyHandler,
+    Ed25519SecureKeyHandler,
+    SecureKeyHandler,
+    SoftwareBip32SecureKeyHandler,
+    SoftwareEd25519SecureKeyHandler,
+)
 
 from .transaction_builder import (
     CoinSelectorProtocol,
@@ -487,4 +499,15 @@ __all__ = [
     "TxEvaluatorHandle",
     "CTxEvaluatorWrapper",
     "TxBuilder",
+    # Key Handler
+    "CoinType",
+    "KeyDerivationPurpose",
+    "KeyDerivationRole",
+    "AccountDerivationPath",
+    "DerivationPath",
+    "Bip32SecureKeyHandler",
+    "Ed25519SecureKeyHandler",
+    "SecureKeyHandler",
+    "SoftwareBip32SecureKeyHandler",
+    "SoftwareEd25519SecureKeyHandler",
 ]

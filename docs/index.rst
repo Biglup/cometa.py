@@ -18,6 +18,7 @@ biglup-cometa 0.1.34
    api/cryptography/index
    api/encoding/index
    api/json/index
+   api/key_handler/index
    api/message_signing/index
    api/plutus_data/index
    api/pool_params/index
