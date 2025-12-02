@@ -148,6 +148,32 @@ class Transaction:
         """
         lib.cardano_transaction_clear_cbor_cache(self._ptr)
 
+    def to_cip116_json(self, writer) -> None:
+        """
+        Serializes this transaction to CIP-116 JSON format.
+
+        CIP-116 defines a standard JSON representation for Cardano transactions.
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If serialization fails.
+
+        Example:
+            >>> from cometa.json import JsonWriter
+            >>> tx = Transaction.new(body, witness_set)
+            >>> writer = JsonWriter()
+            >>> tx.to_cip116_json(writer)
+            >>> json_str = writer.encode()
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_transaction_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize Transaction to CIP-116 JSON (error code: {err})")
+
     @property
     def id(self) -> Blake2bHash: # ignore pylint: disable=invalid-name
         """

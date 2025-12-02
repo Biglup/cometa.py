@@ -162,3 +162,20 @@ class Voter:
         err = lib.cardano_voter_set_credential(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set voter credential (error code: {err})")
+
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Serializes this object to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_voter_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")

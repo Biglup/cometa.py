@@ -16,6 +16,9 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
+
 class CborMajorType(IntEnum):
     """
     Represents CBOR Major Types as defined in RFC 7049 section 2.1.
@@ -73,3 +76,21 @@ class CborMajorType(IntEnum):
     """
     Undefined major type.
     """
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this CBOR major type.
+
+        Returns:
+            A string representation of the major type.
+
+        Example:
+            >>> from cometa.cbor import CborMajorType
+            >>> major_type = CborMajorType.UNSIGNED_INTEGER
+            >>> major_type.to_string()
+            'Unsigned Integer'
+        """
+        result = lib.cardano_cbor_major_type_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

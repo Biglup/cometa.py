@@ -16,6 +16,9 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
+
 class CborReaderState(IntEnum):
     """
     Specifies the state of a CborReader instance.
@@ -132,3 +135,21 @@ class CborReaderState(IntEnum):
     This state is reached when the CborReader has successfully processed
     an entire CBOR document and there are no more data items to read.
     """
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this CBOR reader state.
+
+        Returns:
+            A string representation of the reader state.
+
+        Example:
+            >>> from cometa.cbor import CborReaderState
+            >>> state = CborReaderState.UNSIGNED_INTEGER
+            >>> state.to_string()
+            'Unsigned Integer'
+        """
+        result = lib.cardano_cbor_reader_state_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

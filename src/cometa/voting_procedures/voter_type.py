@@ -16,6 +16,8 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
 
 class VoterType(IntEnum):
     """
@@ -41,3 +43,21 @@ class VoterType(IntEnum):
 
     STAKE_POOL_KEY_HASH = 4
     """Represents a Stake Pool Operator (SPO) identified by a key hash."""
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this voter type.
+
+        Returns:
+            A string representation of the voter type.
+
+        Example:
+            >>> from cometa.voting_procedures import VoterType
+            >>> voter_type = VoterType.DREP_KEY_HASH
+            >>> voter_type.to_string()
+            'DRep Key Hash'
+        """
+        result = lib.cardano_voter_type_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

@@ -545,7 +545,7 @@ class TestBlockfrostUtxoParsing:
             ]
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.input.index == 0
@@ -571,7 +571,7 @@ class TestBlockfrostUtxoParsing:
             ]
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 2000000
@@ -601,7 +601,7 @@ class TestBlockfrostUtxoParsing:
             ]
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 1500000
@@ -626,7 +626,7 @@ class TestBlockfrostUtxoParsing:
             ]
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 1000000
@@ -649,7 +649,7 @@ class TestBlockfrostUtxoParsing:
             "data_hash": datum_hash
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 3000000
@@ -665,6 +665,8 @@ class TestBlockfrostUtxoParsing:
         )
 
         datum_hash = "e" * 64
+        # CBOR hex for PlutusData integer 42 (d8799f182aff = constructor 0 with fields [42])
+        inline_datum_cbor = "d8799f182aff"
 
         utxo_data = {
             "tx_hash": TX_ID_HASH,
@@ -672,11 +674,11 @@ class TestBlockfrostUtxoParsing:
             "amount": [
                 {"unit": "lovelace", "quantity": "4000000"}
             ],
-            "inline_datum": {"int": 42},  # JSON representation
+            "inline_datum": inline_datum_cbor,  # CBOR hex string
             "data_hash": datum_hash
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 4000000
@@ -697,7 +699,7 @@ class TestBlockfrostUtxoParsing:
             "reference_script_hash": "f" * 56
         }
 
-        utxo = provider._parse_utxo(TEST_ADDRESS, utxo_data)
+        utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 10000000

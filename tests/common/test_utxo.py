@@ -397,3 +397,78 @@ class TestUtxoList:
         with UtxoList() as utxo_list:
             utxo_list.add(Utxo.new(create_test_input(), create_test_output()))
             assert len(utxo_list) == 1
+
+    def test_utxo_list_erase_single(self):
+        """Test erasing a single element from the list."""
+        utxo_list = UtxoList()
+
+        for i in range(5):
+            utxo = Utxo.new(create_test_input(i), create_test_output())
+            utxo_list.add(utxo)
+
+        assert len(utxo_list) == 5
+
+        # Erase element at index 2 (third element)
+        removed = utxo_list.erase(2, 1)
+
+        # Original list should now have 4 elements
+        assert len(utxo_list) == 4
+        # Removed list should have 1 element
+        assert len(removed) == 1
+        assert removed[0].input.index == 2
+
+        # Check remaining elements
+        assert utxo_list[0].input.index == 0
+        assert utxo_list[1].input.index == 1
+        assert utxo_list[2].input.index == 3  # Was at index 3, now at 2
+        assert utxo_list[3].input.index == 4  # Was at index 4, now at 3
+
+    def test_utxo_list_erase_multiple(self):
+        """Test erasing multiple elements from the list."""
+        utxo_list = UtxoList()
+
+        for i in range(5):
+            utxo = Utxo.new(create_test_input(i), create_test_output())
+            utxo_list.add(utxo)
+
+        # Erase 2 elements starting at index 1
+        removed = utxo_list.erase(1, 2)
+
+        assert len(utxo_list) == 3
+        assert len(removed) == 2
+        assert removed[0].input.index == 1
+        assert removed[1].input.index == 2
+
+        # Check remaining elements
+        assert utxo_list[0].input.index == 0
+        assert utxo_list[1].input.index == 3
+        assert utxo_list[2].input.index == 4
+
+    def test_utxo_list_erase_negative_index(self):
+        """Test erasing with negative index."""
+        utxo_list = UtxoList()
+
+        for i in range(5):
+            utxo = Utxo.new(create_test_input(i), create_test_output())
+            utxo_list.add(utxo)
+
+        # Erase last element using negative index
+        removed = utxo_list.erase(-1, 1)
+
+        assert len(utxo_list) == 4
+        assert len(removed) == 1
+        assert removed[0].input.index == 4
+
+    def test_utxo_list_erase_default_count(self):
+        """Test erasing with default delete_count (should erase 1 element)."""
+        utxo_list = UtxoList()
+
+        for i in range(3):
+            utxo = Utxo.new(create_test_input(i), create_test_output())
+            utxo_list.add(utxo)
+
+        removed = utxo_list.erase(1)  # Using default delete_count=1
+
+        assert len(utxo_list) == 2
+        assert len(removed) == 1
+        assert removed[0].input.index == 1

@@ -15,13 +15,17 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Tuple
+from typing import Iterator, Tuple, TYPE_CHECKING
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
+from ..json.json_writer import JsonWriter
 from .asset_name import AssetName
+
+if TYPE_CHECKING:
+    from .asset_name_list import AssetNameList
 
 
 class AssetNameMap:
@@ -164,6 +168,47 @@ class AssetNameMap:
             raise CardanoError(f"Failed to get value at index {index} (error code: {err})")
         return int(value[0])
 
+    def get_key_value_at(self, index: int) -> tuple[AssetName, int]:
+        """
+        Retrieves the key-value pair at a specific index.
+
+        Args:
+            index: The index of the key-value pair to retrieve.
+
+        Returns:
+            A tuple containing the AssetName and quantity at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        if index < 0 or index >= len(self):
+            raise IndexError(f"Index {index} out of range for map of length {len(self)}")
+        key_out = ffi.new("cardano_asset_name_t**")
+        value_out = ffi.new("int64_t*")
+        err = lib.cardano_asset_name_map_get_key_value_at(self._ptr, index, key_out, value_out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key-value at index {index} (error code: {err})")
+        return (AssetName(key_out[0]), int(value_out[0]))
+
+    def get_keys(self) -> AssetNameList:
+        """
+        Retrieves all keys (asset names) from the map.
+
+        Returns:
+            An AssetNameList containing all asset names in the map.
+
+        Raises:
+            CardanoError: If retrieval fails.
+        """
+        from .asset_name_list import AssetNameList
+
+        out = ffi.new("cardano_asset_name_list_t**")
+        err = lib.cardano_asset_name_map_get_keys(self._ptr, out)
+        if err != 0:
+            raise CardanoError(f"Failed to get keys from AssetNameMap (error code: {err})")
+        return AssetNameList(out[0])
+
     def to_cbor(self, writer: CborWriter) -> None:
         """
         Serializes the asset name map to CBOR format.
@@ -177,6 +222,20 @@ class AssetNameMap:
         err = lib.cardano_asset_name_map_to_cbor(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize AssetNameMap to CBOR (error code: {err})")
+
+    def to_cip116_json(self, writer: JsonWriter) -> None:
+        """
+        Serializes this asset name map to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        err = lib.cardano_asset_name_map_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize AssetNameMap to CIP-116 JSON (error code: {err})")
 
     def add(self, other: AssetNameMap) -> AssetNameMap:
         """

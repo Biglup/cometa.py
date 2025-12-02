@@ -16,6 +16,8 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
 
 class CertificateType(IntEnum):
     """
@@ -81,3 +83,21 @@ class CertificateType(IntEnum):
 
     UPDATE_DREP = 18
     """Updates DRep information."""
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this certificate type.
+
+        Returns:
+            A string representation of the certificate type.
+
+        Example:
+            >>> from cometa.certificates import CertificateType
+            >>> cert_type = CertificateType.STAKE_REGISTRATION
+            >>> cert_type.to_string()
+            'Stake Registration'
+        """
+        result = lib.cardano_cert_type_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

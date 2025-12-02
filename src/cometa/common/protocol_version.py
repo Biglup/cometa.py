@@ -118,7 +118,6 @@ class ProtocolVersion:
             writer (JsonWriter): The JSON writer instance.
         """
         err = lib.cardano_protocol_version_to_cip116_json(self._ptr, writer._ptr)
-        # Note: Assuming generic check since JsonWriter bindings might not be fully available in context
         check_error(err, lib.cardano_protocol_version_get_last_error, self._ptr)
 
     # --------------------------------------------------------------------------

@@ -263,6 +263,25 @@ class GovernanceActionId:
         if err != 0:
             raise CardanoError(f"Failed to serialize GovernanceActionId to CBOR (error code: {err})")
 
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Converts this object to CIP-116 compliant JSON representation.
+
+        CIP-116 defines a standard JSON format for Cardano data structures.
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If conversion fails.
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_governance_action_id_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to convert to CIP-116 JSON (error code: {err})")
+
     def __eq__(self, other: object) -> bool:
         """Checks equality with another GovernanceActionId."""
         if not isinstance(other, GovernanceActionId):

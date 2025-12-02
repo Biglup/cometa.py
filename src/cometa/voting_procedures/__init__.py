@@ -19,6 +19,9 @@ from .voter_type import VoterType
 from .voter import Voter
 from .voting_procedure import VotingProcedure
 from .voting_procedures import VotingProcedures
+from .governance_action_id_list import GovernanceActionIdList
+from .voter_list import VoterList
+from .voting_procedure_list import VotingProcedureList
 
 __all__ = [
     "Vote",
@@ -26,4 +29,7 @@ __all__ = [
     "Voter",
     "VotingProcedure",
     "VotingProcedures",
+    "GovernanceActionIdList",
+    "VoterList",
+    "VotingProcedureList",
 ]

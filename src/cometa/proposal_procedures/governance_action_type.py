@@ -16,6 +16,8 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
 
 class GovernanceActionType(IntEnum):
     """
@@ -44,3 +46,21 @@ class GovernanceActionType(IntEnum):
 
     INFO = 6
     """An informational action with no direct effect on the blockchain."""
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this governance action type.
+
+        Returns:
+            A string representation of the governance action type.
+
+        Example:
+            >>> from cometa.proposal_procedures import GovernanceActionType
+            >>> action_type = GovernanceActionType.PARAMETER_CHANGE
+            >>> action_type.to_string()
+            'Parameter Change'
+        """
+        result = lib.cardano_governance_action_type_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

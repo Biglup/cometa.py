@@ -16,6 +16,9 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
+
 class CborTag(IntEnum):
     """
     Represents a CBOR semantic tag (major type 6).
@@ -90,3 +93,21 @@ class CborTag(IntEnum):
     When placed at the beginning of a CBOR document, this tag signals that the
     document is encoded in CBOR, facilitating content type detection.
     """
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this CBOR tag.
+
+        Returns:
+            A string representation of the tag.
+
+        Example:
+            >>> from cometa.cbor import CborTag
+            >>> tag = CborTag.DATE_TIME_STRING
+            >>> tag.to_string()
+            'Date Time String'
+        """
+        result = lib.cardano_cbor_tag_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

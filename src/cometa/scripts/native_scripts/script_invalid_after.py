@@ -111,6 +111,23 @@ class ScriptInvalidAfter:
                 f"Failed to serialize ScriptInvalidAfter to CBOR (error code: {err})"
             )
 
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Serializes this object to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        from ...json import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_script_invalid_after_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")
+
     @property
     def slot(self) -> int:
         """

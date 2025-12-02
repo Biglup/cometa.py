@@ -22,6 +22,7 @@ from typing import Union, List, Optional, Any, Dict
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+from ..cbor import CborReader
 from .. import CardanoError
 from ..common.network_magic import NetworkMagic
 
@@ -37,6 +38,40 @@ def _network_magic_to_prefix(magic: NetworkMagic) -> str:
     return prefixes.get(magic, "unknown")
 
 
+def _prepare_utxos_for_evaluation(utxos: List["Utxo"]) -> List:
+    """Prepare UTXOs for the evaluation endpoint."""
+    result = []
+    for utxo in utxos:
+        input_json = {
+            "id": utxo.input.id.to_hex(),
+            "index": utxo.input.index
+        }
+
+        output = utxo.output
+        output_json = {
+            "address": str(output.address),
+            "value": {
+                "ada": {
+                    "lovelace": output.value.coin
+                }
+            }
+        }
+
+        assets = output.value.multi_asset
+        if assets:
+            for policy_id, asset_map in assets.items():
+                pid_hex = policy_id.hex()
+                if pid_hex not in output_json["value"]:
+                    output_json["value"][pid_hex] = {}
+                for asset_name, qty in asset_map.items():
+                    name_hex = asset_name.hex()
+                    output_json["value"][pid_hex][name_hex] = qty
+
+        result.extend([input_json, output_json])
+
+    return result
+
+
 class BlockfrostProvider:
     """
     Provider implementation for the Blockfrost API.
@@ -48,16 +83,6 @@ class BlockfrostProvider:
     - Resolving datums
     - Submitting and confirming transactions
     - Evaluating Plutus scripts
-
-    Example:
-        >>> from cometa import NetworkMagic
-        >>> from cometa.providers import BlockfrostProvider, ProviderHandle
-        >>>
-        >>> provider = BlockfrostProvider(
-        ...     network=NetworkMagic.PREPROD,
-        ...     project_id="your_project_id"
-        ... )
-        >>> params = provider.get_parameters()
     """
 
     def __init__(
@@ -124,10 +149,131 @@ class BlockfrostProvider:
             raise CardanoError(f"Network error: {url_err.reason}") from url_err
 
     # -------------------------------------------------------------------------
+    # Internal Helpers (Script Resolution & Parsing)
+    # -------------------------------------------------------------------------
+
+    def _get_script_ref(self, script_hash: str) -> Optional["Script"]:
+        """
+        Fetch and resolve a reference script by its hash.
+        This handles both Plutus (CBOR) and Native (JSON) scripts.
+        """
+        from ..scripts import PlutusV1Script, PlutusV2Script, PlutusV3Script, NativeScript
+        from ..scripts.plutus_scripts import PlutusLanguageVersion
+
+        meta_data = self._get(f"scripts/{script_hash}")
+        if not meta_data or "type" not in meta_data:
+            return None
+
+        script_type = meta_data["type"]
+
+        if script_type == "timelock":
+            json_data = self._get(f"scripts/{script_hash}/json")
+            if not json_data or "json" not in json_data:
+                return None
+            return NativeScript.from_json(json_data["json"])
+
+        version_map = {
+            "plutusV1": PlutusLanguageVersion.V1,
+            "plutusV2": PlutusLanguageVersion.V2,
+            "plutusV3": PlutusLanguageVersion.V3,
+        }
+
+        plutus_version = version_map.get(script_type)
+        if plutus_version:
+            cbor_data = self._get(f"scripts/{script_hash}/cbor")
+            if not cbor_data or "cbor" not in cbor_data:
+                return None
+
+            cbor_bytes = bytes.fromhex(cbor_data["cbor"])
+
+            if plutus_version == PlutusLanguageVersion.V1:
+                return PlutusV1Script.new(cbor_bytes)
+
+            if plutus_version == PlutusLanguageVersion.V2:
+                return PlutusV2Script.new(cbor_bytes)
+
+            if plutus_version == PlutusLanguageVersion.V3:
+                return PlutusV3Script.new(cbor_bytes)
+
+        return None
+
+    # pylint: disable=too-many-locals,too-many-branches
+    def _parse_utxo_json(self, address: str, utxo_data: Dict) -> "Utxo":
+        """
+        Parse a Blockfrost UTXO response dictionary into a Utxo object.
+        This includes resolving Reference Scripts if present.
+        """
+        from ..common.utxo import Utxo
+        from ..common.datum import Datum
+        from ..transaction_body import TransactionInput, TransactionOutput, Value
+        from ..address import Address
+
+        tx_input = TransactionInput.from_hex(
+            utxo_data["tx_hash"],
+            utxo_data["output_index"]
+        )
+
+        lovelace = 0
+        multi_asset_dict: Dict[bytes, Dict[bytes, int]] = {}
+
+        for amount in utxo_data.get("amount", []):
+            if amount["unit"] == "lovelace":
+                lovelace = int(amount["quantity"])
+            else:
+                unit = amount["unit"]
+                if len(unit) >= 56:
+                    policy_id_hex = unit[:56]
+                    asset_name_hex = unit[56:]
+
+                    policy_id_bytes = bytes.fromhex(policy_id_hex)
+                    asset_name_bytes = bytes.fromhex(asset_name_hex) if asset_name_hex else b""
+
+                    if policy_id_bytes not in multi_asset_dict:
+                        multi_asset_dict[policy_id_bytes] = {}
+                    multi_asset_dict[policy_id_bytes][asset_name_bytes] = int(amount["quantity"])
+
+        if multi_asset_dict:
+            value = Value.from_dict([lovelace, multi_asset_dict])
+        else:
+            value = Value.from_coin(lovelace)
+
+        addr = Address.from_string(address)
+        tx_output = TransactionOutput.new(addr, lovelace)
+        tx_output.value = value
+
+        datum_hash = utxo_data.get("data_hash")
+        inline_datum_cbor = utxo_data.get("inline_datum")
+
+        if inline_datum_cbor:
+            try:
+                reader = CborReader.from_hex(inline_datum_cbor)
+                datum = Datum.from_cbor(reader)
+                tx_output.datum = datum
+            except CardanoError:
+                pass
+        elif datum_hash:
+            try:
+                datum = Datum.from_data_hash_hex(datum_hash)
+                tx_output.datum = datum
+            except CardanoError:
+                pass
+
+        script_ref_hash = utxo_data.get("reference_script_hash")
+        if script_ref_hash:
+            try:
+                script = self._get_script_ref(script_ref_hash)
+                if script:
+                    tx_output.script_ref = script
+            except CardanoError:
+                pass
+
+        return Utxo.new(tx_input, tx_output)
+
+    # -------------------------------------------------------------------------
     # Provider Protocol Implementation
     # -------------------------------------------------------------------------
 
-    def get_name(self) -> str:
+    def get_name(self) -> str: # pylint: disable=no-self-use
         """Get the provider name."""
         return "Blockfrost"
 
@@ -156,16 +302,13 @@ class BlockfrostProvider:
         if "message" in data:
             raise CardanoError(f"Blockfrost error: {data['message']}")
 
-        # Build ProtocolParameters by setting individual properties
         params = ProtocolParameters.new()
 
-        # Fee parameters
         if data.get("min_fee_a") is not None:
             params.min_fee_a = int(data["min_fee_a"])
         if data.get("min_fee_b") is not None:
             params.min_fee_b = int(data["min_fee_b"])
 
-        # Size limits
         if data.get("max_block_size") is not None:
             params.max_block_body_size = int(data["max_block_size"])
         if data.get("max_tx_size") is not None:
@@ -173,13 +316,11 @@ class BlockfrostProvider:
         if data.get("max_block_header_size") is not None:
             params.max_block_header_size = int(data["max_block_header_size"])
 
-        # Deposit parameters
         if data.get("key_deposit") is not None:
             params.key_deposit = int(data["key_deposit"])
         if data.get("pool_deposit") is not None:
             params.pool_deposit = int(data["pool_deposit"])
 
-        # Pool parameters
         if data.get("e_max") is not None:
             params.max_epoch = int(data["e_max"])
         if data.get("n_opt") is not None:
@@ -187,7 +328,6 @@ class BlockfrostProvider:
         if data.get("min_pool_cost") is not None:
             params.min_pool_cost = int(data["min_pool_cost"])
 
-        # Ratio parameters (as UnitInterval)
         if data.get("a0") is not None:
             params.pool_pledge_influence = UnitInterval.from_float(float(data["a0"]))
         if data.get("rho") is not None:
@@ -195,19 +335,16 @@ class BlockfrostProvider:
         if data.get("tau") is not None:
             params.treasury_growth_rate = UnitInterval.from_float(float(data["tau"]))
 
-        # Protocol version
         major = data.get("protocol_major_ver", 0)
         minor = data.get("protocol_minor_ver", 0)
         if major or minor:
             params.protocol_version = ProtocolVersion.new(int(major), int(minor))
 
-        # UTXO parameters
         if data.get("coins_per_utxo_word") is not None:
             params.ada_per_utxo_byte = int(data["coins_per_utxo_word"])
         elif data.get("coins_per_utxo_size") is not None:
             params.ada_per_utxo_byte = int(data["coins_per_utxo_size"])
 
-        # Plutus parameters
         if data.get("max_val_size") is not None:
             params.max_value_size = int(data["max_val_size"])
         if data.get("collateral_percent") is not None:
@@ -215,7 +352,6 @@ class BlockfrostProvider:
         if data.get("max_collateral_inputs") is not None:
             params.max_collateral_inputs = int(data["max_collateral_inputs"])
 
-        # Execution units
         max_tx_mem = data.get("max_tx_ex_mem")
         max_tx_steps = data.get("max_tx_ex_steps")
         if max_tx_mem is not None and max_tx_steps is not None:
@@ -226,7 +362,6 @@ class BlockfrostProvider:
         if max_block_mem is not None and max_block_steps is not None:
             params.max_block_ex_units = ExUnits.new(int(max_block_mem), int(max_block_steps))
 
-        # Execution costs (prices)
         price_mem = data.get("price_mem")
         price_step = data.get("price_step")
         if price_mem is not None and price_step is not None:
@@ -234,7 +369,6 @@ class BlockfrostProvider:
             step_prices = UnitInterval.from_float(float(price_step))
             params.execution_costs = ExUnitPrices.new(mem_prices, step_prices)
 
-        # Governance parameters (Conway era)
         if data.get("drep_deposit") is not None:
             params.drep_deposit = int(data["drep_deposit"])
         if data.get("drep_activity") is not None:
@@ -248,7 +382,6 @@ class BlockfrostProvider:
         if data.get("committee_max_term_length") is not None:
             params.committee_term_limit = int(data["committee_max_term_length"])
 
-        # Reference script cost
         ref_script_cost = data.get("min_fee_ref_script_cost_per_byte")
         if ref_script_cost is not None:
             params.ref_script_cost_per_byte = UnitInterval.from_float(float(ref_script_cost))
@@ -282,7 +415,7 @@ class BlockfrostProvider:
                 raise CardanoError(f"Blockfrost error: {data['message']}")
 
             for utxo_data in data:
-                utxo = self._parse_utxo(addr_str, utxo_data)
+                utxo = self._parse_utxo_json(addr_str, utxo_data)
                 results.append(utxo)
 
             if len(data) < max_page_count:
@@ -290,81 +423,6 @@ class BlockfrostProvider:
             page += 1
 
         return results
-
-    # pylint: disable=too-many-locals
-    def _parse_utxo(self, address: str, utxo_data: Dict) -> "Utxo":
-        """Parse a Blockfrost UTXO response into a Utxo object."""
-        from ..common.utxo import Utxo
-        from ..common.datum import Datum
-        from ..transaction_body import TransactionInput, TransactionOutput, Value
-        from ..address import Address
-
-        tx_input = TransactionInput.from_hex(
-            utxo_data["tx_hash"],
-            utxo_data["output_index"]
-        )
-
-        # Parse the value (lovelace and multi-assets)
-        lovelace = 0
-        multi_asset_dict: Dict[bytes, Dict[bytes, int]] = {}
-
-        for amount in utxo_data.get("amount", []):
-            if amount["unit"] == "lovelace":
-                lovelace = int(amount["quantity"])
-            else:
-                # Native token: unit is policy_id + asset_name (both hex encoded)
-                unit = amount["unit"]
-                # Policy ID is always 56 hex chars (28 bytes)
-                policy_id_hex = unit[:56]
-                asset_name_hex = unit[56:]
-
-                policy_id_bytes = bytes.fromhex(policy_id_hex)
-                asset_name_bytes = bytes.fromhex(asset_name_hex) if asset_name_hex else b""
-
-                if policy_id_bytes not in multi_asset_dict:
-                    multi_asset_dict[policy_id_bytes] = {}
-                multi_asset_dict[policy_id_bytes][asset_name_bytes] = int(amount["quantity"])
-
-        # Create value with multi-assets if present
-        if multi_asset_dict:
-            value = Value.from_dict([lovelace, multi_asset_dict])
-        else:
-            value = Value.from_coin(lovelace)
-
-        addr = Address.from_string(address)
-        tx_output = TransactionOutput.new(addr, lovelace)
-        tx_output.value = value
-
-        # Handle datum if present
-        datum_hash = utxo_data.get("data_hash")
-        inline_datum = utxo_data.get("inline_datum")
-
-        if inline_datum is not None:
-            # Inline datum - need to convert JSON to PlutusData CBOR
-            # Blockfrost returns inline_datum as JSON representation
-            # For now, we'll try to get the CBOR from the datum endpoint if hash is available
-            if datum_hash:
-                try:
-                    datum = Datum.from_data_hash_hex(datum_hash)
-                    tx_output.datum = datum
-                except CardanoError:  # pylint: disable=broad-except
-                    pass  # If we can't parse datum, continue without it
-        elif datum_hash:
-            # Datum hash reference
-            try:
-                datum = Datum.from_data_hash_hex(datum_hash)
-                tx_output.datum = datum
-            except CardanoError:  # pylint: disable=broad-except
-                pass  # If we can't parse datum, continue without it
-
-        # Handle script reference if present
-        script_ref = utxo_data.get("reference_script_hash")
-        if script_ref:
-            # Script references are more complex - would need to fetch the script
-            # For now, we store the hash but don't resolve the full script
-            pass
-
-        return Utxo.new(tx_input, tx_output)
 
     def get_rewards_balance(self, reward_account: Union["RewardAddress", str]) -> int:
         """
@@ -419,7 +477,7 @@ class BlockfrostProvider:
                 raise CardanoError(f"Blockfrost error: {data['message']}")
 
             for utxo_data in data:
-                utxo = self._parse_utxo(addr_str, utxo_data)
+                utxo = self._parse_utxo_json(addr_str, utxo_data)
                 results.append(utxo)
 
             if len(data) < max_page_count:
@@ -498,7 +556,7 @@ class BlockfrostProvider:
             for output in data.get("outputs", []):
                 if output["output_index"] == index:
                     output["tx_hash"] = tx_id
-                    utxo = self._parse_utxo(output["address"], output)
+                    utxo = self._parse_utxo_json(output["address"], output)
                     results.append(utxo)
                     break
 
@@ -587,9 +645,9 @@ class BlockfrostProvider:
 
     # pylint: disable=too-many-locals
     def evaluate_transaction(
-        self,
-        tx_cbor_hex: str,
-        additional_utxos: Union["UtxoList", List["Utxo"], None] = None,
+            self,
+            tx_cbor_hex: str,
+            additional_utxos: Union["UtxoList", List["Utxo"], None] = None,
     ) -> List["Redeemer"]:
         """
         Evaluate a transaction to get execution units for Plutus scripts.
@@ -601,15 +659,24 @@ class BlockfrostProvider:
         Returns:
             A list of Redeemer objects with computed execution units.
         """
-        from ..witness_set import Redeemer, RedeemerTag
+        from ..transaction import Transaction
+        from ..witness_set import RedeemerTag
         from ..common.ex_units import ExUnits
+
+        cbor_reader = CborReader.from_hex(tx_cbor_hex)
+        parsed_tx = Transaction.from_cbor(cbor_reader)
+        original_redeemers = parsed_tx.witness_set.redeemers
+
+        redeemer_map = {}
+        if original_redeemers:
+            for original_redeemer in original_redeemers:
+                redeemer_map[(original_redeemer.tag, original_redeemer.index)] = original_redeemer
 
         payload: Dict[str, Any] = {"cbor": tx_cbor_hex}
 
         if additional_utxos:
-            # Convert UTXOs to Blockfrost format
             utxo_list = list(additional_utxos) if hasattr(additional_utxos, "__iter__") else [additional_utxos]
-            payload["additionalUtxo"] = self._prepare_utxos_for_evaluation(utxo_list)
+            payload["additionalUtxo"] = _prepare_utxos_for_evaluation(utxo_list)
 
         data = self._post(
             "utils/txs/evaluate/utxos",
@@ -630,17 +697,15 @@ class BlockfrostProvider:
             raise CardanoError(f"Evaluation failed: {result}")
 
         eval_result = result["EvaluationResult"]
-        redeemers = []
+        updated_redeemers = []
 
         for key, ex_units in eval_result.items():
-            # Key format is "purpose:index" e.g., "spend:0"
             parts = key.split(":")
             if len(parts) != 2:
                 continue
 
             purpose, index = parts[0], int(parts[1])
 
-            # Map purpose to RedeemerTag
             tag_map = {
                 "spend": RedeemerTag.SPEND,
                 "mint": RedeemerTag.MINT,
@@ -654,34 +719,11 @@ class BlockfrostProvider:
             if tag is None:
                 continue
 
-            units = ExUnits.new(int(ex_units["memory"]), int(ex_units["steps"]))
+            redeemer = redeemer_map.get((tag, index))
 
-            # Create a minimal redeemer with the execution units
-            # The actual redeemer data would come from the transaction
-            redeemer = Redeemer.new(tag, index, None, units)
-            redeemers.append(redeemer)
+            if redeemer:
+                units = ExUnits.new(int(ex_units["memory"]), int(ex_units["steps"]))
+                redeemer.ex_units = units
+                updated_redeemers.append(redeemer)
 
-        return redeemers
-
-    def _prepare_utxos_for_evaluation(self, utxos: List["Utxo"]) -> List:
-        """Prepare UTXOs for the evaluation endpoint."""
-        result = []
-        for utxo in utxos:
-            input_json = {
-                "id": utxo.input.id.to_hex(),
-                "index": utxo.input.index
-            }
-
-            output = utxo.output
-            output_json = {
-                "address": str(output.address),
-                "value": {
-                    "ada": {
-                        "lovelace": output.value.coin
-                    }
-                }
-            }
-
-            result.extend([input_json, output_json])
-
-        return result
+        return updated_redeemers

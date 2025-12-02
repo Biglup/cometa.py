@@ -158,6 +158,29 @@ class AssetIdMap:
             raise CardanoError(f"Failed to get value at index {index} (error code: {err})")
         return int(value[0])
 
+    def get_key_value_at(self, index: int) -> tuple[AssetId, int]:
+        """
+        Retrieves the key-value pair at a specific index.
+
+        Args:
+            index: The index of the key-value pair to retrieve.
+
+        Returns:
+            A tuple containing the AssetId and quantity at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        if index < 0 or index >= len(self):
+            raise IndexError(f"Index {index} out of range for map of length {len(self)}")
+        key_out = ffi.new("cardano_asset_id_t**")
+        value_out = ffi.new("int64_t*")
+        err = lib.cardano_asset_id_map_get_key_value_at(self._ptr, index, key_out, value_out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key-value at index {index} (error code: {err})")
+        return (AssetId(key_out[0]), int(value_out[0]))
+
     def __len__(self) -> int:
         """Returns the number of entries in the map."""
         return int(lib.cardano_asset_id_map_get_length(self._ptr))

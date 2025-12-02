@@ -227,6 +227,26 @@ class Committee:
             )
         return int(value[0])
 
+    def get_key_value_at(self, index: int) -> tuple[Credential, int]:
+        """
+        Retrieves the key-value pair at a specific index.
+
+        Args:
+            index: The index of the key-value pair to retrieve.
+
+        Returns:
+            A tuple containing the Credential and term epoch at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+        """
+        key_out = ffi.new("cardano_credential_t**")
+        value_out = ffi.new("uint64_t*")
+        err = lib.cardano_committee_get_key_value_at(self._ptr, index, key_out, value_out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key-value at index {index} (error code: {err})")
+        return (Credential(key_out[0]), int(value_out[0]))
+
     def __iter__(self) -> Iterator[Credential]:
         """Iterates over all member credentials."""
         keys = self.members_keys()

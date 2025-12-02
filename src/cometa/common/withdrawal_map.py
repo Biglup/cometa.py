@@ -25,6 +25,7 @@ from ..cbor.cbor_writer import CborWriter
 
 if TYPE_CHECKING:
     from ..address.reward_address import RewardAddress
+    from .reward_address_list import RewardAddressList
 
 
 class WithdrawalMap:
@@ -208,6 +209,51 @@ class WithdrawalMap:
             )
         return int(value[0])
 
+    def get_key_value_at(self, index: int) -> tuple[RewardAddress, int]:
+        """
+        Retrieves the key-value pair at a specific index.
+
+        Args:
+            index: The index of the key-value pair to retrieve.
+
+        Returns:
+            A tuple containing the RewardAddress and withdrawal amount at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        from ..address.reward_address import RewardAddress
+
+        if index < 0 or index >= len(self):
+            raise IndexError(
+                f"Index {index} out of range for map of length {len(self)}"
+            )
+        key_out = ffi.new("cardano_reward_address_t**")
+        value_out = ffi.new("uint64_t*")
+        err = lib.cardano_withdrawal_map_get_key_value_at(self._ptr, index, key_out, value_out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key-value at index {index} (error code: {err})")
+        return (RewardAddress(key_out[0]), int(value_out[0]))
+
+    def get_keys(self) -> RewardAddressList:
+        """
+        Retrieves all keys (reward addresses) from the map.
+
+        Returns:
+            A RewardAddressList containing all reward addresses in the map.
+
+        Raises:
+            CardanoError: If retrieval fails.
+        """
+        from ..common.reward_address_list import RewardAddressList
+
+        out = ffi.new("cardano_reward_address_list_t**")
+        err = lib.cardano_withdrawal_map_get_keys(self._ptr, out)
+        if err != 0:
+            raise CardanoError(f"Failed to get keys from WithdrawalMap (error code: {err})")
+        return RewardAddressList(out[0])
+
     def __len__(self) -> int:
         """Returns the number of entries in the map."""
         return int(lib.cardano_withdrawal_map_get_length(self._ptr))
@@ -250,3 +296,20 @@ class WithdrawalMap:
         """Returns an iterator over (key, value) pairs (like Python dict)."""
         for i in range(len(self)):
             yield self.get_key_at(i), self.get_value_at(i)
+
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Serializes this object to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_withdrawal_map_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")

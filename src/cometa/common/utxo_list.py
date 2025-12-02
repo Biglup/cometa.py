@@ -208,6 +208,41 @@ class UtxoList:
             raise CardanoError("Failed to slice UtxoList")
         return UtxoList(ptr)
 
+    def erase(self, start: int, delete_count: int = 1) -> UtxoList:
+        """
+        Removes elements from the list starting at a given index.
+
+        This function removes delete_count elements from the list starting at the
+        specified index and returns a new list containing the removed elements.
+        The original list is modified in place.
+
+        Args:
+            start: The index at which to start removing elements. Supports negative
+                   indices (e.g., -1 for the last element).
+            delete_count: The number of elements to remove from the list starting
+                         at start. If delete_count exceeds the number of elements
+                         from start to the end, it will be adjusted to remove till
+                         the end. Defaults to 1.
+
+        Returns:
+            A new UtxoList containing the removed elements.
+
+        Raises:
+            CardanoError: If the erase operation fails.
+
+        Example:
+            >>> utxo_list = UtxoList.from_list([utxo1, utxo2, utxo3])
+            >>> removed = utxo_list.erase(1, 1)  # Remove second element
+            >>> print(len(utxo_list))  # Now has 2 elements
+            2
+            >>> print(len(removed))  # Removed list has 1 element
+            1
+        """
+        ptr = lib.cardano_utxo_list_erase(self._ptr, start, delete_count)
+        if ptr == ffi.NULL:
+            raise CardanoError("Failed to erase from UtxoList")
+        return UtxoList(ptr)
+
     def __add__(self, other: Union[UtxoList, List[Utxo]]) -> UtxoList:
         """Concatenates two UtxoLists using the + operator."""
         if isinstance(other, list):

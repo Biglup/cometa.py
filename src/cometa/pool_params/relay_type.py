@@ -16,6 +16,8 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
 
 class RelayType(IntEnum):
     """
@@ -32,3 +34,21 @@ class RelayType(IntEnum):
 
     MULTI_HOST_NAME = 2
     """Relay uses a multi-host name via a DNS SRV record."""
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this relay type.
+
+        Returns:
+            A string representation of the relay type.
+
+        Example:
+            >>> from cometa.pool_params import RelayType
+            >>> relay_type = RelayType.SINGLE_HOST_ADDRESS
+            >>> relay_type.to_string()
+            'Single Host Address'
+        """
+        result = lib.cardano_relay_type_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

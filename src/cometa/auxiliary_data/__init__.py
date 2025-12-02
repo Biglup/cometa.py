@@ -21,6 +21,9 @@ from .metadatum_map import MetadatumMap
 from .metadatum_label_list import MetadatumLabelList
 from .transaction_metadata import TransactionMetadata
 from .auxiliary_data import AuxiliaryData
+from .plutus_v1_script_list import PlutusV1ScriptList
+from .plutus_v2_script_list import PlutusV2ScriptList
+from .plutus_v3_script_list import PlutusV3ScriptList
 
 __all__ = [
     "AuxiliaryData",
@@ -29,5 +32,8 @@ __all__ = [
     "MetadatumLabelList",
     "MetadatumList",
     "MetadatumMap",
+    "PlutusV1ScriptList",
+    "PlutusV2ScriptList",
+    "PlutusV3ScriptList",
     "TransactionMetadata",
 ]

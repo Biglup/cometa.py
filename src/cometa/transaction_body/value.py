@@ -24,6 +24,8 @@ from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 from ..assets.multi_asset import MultiAsset
 from ..assets.asset_id_map import AssetIdMap
+from ..assets.asset_id import AssetId
+from ..assets.asset_id_list import AssetIdList
 
 
 class Value:
@@ -277,6 +279,32 @@ class Value:
                 f"Failed to serialize Value to CBOR (error code: {err})"
             )
 
+    def to_cip116_json(self, writer) -> None:
+        """
+        Serializes this value to CIP-116 JSON format.
+
+        CIP-116 defines a standard JSON representation for Cardano values.
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If serialization fails.
+
+        Example:
+            >>> from cometa.json import JsonWriter
+            >>> value = Value.from_coin(1000000)
+            >>> writer = JsonWriter()
+            >>> value.to_cip116_json(writer)
+            >>> json_str = writer.encode()
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_value_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize Value to CIP-116 JSON (error code: {err})")
+
     @property
     def coin(self) -> int:
         """
@@ -422,6 +450,21 @@ class Value:
         if err != 0:
             raise CardanoError(f"Failed to add asset (error code: {err})")
 
+    def add_asset_with_id(self, asset_id: AssetId, quantity: int) -> None:
+        """
+        Adds a specific asset to this value using an AssetId.
+
+        Args:
+            asset_id: The asset ID identifying the asset.
+            quantity: The quantity to add.
+
+        Raises:
+            CardanoError: If addition fails.
+        """
+        err = lib.cardano_value_add_asset_with_id(self._ptr, asset_id._ptr, quantity)
+        if err != 0:
+            raise CardanoError(f"Failed to add asset with ID (error code: {err})")
+
     def as_asset_map(self) -> AssetIdMap:
         """
         Returns this value as a flattened asset ID map.
@@ -469,6 +512,44 @@ class Value:
         if err != 0:
             raise CardanoError(f"Failed to subtract values (error code: {err})")
         return Value(out[0])
+
+    def get_intersection(self, other: Value) -> AssetIdList:
+        """
+        Returns a list of assets that are present in both Values.
+
+        Args:
+            other: The other Value to intersect with.
+
+        Returns:
+            An AssetIdList containing asset IDs present in both Values.
+
+        Raises:
+            CardanoError: If the operation fails.
+        """
+        out = ffi.new("cardano_asset_id_list_t**")
+        err = lib.cardano_value_get_intersection(self._ptr, other._ptr, out)
+        if err != 0:
+            raise CardanoError(f"Failed to get intersection (error code: {err})")
+        return AssetIdList(out[0])
+
+    def get_intersection_count(self, other: Value) -> int:
+        """
+        Returns the count of assets present in both Values.
+
+        Args:
+            other: The other Value to intersect with.
+
+        Returns:
+            The number of assets present in both Values.
+
+        Raises:
+            CardanoError: If the operation fails.
+        """
+        out = ffi.new("uint64_t*")
+        err = lib.cardano_value_get_intersection_count(self._ptr, other._ptr, out)
+        if err != 0:
+            raise CardanoError(f"Failed to get intersection count (error code: {err})")
+        return int(out[0])
 
     def __eq__(self, other: object) -> bool:
         """Checks equality with another Value."""

@@ -230,3 +230,20 @@ class MirToStakeCredsCert:
                 f"Failed to get key-value at index {index} (error code: {err})"
             )
         return Credential(cred_out[0]), int(amount_out[0])
+
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Serializes this certificate to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        from ..json import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_mir_to_stake_creds_cert_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")

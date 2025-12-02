@@ -209,6 +209,31 @@ class CommitteeMembersMap:
             )
         return int(value[0])
 
+    def get_key_value_at(self, index: int) -> tuple[Credential, int]:
+        """
+        Retrieves the key-value pair at a specific index.
+
+        Args:
+            index: The index of the key-value pair to retrieve.
+
+        Returns:
+            A tuple containing the Credential and term epoch at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        if index < 0 or index >= len(self):
+            raise IndexError(
+                f"Index {index} out of range for map of length {len(self)}"
+            )
+        key_out = ffi.new("cardano_credential_t**")
+        value_out = ffi.new("uint64_t*")
+        err = lib.cardano_committee_members_map_get_key_value_at(self._ptr, index, key_out, value_out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key-value at index {index} (error code: {err})")
+        return (Credential(key_out[0]), int(value_out[0]))
+
     def __len__(self) -> int:
         """Returns the number of entries in the map."""
         return int(lib.cardano_committee_members_map_get_length(self._ptr))
@@ -251,3 +276,20 @@ class CommitteeMembersMap:
         """Returns an iterator over (key, value) pairs (like Python dict)."""
         for i in range(len(self)):
             yield self.get_key_at(i), self.get_value_at(i)
+
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Serializes this object to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        from ..json import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_committee_members_map_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")

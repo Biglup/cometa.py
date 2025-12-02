@@ -215,6 +215,25 @@ class DRep:
         if err != 0:
             raise CardanoError(f"Failed to serialize DRep to CBOR (error code: {err})")
 
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Converts this object to CIP-116 compliant JSON representation.
+
+        CIP-116 defines a standard JSON format for Cardano data structures.
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If conversion fails.
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_drep_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to convert to CIP-116 JSON (error code: {err})")
+
     def __str__(self) -> str:
         """Returns the CIP-129 string representation of the DRep."""
         size = lib.cardano_drep_get_string_size(self._ptr)

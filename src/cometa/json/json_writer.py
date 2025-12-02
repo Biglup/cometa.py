@@ -15,6 +15,8 @@ limitations under the License.
 """
 
 from __future__ import annotations
+
+import json
 import typing
 from typing import Union
 
@@ -123,6 +125,13 @@ class JsonWriter:
             return ffi.string(raw_data, size).decode("utf-8")
         finally:
             lib.cardano_buffer_unref(buf_ptr)
+
+    def to_dict(self) -> dict:
+        """Parses the JSON into a Python dictionary for inspection."""
+        json_str = self.encode()
+        if not json_str:
+            return {}
+        return json.loads(json_str)
 
     # --------------------------------------------------------------------------
     # Structure

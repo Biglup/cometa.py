@@ -198,6 +198,105 @@ class BigInt:
         lib.cardano_bigint_gcd(self._ptr, other_bi._ptr, res._ptr)
         return res
 
+    def assign(self, other: BigIntLike) -> None:
+        """
+        Assigns the value of another BigInt to this BigInt in-place.
+
+        Args:
+            other (BigIntLike): The BigInt-like value to assign from.
+
+        Note:
+            Despite the C function parameter names, the actual behavior is:
+            cardano_bigint_assign(source, destination) copies FROM source TO destination.
+        """
+        other_bi = _ensure_bigint(other)
+        lib.cardano_bigint_assign(other_bi._ptr, self._ptr)
+
+    def increment(self) -> None:
+        """Increments the BigInt by 1 in-place."""
+        lib.cardano_bigint_increment(self._ptr)
+
+    def decrement(self) -> None:
+        """Decrements the BigInt by 1 in-place."""
+        lib.cardano_bigint_decrement(self._ptr)
+
+    @staticmethod
+    def max(lhs: BigIntLike, rhs: BigIntLike) -> BigInt:
+        """
+        Returns the maximum of two BigInt values.
+
+        Args:
+            lhs (BigIntLike): First value.
+            rhs (BigIntLike): Second value.
+
+        Returns:
+            BigInt: The larger of the two values.
+        """
+        a_bi = _ensure_bigint(lhs)
+        b_bi = _ensure_bigint(rhs)
+        res = _new_res()
+        lib.cardano_bigint_max(a_bi._ptr, b_bi._ptr, res._ptr)
+        return res
+
+    @staticmethod
+    def min(lhs: BigIntLike, rhs: BigIntLike) -> BigInt:
+        """
+        Returns the minimum of two BigInt values.
+
+        Args:
+            lhs (BigIntLike): First value.
+            rhs (BigIntLike): Second value.
+
+        Returns:
+            BigInt: The smaller of the two values.
+        """
+        a_bi = _ensure_bigint(lhs)
+        b_bi = _ensure_bigint(rhs)
+        res = _new_res()
+        lib.cardano_bigint_min(a_bi._ptr, b_bi._ptr, res._ptr)
+        return res
+
+    def remainder(self, divisor: BigIntLike) -> BigInt:
+        """
+        Computes the remainder of division (same as modulus operation).
+
+        Args:
+            divisor (BigIntLike): The divisor.
+
+        Returns:
+            BigInt: The remainder of self divided by divisor.
+        """
+        divisor_bi = _ensure_bigint(divisor)
+        res = _new_res()
+        lib.cardano_bigint_reminder(self._ptr, divisor_bi._ptr, res._ptr)
+        return res
+
+    def to_int(self) -> int:
+        """
+        Converts the BigInt to a Python int (bounded by int64 range).
+
+        Returns:
+            int: The integer value (int64 range: -9223372036854775808 to 9223372036854775807).
+
+        Note:
+            If the BigInt value exceeds the int64 range, the result will be truncated or wrapped.
+            For full precision conversion, use int(bigint) or str(bigint) instead.
+        """
+        return int(lib.cardano_bigint_to_int(self._ptr))
+
+    def to_unsigned_int(self) -> int:
+        """
+        Converts the BigInt to a Python int (bounded by uint64 range).
+
+        Returns:
+            int: The unsigned integer value (uint64 range: 0 to 18446744073709551615).
+
+        Note:
+            If the BigInt value exceeds the uint64 range, the result will be truncated or wrapped.
+            For full precision conversion, use int(bigint) or str(bigint) instead.
+        """
+        return int(lib.cardano_bigint_to_unsigned_int(self._ptr))
+
     # --------------------------------------------------------------------------
     # Bit Manipulation
     # --------------------------------------------------------------------------

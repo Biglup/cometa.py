@@ -16,6 +16,8 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
 
 class Vote(IntEnum):
     """
@@ -33,3 +35,21 @@ class Vote(IntEnum):
 
     ABSTAIN = 2
     """Represents an 'Abstain' vote - the voter neither supports nor opposes."""
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this vote.
+
+        Returns:
+            A string representation of the vote.
+
+        Example:
+            >>> from cometa.voting_procedures import Vote
+            >>> vote = Vote.YES
+            >>> vote.to_string()
+            'Yes'
+        """
+        result = lib.cardano_vote_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")

@@ -15,13 +15,16 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Tuple
+from typing import Iterator, Tuple, TYPE_CHECKING
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 from .metadatum import Metadatum
+
+if TYPE_CHECKING:
+    from .metadatum_label_list import MetadatumLabelList
 
 
 class TransactionMetadata:
@@ -170,6 +173,47 @@ class TransactionMetadata:
             raise CardanoError(f"Failed to get value at index {index} (error code: {err})")
         return Metadatum(out[0])
 
+    def get_key_value_at(self, index: int) -> tuple[int, Metadatum]:
+        """
+        Retrieves the key-value pair at a specific index.
+
+        Args:
+            index: The index of the key-value pair to retrieve.
+
+        Returns:
+            A tuple containing the label (int) and Metadatum at the specified index.
+
+        Raises:
+            CardanoError: If retrieval fails.
+            IndexError: If index is out of bounds.
+        """
+        if index < 0 or index >= len(self):
+            raise IndexError(f"Index {index} out of range for metadata of length {len(self)}")
+        key_out = ffi.new("uint64_t*")
+        value_out = ffi.new("cardano_metadatum_t**")
+        err = lib.cardano_transaction_metadata_get_key_value_at(self._ptr, index, key_out, value_out)
+        if err != 0:
+            raise CardanoError(f"Failed to get key-value at index {index} (error code: {err})")
+        return (int(key_out[0]), Metadatum(value_out[0]))
+
+    def get_keys(self) -> MetadatumLabelList:
+        """
+        Retrieves all keys (labels) from the metadata.
+
+        Returns:
+            A MetadatumLabelList containing all labels in the metadata.
+
+        Raises:
+            CardanoError: If retrieval fails.
+        """
+        from .metadatum_label_list import MetadatumLabelList
+
+        out = ffi.new("cardano_metadatum_label_list_t**")
+        err = lib.cardano_transaction_metadata_get_keys(self._ptr, out)
+        if err != 0:
+            raise CardanoError(f"Failed to get keys from TransactionMetadata (error code: {err})")
+        return MetadatumLabelList(out[0])
+
     def to_cbor(self, writer: CborWriter) -> None:
         """
         Serializes the transaction metadata to CBOR format.
@@ -210,3 +254,20 @@ class TransactionMetadata:
     def __setitem__(self, label: int, value: Metadatum) -> None:
         """Sets a metadatum by label using bracket notation."""
         self.insert(label, value)
+
+    def to_cip116_json(self, writer: "JsonWriter") -> None:
+        """
+        Serializes this object to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        from ..json.json_writer import JsonWriter
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+        err = lib.cardano_transaction_metadata_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")

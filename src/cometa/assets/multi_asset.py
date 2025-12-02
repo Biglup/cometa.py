@@ -22,6 +22,7 @@ from ..errors import CardanoError
 from ..cryptography.blake2b_hash import Blake2bHash
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
+from ..json.json_writer import JsonWriter
 from .asset_name import AssetName
 from .asset_name_map import AssetNameMap
 from .asset_id import AssetId
@@ -201,6 +202,20 @@ class MultiAsset:
         err = lib.cardano_multi_asset_to_cbor(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize MultiAsset to CBOR (error code: {err})")
+
+    def to_cip116_json(self, writer: JsonWriter) -> None:
+        """
+        Serializes this multi-asset to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        err = lib.cardano_multi_asset_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize MultiAsset to CIP-116 JSON (error code: {err})")
 
     def add(self, other: MultiAsset) -> MultiAsset:
         """

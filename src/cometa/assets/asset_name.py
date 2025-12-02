@@ -21,6 +21,7 @@ from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
+from ..json.json_writer import JsonWriter
 
 
 class AssetName:
@@ -206,6 +207,20 @@ class AssetName:
         err = lib.cardano_asset_name_to_cbor(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize AssetName to CBOR (error code: {err})")
+
+    def to_cip116_json(self, writer: JsonWriter) -> None:
+        """
+        Serializes this asset name to CIP-116 compliant JSON.
+
+        Args:
+            writer: The JsonWriter to write the JSON to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        err = lib.cardano_asset_name_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize AssetName to CIP-116 JSON (error code: {err})")
 
     def __len__(self) -> int:
         """Returns the length of the asset name in bytes."""

@@ -16,6 +16,9 @@ limitations under the License.
 
 from enum import IntEnum
 
+from .._ffi import lib, ffi
+
+
 class CborSimpleValue(IntEnum):
     """
     Represents a CBOR simple value (major type 7).
@@ -50,3 +53,21 @@ class CborSimpleValue(IntEnum):
     This value is used by an encoder as a substitute for a data item with an encoding problem,
     indicating the absence of meaningful or correct data.
     """
+
+    def to_string(self) -> str:
+        """
+        Returns a human-readable string representation of this CBOR simple value.
+
+        Returns:
+            A string representation of the simple value.
+
+        Example:
+            >>> from cometa.cbor import CborSimpleValue
+            >>> value = CborSimpleValue.TRUE
+            >>> value.to_string()
+            'True'
+        """
+        result = lib.cardano_cbor_simple_value_to_string(self.value)
+        if result == ffi.NULL:
+            return f"Unknown({self.value})"
+        return ffi.string(result).decode("utf-8")
