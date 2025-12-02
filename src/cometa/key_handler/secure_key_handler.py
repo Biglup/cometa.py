@@ -19,7 +19,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING, Callable, Awaitable, Union
+from typing import TYPE_CHECKING, Callable, Union
 
 if TYPE_CHECKING:
     from ..cryptography.bip32_public_key import Bip32PublicKey
@@ -103,7 +103,7 @@ class DerivationPath(AccountDerivationPath):
 
 
 # Type alias for passphrase callback
-PassphraseCallback = Callable[[], Awaitable[bytes]]
+PassphraseCallback = Callable[[], bytes]
 
 class Bip32SecureKeyHandler(ABC):
     """
@@ -117,16 +117,16 @@ class Bip32SecureKeyHandler(ABC):
     """
 
     @abstractmethod
-    async def sign_transaction(
+    def sign_transaction(
         self,
-        tx_cbor: str,
+        transaction: "Transaction",
         derivation_paths: list[DerivationPath]
     ) -> "VkeyWitnessSet":
         """
         Signs a transaction using BIP32-derived keys.
 
         Args:
-            tx_cbor: The CBOR-encoded transaction hex string to be signed.
+            transaction: The transaction to be signed.
             derivation_paths: An array of derivation paths specifying which
                 keys are required to sign the transaction.
 
@@ -139,7 +139,7 @@ class Bip32SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def sign_data(
+    def sign_data(
         self,
         data: str,
         derivation_path: DerivationPath
@@ -156,7 +156,7 @@ class Bip32SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def get_private_key(
+    def get_private_key(
         self,
         derivation_path: DerivationPath
     ) -> "Ed25519PrivateKey":
@@ -176,7 +176,7 @@ class Bip32SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def get_account_public_key(
+    def get_account_public_key(
         self,
         path: AccountDerivationPath
     ) -> "Bip32PublicKey":
@@ -195,7 +195,7 @@ class Bip32SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def serialize(self) -> bytes:
+    def serialize(self) -> bytes:
         """
         Serializes the encrypted root key and its configuration for secure storage.
         This allows the handler's state to be saved and later restored via deserialize.
@@ -217,7 +217,7 @@ class Ed25519SecureKeyHandler(ABC):
     """
 
     @abstractmethod
-    async def sign_transaction(self, transaction: str) -> "VkeyWitnessSet":
+    def sign_transaction(self, transaction: str) -> "VkeyWitnessSet":
         """
         Signs a transaction using the securely stored Ed25519 private key.
 
@@ -229,7 +229,7 @@ class Ed25519SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def sign_data(self, data: str) -> dict[str, str]:
+    def sign_data(self, data: str) -> dict[str, str]:
         """
         Signs arbitrary data using the securely stored Ed25519 private key.
 
@@ -241,7 +241,7 @@ class Ed25519SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def get_private_key(self) -> "Ed25519PrivateKey":
+    def get_private_key(self) -> "Ed25519PrivateKey":
         """
         Retrieves the securely stored private key.
 
@@ -255,7 +255,7 @@ class Ed25519SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def get_public_key(self) -> "Ed25519PublicKey":
+    def get_public_key(self) -> "Ed25519PublicKey":
         """
         Retrieves the public key corresponding to the securely stored private key.
 
@@ -264,7 +264,7 @@ class Ed25519SecureKeyHandler(ABC):
         """
 
     @abstractmethod
-    async def serialize(self) -> bytes:
+    def serialize(self) -> bytes:
         """
         Serializes the encrypted key data for secure storage.
         This allows the handler's state to be saved and later restored.

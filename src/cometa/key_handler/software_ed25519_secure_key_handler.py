@@ -17,7 +17,7 @@ limitations under the License.
 from __future__ import annotations
 
 import struct
-from typing import Callable, Awaitable
+from typing import Callable
 
 from .secure_key_handler import Ed25519SecureKeyHandler
 from ..cardano import memzero
@@ -36,20 +36,20 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
     A software-based implementation of a secure key handler for single Ed25519 keys.
 
     This class securely manages a single private key by encrypting it with a passphrase.
-    The passphrase is provided on-demand via an asynchronous callback, and the decrypted
+    The passphrase is provided on-demand via a callback, and the decrypted
     key material only exists in memory for the brief moment it's needed for an operation,
     after which it is securely wiped.
 
     Example:
-        >>> async def get_passphrase():
+        >>> def get_passphrase():
         ...     return b"my-secure-passphrase"
         >>> private_key = Ed25519PrivateKey.from_extended_hex("...")
-        >>> handler = await SoftwareEd25519SecureKeyHandler.from_ed25519_key(
+        >>> handler = SoftwareEd25519SecureKeyHandler.from_ed25519_key(
         ...     private_key=private_key,
         ...     passphrase=b"my-secure-passphrase",
         ...     get_passphrase=get_passphrase
         ... )
-        >>> public_key = await handler.get_public_key()
+        >>> public_key = handler.get_public_key()
     """
 
     _MAGIC = 0x0A0A0A0A
@@ -59,24 +59,24 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
     def __init__(
         self,
         encrypted_data: bytes,
-        get_passphrase: Callable[[], Awaitable[bytes]]
+        get_passphrase: Callable[[], bytes]
     ) -> None:
         """
         Private constructor. Use the static factory methods to create an instance.
 
         Args:
             encrypted_data: The EMIP-003 encrypted private key.
-            get_passphrase: An async function called when the passphrase is needed.
+            get_passphrase: An function called when the passphrase is needed.
         """
         self._encrypted_data = encrypted_data
         self._get_passphrase = get_passphrase
 
-    async def _get_decrypted_key(self) -> bytes:
+    def _get_decrypted_key(self) -> bytes:
         """
         A private helper method to securely get the decrypted key material on demand.
         It immediately wipes the provided passphrase after use.
         """
-        passphrase = await self._get_passphrase()
+        passphrase = self._get_passphrase()
         try:
             return emip3_decrypt(self._encrypted_data, passphrase)
         finally:
@@ -84,11 +84,11 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
                 memzero(passphrase)
 
     @classmethod
-    async def from_ed25519_key(
+    def from_ed25519_key(
         cls,
         private_key: Ed25519PrivateKey,
         passphrase: bytes,
-        get_passphrase: Callable[[], Awaitable[bytes]]
+        get_passphrase: Callable[[], bytes]
     ) -> SoftwareEd25519SecureKeyHandler:
         """
         Creates a new Ed25519-based key handler from a raw private key and a passphrase.
@@ -96,7 +96,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
         Args:
             private_key: The raw Ed25519 private key.
             passphrase: The passphrase to initially encrypt the key.
-            get_passphrase: An async function called when the passphrase is needed
+            get_passphrase: An function called when the passphrase is needed
                 for cryptographic operations.
 
         Returns:
@@ -118,7 +118,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
     def deserialize(
         cls,
         data: bytes,
-        get_passphrase: Callable[[], Awaitable[bytes]]
+        get_passphrase: Callable[[], bytes]
     ) -> SoftwareEd25519SecureKeyHandler:
         """
         Deserializes an encrypted Ed25519 key handler from a byte array.
@@ -128,7 +128,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
 
         Args:
             data: The serialized and encrypted key data.
-            get_passphrase: An async function called when the passphrase is needed.
+            get_passphrase: An function called when the passphrase is needed.
 
         Returns:
             A new instance of the key handler.
@@ -170,7 +170,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
         encrypted_data = data[10:10 + encrypted_data_size]
         return cls(bytes(encrypted_data), get_passphrase)
 
-    async def serialize(self) -> bytes:
+    def serialize(self) -> bytes:
         """
         Serializes the encrypted key data for secure storage into a binary format.
 
@@ -198,12 +198,12 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
 
         return bytes(buffer)
 
-    async def sign_transaction(self, transaction: str) -> VkeyWitnessSet:
+    def sign_transaction(self, transaction: Transaction) -> VkeyWitnessSet:
         """
         Signs a transaction using the securely stored Ed25519 private key.
 
         Args:
-            transaction: The transaction to sign, as a CBOR-encoded hex string.
+            transaction: The transaction to sign.
 
         Returns:
             A VkeyWitnessSet containing the signature.
@@ -212,11 +212,9 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
             During this operation, the private key is temporarily decrypted in
             memory and then securely wiped immediately after use.
         """
-        reader = CborReader.from_hex(transaction)
-        parsed_tx = Transaction.from_cbor(reader)
-        tx_body_hash = parsed_tx.id.to_bytes()
+        tx_body_hash = transaction.id.to_bytes()
 
-        decrypted_key = await self._get_decrypted_key()
+        decrypted_key = self._get_decrypted_key()
 
         try:
             private_key = Ed25519PrivateKey.from_extended_bytes(decrypted_key)
@@ -235,7 +233,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
             if isinstance(decrypted_key, bytearray):
                 memzero(decrypted_key)
 
-    async def sign_data(self, data: str) -> dict[str, str]:
+    def sign_data(self, data: str) -> dict[str, str]:
         """
         Signs arbitrary data using the securely stored Ed25519 private key.
 
@@ -245,7 +243,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
         Returns:
             A dict with 'signature' and 'key' (public key) as hex strings.
         """
-        decrypted_key = await self._get_decrypted_key()
+        decrypted_key = self._get_decrypted_key()
 
         try:
             private_key = Ed25519PrivateKey.from_extended_bytes(decrypted_key)
@@ -262,7 +260,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
             if isinstance(decrypted_key, bytearray):
                 memzero(decrypted_key)
 
-    async def get_private_key(self) -> Ed25519PrivateKey:
+    def get_private_key(self) -> Ed25519PrivateKey:
         """
         Retrieves the securely stored private key.
 
@@ -274,7 +272,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
             with extreme caution. The caller is responsible for securely handling
             and wiping the key from memory after use.
         """
-        decrypted_key = await self._get_decrypted_key()
+        decrypted_key = self._get_decrypted_key()
         private_key = Ed25519PrivateKey.from_extended_bytes(decrypted_key)
 
         if isinstance(decrypted_key, bytearray):
@@ -282,7 +280,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
 
         return private_key
 
-    async def get_public_key(self) -> Ed25519PublicKey:
+    def get_public_key(self) -> Ed25519PublicKey:
         """
         Retrieves the public key corresponding to the securely stored private key.
 
@@ -293,7 +291,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
             This operation requires the private key, which is temporarily decrypted
             in memory and then securely wiped immediately after use.
         """
-        decrypted_key = await self._get_decrypted_key()
+        decrypted_key = self._get_decrypted_key()
 
         try:
             private_key = Ed25519PrivateKey.from_extended_bytes(decrypted_key)

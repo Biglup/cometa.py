@@ -16,8 +16,9 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
+from ..json import JsonFormat, JsonWriter
 from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
@@ -26,6 +27,10 @@ from ..cryptography.blake2b_hash import Blake2bHash
 from ..transaction_body.transaction_body import TransactionBody
 from ..witness_set.witness_set import WitnessSet
 from ..auxiliary_data.auxiliary_data import AuxiliaryData
+
+if TYPE_CHECKING:
+    from ..cryptography.blake2b_hash_set import Blake2bHashSet
+    from ..common.utxo_list import UtxoList
 
 
 class Transaction:
@@ -134,6 +139,53 @@ class Transaction:
             raise CardanoError(
                 f"Failed to serialize Transaction to CBOR (error code: {err})"
             )
+
+    def serialize_to_cbor(self) -> str:
+        """
+        Serializes the transaction to a CBOR hex string.
+
+        Returns:
+            A hex string representing the serialized CBOR data.
+
+        Raises:
+            CardanoError: If serialization fails.
+
+        Note:
+            If this transaction was created from CBOR, the cached
+            original encoding is used to preserve the exact representation.
+        """
+        writer = CborWriter()
+        self.to_cbor(writer)
+        return writer.to_hex()
+
+    def serialize_to_json(self) -> str:
+        """
+        Serializes the transaction to a JSON string.
+
+        Returns:
+            A JSON string representing the transaction.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        json_writer = JsonWriter(JsonFormat.PRETTY)
+        self.to_cip116_json(json_writer)
+        return json_writer.encode()
+
+    def to_dict(self) -> dict:
+        """
+        Converts the transaction to a dictionary representation (follows CIP-116).
+
+        Returns:
+            A dictionary representing the transaction.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        import json
+
+        json_str = self.serialize_to_json()
+        return json.loads(json_str)
 
     def clear_cbor_cache(self) -> None:
         """
@@ -331,3 +383,44 @@ class Transaction:
             raise CardanoError(
                 f"Failed to apply vkey witnesses (error code: {err})"
             )
+
+    def get_unique_signers(
+        self, resolved_inputs: Optional["UtxoList"] = None
+    ) -> "Blake2bHashSet":
+        """
+        Extracts the unique set of public key hashes required to sign this transaction.
+
+        This method computes the required signers by analyzing the transaction body
+        and an optional list of resolved input UTxOs.
+
+        Args:
+            resolved_inputs: An optional UtxoList containing the resolved UTxOs
+                that are spent by the transaction. If None or empty, the function
+                won't resolve signers from inputs or collateral inputs. If provided,
+                they must account for all inputs and collateral inputs in the
+                transaction or the function will fail.
+
+        Returns:
+            A Blake2bHashSet containing the unique public key hashes (signers)
+            required to authorize the transaction.
+
+        Raises:
+            CardanoError: If computing the unique signers fails.
+
+        Example:
+            >>> from cometa import Transaction, UtxoList, CborReader
+            >>> tx = Transaction.from_cbor(CborReader.from_hex(tx_cbor_hex))
+            >>> signers = tx.get_unique_signers(resolved_utxos)
+            >>> for signer in signers:
+            ...     print(signer.to_hex())
+        """
+        from ..cryptography.blake2b_hash_set import Blake2bHashSet
+
+        out = ffi.new("cardano_blake2b_hash_set_t**")
+        inputs_ptr = resolved_inputs._ptr if resolved_inputs is not None else ffi.NULL
+        err = lib.cardano_transaction_get_unique_signers(self._ptr, inputs_ptr, out)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to get unique signers from transaction (error code: {err})"
+            )
+        return Blake2bHashSet(out[0])

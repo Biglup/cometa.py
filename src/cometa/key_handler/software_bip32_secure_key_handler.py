@@ -17,7 +17,7 @@ limitations under the License.
 from __future__ import annotations
 
 import struct
-from typing import Callable, Awaitable
+from typing import Callable
 
 from .secure_key_handler import (
     AccountDerivationPath,
@@ -42,19 +42,19 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
     hierarchical deterministic keys.
 
     This class securely manages a root key by encrypting it with a passphrase.
-    The passphrase is provided on-demand via an asynchronous callback, and the
+    The passphrase is provided on-demand via a callback, and the
     decrypted key material only exists in memory for the brief moment it's needed
     for an operation, after which it is securely wiped.
 
     Example:
-        >>> async def get_passphrase():
+        >>> def get_passphrase():
         ...     return b"my-secure-passphrase"
         >>> handler = SoftwareBip32SecureKeyHandler.from_entropy(
         ...     entropy=my_entropy,
         ...     passphrase=b"my-secure-passphrase",
         ...     get_passphrase=get_passphrase
         ... )
-        >>> account_key = await handler.get_account_public_key(account_path)
+        >>> account_key = handler.get_account_public_key(account_path)
     """
 
     _MAGIC = 0x0A0A0A0A
@@ -64,24 +64,24 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
     def __init__(
         self,
         encrypted_data: bytes,
-        get_passphrase: Callable[[], Awaitable[bytes]]
+        get_passphrase: Callable[[], bytes]
     ) -> None:
         """
         Private constructor. Use the static factory methods to create an instance.
 
         Args:
             encrypted_data: The EMIP-003 encrypted entropy.
-            get_passphrase: An async function called when the passphrase is needed.
+            get_passphrase: An function called when the passphrase is needed.
         """
         self._encrypted_data = encrypted_data
         self._get_passphrase = get_passphrase
 
-    async def _get_decrypted_seed(self) -> bytes:
+    def _get_decrypted_seed(self) -> bytes:
         """
         A private helper method to securely get the decrypted seed on demand.
         It immediately wipes the provided passphrase after use.
         """
-        passphrase = await self._get_passphrase()
+        passphrase = self._get_passphrase()
         try:
             return emip3_decrypt(self._encrypted_data, passphrase)
         finally:
@@ -93,7 +93,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
         cls,
         entropy: bytes,
         passphrase: bytes,
-        get_passphrase: Callable[[], Awaitable[bytes]]
+        get_passphrase: Callable[[], bytes]
     ) -> SoftwareBip32SecureKeyHandler:
         """
         Creates a new BIP32-based key handler from entropy and a passphrase.
@@ -101,7 +101,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
         Args:
             entropy: The entropy bytes for the root key.
             passphrase: The passphrase to initially encrypt the key.
-            get_passphrase: An async function called when the passphrase is needed
+            get_passphrase: An function called when the passphrase is needed
                 for cryptographic operations.
 
         Returns:
@@ -118,7 +118,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
     def deserialize(
         cls,
         data: bytes,
-        get_passphrase: Callable[[], Awaitable[bytes]]
+        get_passphrase: Callable[[], bytes]
     ) -> SoftwareBip32SecureKeyHandler:
         """
         Deserializes an encrypted key handler from a byte array.
@@ -128,7 +128,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
 
         Args:
             data: The serialized and encrypted key data.
-            get_passphrase: An async function called when the passphrase is needed.
+            get_passphrase: An function called when the passphrase is needed.
 
         Returns:
             A new instance of the key handler.
@@ -170,7 +170,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
         encrypted_data = data[10:10 + encrypted_data_size]
         return cls(bytes(encrypted_data), get_passphrase)
 
-    async def serialize(self) -> bytes:
+    def serialize(self) -> bytes:
         """
         Serializes the encrypted key data for secure storage into a binary format.
 
@@ -198,16 +198,16 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
 
         return bytes(final_buffer)
 
-    async def sign_transaction(  # pylint: disable=too-many-locals
+    def sign_transaction(  # pylint: disable=too-many-locals
         self,
-        tx_cbor: str,
+        transaction: Transaction,
         derivation_paths: list[DerivationPath]
     ) -> VkeyWitnessSet:
         """
         Signs a transaction using BIP32-derived keys.
 
         Args:
-            tx_cbor: The transaction to sign, as a CBOR-encoded hex string.
+            transaction: The transaction to sign.
             derivation_paths: The paths to the keys needed for signing.
 
         Returns:
@@ -225,12 +225,10 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
                 "Derivation paths are required for signing with a BIP32 key handler."
             )
 
-        reader = CborReader.from_hex(tx_cbor)
-        transaction = Transaction.from_cbor(reader)
         tx_body_hash = transaction.id.to_bytes()
 
         witness_set = VkeyWitnessSet()
-        entropy = await self._get_decrypted_seed()
+        entropy = self._get_decrypted_seed()
 
         try:
             root_key = Bip32PrivateKey.from_bip39_entropy(b"", entropy)
@@ -259,7 +257,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
 
         return witness_set
 
-    async def sign_data(
+    def sign_data(
         self,
         data: str,
         derivation_path: DerivationPath
@@ -274,7 +272,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
         Returns:
             A dict with 'signature' and 'key' (public key) as hex strings.
         """
-        entropy = await self._get_decrypted_seed()
+        entropy = self._get_decrypted_seed()
 
         try:
             root_key = Bip32PrivateKey.from_bip39_entropy(b"", entropy)
@@ -300,7 +298,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
             if isinstance(entropy, bytearray):
                 memzero(entropy)
 
-    async def get_private_key(
+    def get_private_key(
         self,
         derivation_path: DerivationPath
     ) -> Ed25519PrivateKey:
@@ -318,7 +316,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
             with extreme caution. The caller is responsible for securely handling
             and wiping the key from memory after use.
         """
-        entropy = await self._get_decrypted_seed()
+        entropy = self._get_decrypted_seed()
 
         try:
             root_key = Bip32PrivateKey.from_bip39_entropy(b"", entropy)
@@ -335,7 +333,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
             if isinstance(entropy, bytearray):
                 memzero(entropy)
 
-    async def get_account_public_key(
+    def get_account_public_key(
         self,
         path: AccountDerivationPath
     ) -> Bip32PublicKey:
@@ -352,7 +350,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
             This operation requires the root key, which is temporarily decrypted
             in memory and then securely wiped immediately after use.
         """
-        entropy = await self._get_decrypted_seed()
+        entropy = self._get_decrypted_seed()
 
         try:
             root_key = Bip32PrivateKey.from_bip39_entropy(b"", entropy)

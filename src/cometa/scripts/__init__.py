@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from .script_language import ScriptLanguage
-from .script import Script
+from .script import Script, ScriptLike, PlutusScriptLike
 
 from .native_scripts import (
     NativeScriptType,
@@ -41,6 +41,7 @@ __all__ = [
     # Script types
     "ScriptLanguage",
     "Script",
+    "ScriptLike",
     # Native scripts
     "NativeScriptType",
     "NativeScriptList",
@@ -57,4 +58,5 @@ __all__ = [
     "PlutusV1Script",
     "PlutusV2Script",
     "PlutusV3Script",
+    "PlutusScriptLike",
 ]

@@ -16,6 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
+from .native_script import NativeScript
 from ..._ffi import ffi, lib
 from ...errors import CardanoError
 from ...cbor.cbor_reader import CborReader
@@ -162,6 +163,28 @@ class ScriptPubkey:
 
         if err != 0:
             raise CardanoError(f"Failed to set key hash (error code: {err})")
+
+    @property
+    def hash(self) -> bytes:
+        """
+        The hash of this native script.
+
+        Returns:
+            The 28-byte Blake2b hash.
+        """
+        native = NativeScript.from_pubkey(self)
+        ptr = lib.cardano_native_script_get_hash(native._ptr)
+        if ptr == ffi.NULL:
+            raise CardanoError("Failed to get script hash")
+
+        data_ptr = lib.cardano_blake2b_hash_get_data(ptr)
+        size = lib.cardano_blake2b_hash_get_bytes_size(ptr)
+        result = bytes(ffi.buffer(data_ptr, size))
+
+        hash_ptr = ffi.new("cardano_blake2b_hash_t**", ptr)
+        lib.cardano_blake2b_hash_unref(hash_ptr)
+
+        return result
 
     def __eq__(self, other: object) -> bool:
         """Checks equality with another ScriptPubkey."""

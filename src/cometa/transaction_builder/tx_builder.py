@@ -18,11 +18,17 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Optional, Union, List, TYPE_CHECKING
+import datetime
+import time
+from typing import Optional, Union, List, TYPE_CHECKING, Dict, Any
 
+from ..scripts import Script, ScriptLike, PlutusV2Script, PlutusV3Script, NativeScriptLike, PlutusV1Script
+from ..providers import Provider, ProviderHandle
 from ..common.network_id import NetworkId
 from .._ffi import ffi, lib
-from ..errors import CardanoError
+from ..errors import CardanoError, cardano_error_to_string
+from ..cryptography import Blake2bHash
+from ..assets import AssetId, AssetName
 
 from .coin_selection import (
     CoinSelectorHandle,
@@ -35,14 +41,11 @@ from .evaluation import (
 
 if TYPE_CHECKING:
     from ..protocol_params import ProtocolParameters
-    from ..providers import ProviderHandle, CProviderWrapper
     from ..address import Address, RewardAddress
     from ..common import UtxoList, Utxo
     from ..transaction import Transaction
     from ..transaction_body import TransactionOutput, Value
     from ..plutus_data import PlutusData, Datum, Script
-    from ..cryptography import Blake2bHash
-    from ..assets import AssetId, AssetName
     from ..common import (
         DRep,
         Voter,
@@ -97,8 +100,8 @@ class TxBuilder:
 
     def __init__(
         self,
-        protocol_params: "ProtocolParameters",
-        provider: "ProviderHandle",
+        protocol_params: ProtocolParameters,
+        provider: Provider,
     ) -> None:
         """
         Create a new transaction builder.
@@ -120,7 +123,8 @@ class TxBuilder:
             >>>
             >>> builder = TxBuilder(protocol_params, provider)
         """
-        self._ptr = lib.cardano_tx_builder_new(protocol_params._ptr, provider.ptr)
+        self._provider = ProviderHandle(provider)
+        self._ptr = lib.cardano_tx_builder_new(protocol_params._ptr, self._provider.ptr)
         if self._ptr == ffi.NULL:
             raise CardanoError("Failed to create transaction builder")
 
@@ -474,6 +478,102 @@ class TxBuilder:
             lib.cardano_tx_builder_set_invalid_before_ex(self._ptr, unix_time)
         return self
 
+    def expires_in(self, seconds: int) -> "TxBuilder":
+        """
+        Sets the transaction to be valid for a specific duration from now.
+
+        This is a convenience method that calculates a future expiration date and sets it.
+        The transaction will be marked as invalid if it is not included in a block
+        within the specified duration.
+
+        Args:
+            seconds: The number of seconds from now that the transaction should remain valid.
+
+        Returns:
+            Self for method chaining.
+
+        Example:
+            >>> # Set the transaction to expire in 3 minutes (180 seconds) from now.
+            >>> builder.expires_in(180)
+        """
+        now = int(time.time())
+        return self.set_valid_until(unix_time=now + seconds)
+
+    def expires_after(self, date: datetime) -> "TxBuilder":
+        """
+        Sets the transaction's expiration to a specific, absolute date and time.
+
+        This function marks the transaction as invalid if it is not included in a block
+        before the specified date.
+
+        Args:
+            date: The absolute date and time after which the transaction will be invalid.
+
+        Returns:
+            Self for method chaining.
+
+        Example:
+            >>> # Set the transaction to expire on New Year's Day, 2026.
+            >>> from datetime import datetime, timezone
+            >>> expiry_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+            >>> builder.expires_after(expiry_date)
+        """
+        unix_time = int(date.timestamp())
+        return self.set_valid_until(unix_time=unix_time)
+
+    def set_invalid_before(self, slot: int) -> "TxBuilder":
+        """
+        Sets the transaction's validity start time using an absolute slot number.
+
+        This function marks the transaction as invalid if it is included in a block
+        created before the specified slot.
+
+        Args:
+            slot: The absolute slot number before which this transaction is invalid.
+
+        Returns:
+            Self for method chaining.
+        """
+        return self.set_valid_from(slot=slot)
+
+    def valid_from_date(self, date: datetime) -> "TxBuilder":
+        """
+        Sets the transaction's validity start time to a specific, absolute date and time.
+        The transaction will be invalid if processed before this date.
+
+        Args:
+            date: The absolute date and time from which the transaction will be valid.
+
+        Returns:
+            Self for method chaining.
+
+        Example:
+            >>> # Make the transaction valid starting on New Year's Day, 2026.
+            >>> from datetime import datetime, timezone
+            >>> start_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+            >>> builder.valid_from_date(start_date)
+        """
+        unix_time = int(date.timestamp())
+        return self.set_valid_from(unix_time=unix_time)
+
+    def valid_after(self, seconds: int) -> "TxBuilder":
+        """
+        Sets the transaction to become valid only after a specified duration from now.
+        This is a convenience method that calculates a future start date.
+
+        Args:
+            seconds: The number of seconds from now to wait before the transaction becomes valid.
+
+        Returns:
+            Self for method chaining.
+
+        Example:
+            >>> # Make the transaction valid only after 1 hour (3600 seconds) has passed.
+            >>> builder.valid_after(3600)
+        """
+        now = int(time.time())
+        return self.set_valid_from(unix_time=now + seconds)
+
     def send_lovelace(
         self,
         address: Union["Address", str],
@@ -712,7 +812,7 @@ class TxBuilder:
 
     def mint_token(
         self,
-        policy_id: Union["Blake2bHash", str],
+        policy_id: Union["Blake2bHash", str, bytes],
         asset_name: Union["AssetName", str, bytes],
         amount: int,
         redeemer: Optional["PlutusData"] = None,
@@ -724,13 +824,12 @@ class TxBuilder:
         (negative amount) under the specified policy.
 
         Args:
-            policy_id: The minting policy hash. Can be a ``Blake2bHash`` object
-                or a hex-encoded string.
+            policy_id: The minting policy hash. Can be a ``Blake2bHash`` object,
+                the raw bytes, or a hex-encoded string.
             asset_name: The token name. Can be an ``AssetName`` object, hex string,
                 or raw bytes. Empty string for ADA-like unnamed tokens.
             amount: Number of tokens to mint (positive) or burn (negative).
-            redeemer: The redeemer for Plutus minting policies. Not needed
-                for native script policies.
+            redeemer: The redeemer for Plutus minting policies.
 
         Returns:
             Self for method chaining.
@@ -749,30 +848,44 @@ class TxBuilder:
         """
         redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
 
-        if isinstance(policy_id, str) and isinstance(asset_name, (str, bytes)):
-            policy_bytes = policy_id.encode("utf-8") if isinstance(policy_id, str) else policy_id
-            if isinstance(asset_name, str):
-                name_bytes = asset_name.encode("utf-8")
-            else:
-                name_bytes = asset_name
-            lib.cardano_tx_builder_mint_token_ex(
-                self._ptr,
-                policy_bytes,
-                len(policy_bytes),
-                name_bytes,
-                len(name_bytes),
-                amount,
-                redeemer_ptr,
-            )
+        if isinstance(policy_id, Blake2bHash):
+            policy_obj = policy_id
+        elif isinstance(policy_id, str):
+            policy_obj = Blake2bHash.from_hex(policy_id.strip())
+        elif isinstance(policy_id, (bytes, bytearray, memoryview)):
+            policy_obj = Blake2bHash.from_bytes(bytes(policy_id))
         else:
-            lib.cardano_tx_builder_mint_token(
-                self._ptr, policy_id._ptr, asset_name._ptr, amount, redeemer_ptr
-            )
+            raise TypeError("policy_id must be Blake2bHash, hex string, or bytes")
+
+        if isinstance(asset_name, AssetName):
+            name_obj = asset_name
+        elif isinstance(asset_name, str):
+            s = asset_name
+
+            if s == "":
+                name_bytes = b""
+            else:
+                name_bytes = bytes.fromhex(s.strip())
+
+            name_obj = AssetName.from_bytes(name_bytes)
+        elif isinstance(asset_name, (bytes, bytearray, memoryview)):
+            name_obj = AssetName.from_bytes(bytes(asset_name))
+        else:
+            raise TypeError("asset_name must be AssetName, string, or bytes")
+
+        lib.cardano_tx_builder_mint_token(
+            self._ptr,
+            policy_obj._ptr,
+            name_obj._ptr,
+            amount,
+            redeemer_ptr,
+        )
+
         return self
 
     def mint_token_with_id(
         self,
-        asset_id: Union["AssetId", str],
+        asset_id: Union["AssetId", str, bytes],
         amount: int,
         redeemer: Optional["PlutusData"] = None,
     ) -> TxBuilder:
@@ -800,18 +913,42 @@ class TxBuilder:
         """
         redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
 
-        if isinstance(asset_id, str):
-            id_bytes = asset_id.encode("utf-8")
-            lib.cardano_tx_builder_mint_token_with_id_ex(
-                self._ptr, id_bytes, len(id_bytes), amount, redeemer_ptr
-            )
-        else:
+        if isinstance(asset_id, AssetId):
             lib.cardano_tx_builder_mint_token_with_id(
-                self._ptr, asset_id._ptr, amount, redeemer_ptr
+                self._ptr,
+                asset_id._ptr,
+                amount,
+                redeemer_ptr,
             )
-        return self
+            return self
 
-    def add_script(self, script: "Script") -> TxBuilder:
+        if isinstance(asset_id, str):
+            id_bytes = asset_id.strip().lower().encode("ascii")
+            lib.cardano_tx_builder_mint_token_with_id_ex(
+                self._ptr,
+                id_bytes,
+                len(id_bytes),
+                amount,
+                redeemer_ptr,
+            )
+            return self
+
+        if isinstance(asset_id, (bytes, bytearray, memoryview)):
+            raw = bytes(asset_id)
+            hex_str = raw.hex()
+            id_bytes = hex_str.encode("ascii")
+            lib.cardano_tx_builder_mint_token_with_id_ex(
+                self._ptr,
+                id_bytes,
+                len(id_bytes),
+                amount,
+                redeemer_ptr,
+            )
+            return self
+
+        raise TypeError("asset_id must be AssetId, hex string, or bytes")
+
+    def add_script(self, script: "ScriptLike") -> TxBuilder:
         """
         Add a script to the transaction witness set.
 
@@ -832,6 +969,20 @@ class TxBuilder:
             >>> builder.add_script(minting_policy)
             >>> builder.add_script(spending_validator)
         """
+        if isinstance(script, NativeScriptLike):
+            script = Script.from_native(script)
+        elif isinstance(script, PlutusV1Script):
+            script = Script.from_plutus_v1(script)
+        elif isinstance(script, PlutusV2Script):
+            script = Script.from_plutus_v2(script)
+        elif isinstance(script, PlutusV3Script):
+            script = Script.from_plutus_v3(script)
+        else:
+            if not isinstance(script, Script):
+                raise TypeError(
+                    f"Expected Script, NativeScript or PlutusScript type, got {type(script).__name__}"
+                )
+
         lib.cardano_tx_builder_add_script(self._ptr, script._ptr)
         return self
 
@@ -905,9 +1056,9 @@ class TxBuilder:
     # =========================================================================
 
     def set_metadata(
-        self,
-        tag: int,
-        metadata: Union["Metadatum", str],
+            self,
+            tag: int,
+            metadata: Union["Metadatum", str, Dict[Any, Any], List[Any]],
     ) -> TxBuilder:
         """
         Add metadata to the transaction.
@@ -920,21 +1071,35 @@ class TxBuilder:
         - Application-specific data
 
         Args:
-            tag: The metadata label (0 to 2^64-1). Different tags are used
-                for different metadata standards.
-            metadata: The metadata content. Can be a ``Metadatum`` object
-                or a JSON string that will be parsed.
+            tag: The metadata label (0 to 2^64-1).
+            metadata: The metadata content. Can be:
+                - A ``Metadatum`` object.
+                - A Python ``dict`` or ``list`` (will be serialized to JSON).
+                - A JSON ``str``.
 
         Returns:
             Self for method chaining.
 
         Example:
-            >>> # Add NFT metadata
-            >>> builder.set_metadata(721, nft_metadata)
+            >>> # Add NFT metadata using a dict
+            >>> metadata = {
+            ...    "eb7e6282971727598462d39d7627bfa6fbbbf56496cb91b76840affb": {
+            ...        "BerryOnyx": {
+            ...            "color": "#0F0F0F",
+            ...            "image": "ipfs://ipfs/QmS7w3Q5oVL9NE1gJnsMVPp6fcxia1e38cRT5pE5mmxawL",
+            ...            "name": "Berry Onyx"
+            ...         },
+            ...     }
+            ... }
+            >>> builder.set_metadata(721, metadata)
             >>>
-            >>> # Add JSON metadata
+            >>> # Add JSON string directly
             >>> builder.set_metadata(674, '{"msg": "Hello Cardano!"}')
         """
+        if isinstance(metadata, (dict, list)):
+            import json
+            metadata = json.dumps(metadata)
+
         if isinstance(metadata, str):
             json_bytes = metadata.encode("utf-8")
             lib.cardano_tx_builder_set_metadata_ex(
@@ -942,6 +1107,7 @@ class TxBuilder:
             )
         else:
             lib.cardano_tx_builder_set_metadata(self._ptr, tag, metadata._ptr)
+
         return self
 
     def withdraw_rewards(
@@ -1613,7 +1779,7 @@ class TxBuilder:
         if err != 0:
             error_msg = self.get_last_error()
             raise CardanoError(
-                f"Failed to build transaction (error code: {err}): {error_msg}"
+                f"Failed to build transaction (error code: {err} - {cardano_error_to_string(err)}): {error_msg}"
             )
 
         return Transaction(tx_out[0])

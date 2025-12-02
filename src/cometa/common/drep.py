@@ -234,7 +234,7 @@ class DRep:
         if err != 0:
             raise CardanoError(f"Failed to convert to CIP-116 JSON (error code: {err})")
 
-    def __str__(self) -> str:
+    def to_cip129_string(self) -> str:
         """Returns the CIP-129 string representation of the DRep."""
         size = lib.cardano_drep_get_string_size(self._ptr)
         if size == 0:
@@ -244,6 +244,10 @@ class DRep:
         if err != 0:
             raise CardanoError(f"Failed to convert DRep to string (error code: {err})")
         return ffi.string(buf).decode("utf-8")
+
+    def __str__(self) -> str:
+        """Returns the CIP-129 string representation of the DRep."""
+        return self.to_cip129_string()
 
     def __eq__(self, other: object) -> bool:
         """Checks equality with another DRep."""

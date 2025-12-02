@@ -114,6 +114,7 @@ from .voting_procedures import (
 from .scripts import (
     PlutusLanguageVersion,
     Script,
+    ScriptLike,
     ScriptLanguage,
     NativeScriptType,
     NativeScriptList,
@@ -128,6 +129,7 @@ from .scripts import (
     PlutusV1Script,
     PlutusV2Script,
     PlutusV3Script,
+    PlutusScriptLike,
 )
 from .protocol_params import (
     ExUnitPrices,
@@ -257,6 +259,9 @@ from .transaction_builder import (
     TxBuilder,
 )
 
+from .providers import Provider, ProviderProtocol, BlockfrostProvider
+from .message_signing import sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
+
 __all__ = [
     # Common
     "Anchor",
@@ -372,6 +377,7 @@ __all__ = [
     # Scripts
     "PlutusLanguageVersion",
     "Script",
+    "ScriptLike",
     "ScriptLanguage",
     "NativeScriptType",
     "NativeScriptList",
@@ -386,6 +392,7 @@ __all__ = [
     "PlutusV1Script",
     "PlutusV2Script",
     "PlutusV3Script",
+    "PlutusScriptLike",
     # Protocol Params
     "ExUnitPrices",
     "CostModel",
@@ -510,4 +517,11 @@ __all__ = [
     "SecureKeyHandler",
     "SoftwareBip32SecureKeyHandler",
     "SoftwareEd25519SecureKeyHandler",
+    # Providers
+    "Provider",
+    "ProviderProtocol",
+    "BlockfrostProvider",
+    # Message Signing
+    "cip8_sign",
+    "cip8_sign_with_key_hash",
 ]

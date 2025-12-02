@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from ._ffi import ffi
+from ._ffi import ffi, lib
 
 class CardanoError(Exception):
     """Generic error raised when a libcardano-c call fails."""
@@ -28,3 +28,11 @@ def check_error(err: int, get_last_error_fn, ctx_ptr) -> None:
         else:
             msg = "Unknown libcardano-c error"
         raise CardanoError(msg)
+
+def cardano_error_to_string(err: int) -> str:
+    """Convert an error code to a string"""
+    result = lib.cardano_error_to_string(err)
+    if result == ffi.NULL:
+        return "Unknown error."
+
+    return ffi.string(result).decode("utf-8")

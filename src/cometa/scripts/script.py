@@ -16,7 +16,7 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union, Any
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -26,10 +26,49 @@ from .script_language import ScriptLanguage
 
 if TYPE_CHECKING:
     from .native_scripts.native_script import NativeScript
+    from .native_scripts.script_pubkey import ScriptPubkey
+    from .native_scripts.script_all import ScriptAll
+    from .native_scripts.script_any import ScriptAny
+    from .native_scripts.script_n_of_k import ScriptNOfK
+    from .native_scripts.script_invalid_before import ScriptInvalidBefore
+    from .native_scripts.script_invalid_after import ScriptInvalidAfter
     from .plutus_scripts.plutus_v1_script import PlutusV1Script
     from .plutus_scripts.plutus_v2_script import PlutusV2Script
     from .plutus_scripts.plutus_v3_script import PlutusV3Script
 
+    NativeScriptLike = Union[
+        NativeScript,
+        ScriptPubkey,
+        ScriptAll,
+        ScriptAny,
+        ScriptNOfK,
+        ScriptInvalidBefore,
+        ScriptInvalidAfter,
+    ]
+
+    ScriptLike = Union[
+        NativeScript,
+        ScriptPubkey,
+        ScriptAll,
+        ScriptAny,
+        ScriptNOfK,
+        ScriptInvalidBefore,
+        ScriptInvalidAfter,
+        PlutusV1Script,
+        PlutusV2Script,
+        PlutusV3Script,
+    ]
+
+    PlutusScriptLike = Union[
+        PlutusV1Script,
+        PlutusV2Script,
+        PlutusV3Script,
+    ]
+else:
+    # At runtime, we use Any to avoid circular imports
+    NativeScriptLike = Any # pylint: disable=invalid-name
+    ScriptLike = Any  # pylint: disable=invalid-name
+    PlutusScriptLike = Any  # pylint: disable=invalid-name
 
 class Script:
     """
@@ -61,7 +100,7 @@ class Script:
         return f"Script(language={self.language.name}, hash={self.hash.hex()})"
 
     @classmethod
-    def from_native(cls, native_script: NativeScript) -> Script:
+    def from_native(cls, native_script: NativeScriptLike) -> Script:
         """
         Creates a Script from a NativeScript.
 
@@ -74,6 +113,33 @@ class Script:
         Raises:
             CardanoError: If creation fails.
         """
+        from .native_scripts.native_script import NativeScript
+        from .native_scripts.script_pubkey import ScriptPubkey
+        from .native_scripts.script_all import ScriptAll
+        from .native_scripts.script_any import ScriptAny
+        from .native_scripts.script_n_of_k import ScriptNOfK
+        from .native_scripts.script_invalid_before import ScriptInvalidBefore
+        from .native_scripts.script_invalid_after import ScriptInvalidAfter
+
+        # Convert specific script types to NativeScript
+        if isinstance(native_script, ScriptPubkey):
+            native_script = NativeScript.from_pubkey(native_script)
+        elif isinstance(native_script, ScriptAll):
+            native_script = NativeScript.from_all(native_script)
+        elif isinstance(native_script, ScriptAny):
+            native_script = NativeScript.from_any(native_script)
+        elif isinstance(native_script, ScriptNOfK):
+            native_script = NativeScript.from_n_of_k(native_script)
+        elif isinstance(native_script, ScriptInvalidBefore):
+            native_script = NativeScript.from_invalid_before(native_script)
+        elif isinstance(native_script, ScriptInvalidAfter):
+            native_script = NativeScript.from_invalid_after(native_script)
+        else:
+            if not isinstance(native_script, NativeScript):
+                raise TypeError(
+                    f"Expected NativeScript or native script type, got {type(native_script).__name__}"
+                )
+
         out = ffi.new("cardano_script_t**")
         err = lib.cardano_script_new_native(native_script._ptr, out)
         if err != 0:
