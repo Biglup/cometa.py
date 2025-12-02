@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Union, Iterable
+from collections.abc import Sequence
+from typing import Iterable, Iterator, Optional, Union
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -40,7 +41,7 @@ def _to_metadatum(value: MetadatumLike) -> Metadatum:
     raise TypeError(f"Cannot convert {type(value).__name__} to Metadatum")
 
 
-class MetadatumList:
+class MetadatumList(Sequence["Metadatum"]):
     """
     Represents a list of metadatum values.
 
@@ -245,3 +246,41 @@ class MetadatumList:
         err = lib.cardano_metadatum_list_to_cip116_json(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")
+    def index(self, value: Metadatum, start: int = 0, stop: Optional[int] = None) -> int:
+        """
+        Returns the index of the first occurrence of value.
+
+        Args:
+            value: The value to search for.
+            start: Start searching from this index.
+            stop: Stop searching at this index.
+
+        Returns:
+            The index of the first occurrence.
+
+        Raises:
+            ValueError: If the value is not found.
+        """
+        if stop is None:
+            stop = len(self)
+        for i in range(start, stop):
+            if self[i] == value:
+                return i
+        raise ValueError(f"{value!r} is not in list")
+
+    def count(self, value: Metadatum) -> int:
+        """
+        Returns the number of occurrences of value.
+
+        Args:
+            value: The value to count.
+
+        Returns:
+            The number of occurrences.
+        """
+        return sum(1 for item in self if item == value)
+
+    def __reversed__(self) -> Iterator[Metadatum]:
+        """Iterates over elements in reverse order."""
+        for i in range(len(self) - 1, -1, -1):
+            yield self[i]

@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 from typing import Iterator, Tuple, TYPE_CHECKING
 
 from .._ffi import ffi, lib
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from .asset_name_list import AssetNameList
 
 
-class AssetNameMap:
+class AssetNameMap(Mapping["AssetName", "int"]):
     """
     Represents a map of asset names to their quantities.
 
@@ -105,23 +106,23 @@ class AssetNameMap:
         if err != 0:
             raise CardanoError(f"Failed to insert into AssetNameMap (error code: {err})")
 
-    def get(self, key: AssetName) -> int:
+    def get(  # pylint: disable=arguments-differ
+        self, key: AssetName, default: "int | None" = None
+    ) -> "int | None":
         """
         Retrieves the quantity for a given asset name.
 
         Args:
             key: The asset name to look up.
+            default: Value to return if key is not found. Defaults to None.
 
         Returns:
-            The quantity associated with the asset name.
-
-        Raises:
-            CardanoError: If the key is not found or retrieval fails.
+            The quantity associated with the asset name, or default if not found.
         """
         value = ffi.new("int64_t*")
         err = lib.cardano_asset_name_map_get(self._ptr, key._ptr, value)
         if err != 0:
-            raise CardanoError(f"Failed to get from AssetNameMap (error code: {err})")
+            return default
         return int(value[0])
 
     def get_key_at(self, index: int) -> AssetName:
@@ -298,11 +299,7 @@ class AssetNameMap:
 
     def __contains__(self, item: AssetName) -> bool:
         """Checks if an asset name is in the map."""
-        try:
-            self.get(item)
-            return True
-        except CardanoError:
-            return False
+        return self.get(item) is not None
 
     def __eq__(self, other: object) -> bool:
         """Checks equality with another AssetNameMap."""

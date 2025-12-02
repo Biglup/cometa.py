@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 
 from typing import Iterator, Tuple
 
@@ -26,7 +27,7 @@ from ..common.credential import Credential
 from .credential_set import CredentialSet
 
 
-class CommitteeMembersMap:
+class CommitteeMembersMap(Mapping["Credential", "int"]):
     """
     Represents a map of committee member credentials to their term epochs.
 
@@ -118,25 +119,23 @@ class CommitteeMembersMap:
                 f"Failed to insert into CommitteeMembersMap (error code: {err})"
             )
 
-    def get(self, key: Credential) -> int:
+    def get(  # pylint: disable=arguments-differ
+        self, key: Credential, default: "int | None" = None
+    ) -> "int | None":
         """
         Retrieves the term epoch for a given committee member credential.
 
         Args:
             key: The credential to look up.
+            default: Value to return if key is not found. Defaults to None.
 
         Returns:
-            The epoch when the member's term expires.
-
-        Raises:
-            CardanoError: If the key is not found or retrieval fails.
+            The epoch when the member's term expires, or default if not found.
         """
         value = ffi.new("uint64_t*")
         err = lib.cardano_committee_members_map_get(self._ptr, key._ptr, value)
         if err != 0:
-            raise CardanoError(
-                f"Failed to get from CommitteeMembersMap (error code: {err})"
-            )
+            return default
         return int(value[0])
 
     def get_keys(self) -> CredentialSet:
@@ -257,11 +256,7 @@ class CommitteeMembersMap:
 
     def __contains__(self, item: Credential) -> bool:
         """Checks if a credential is in the map."""
-        try:
-            self.get(item)
-            return True
-        except CardanoError:
-            return False
+        return self.get(item) is not None
 
     def keys(self) -> Iterator[Credential]:
         """Returns an iterator over keys (like Python dict)."""

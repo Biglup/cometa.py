@@ -15,8 +15,9 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Set
 
-from typing import TYPE_CHECKING, Iterator, Iterable
+from typing import TYPE_CHECKING, Iterable, Iterator
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from ..scripts.plutus_scripts.plutus_v2_script import PlutusV2Script
 
 
-class PlutusV2ScriptSet:
+class PlutusV2ScriptSet(Set["PlutusV2Script"]):
     """
     Represents a set of Plutus V2 scripts.
 
@@ -207,3 +208,24 @@ class PlutusV2ScriptSet:
     def __bool__(self) -> bool:
         """Returns True if the set is not empty."""
         return len(self) > 0
+    def __contains__(self, item: object) -> bool:
+        """Checks if an item is in the set."""
+        for element in self:
+            if element == item:
+                return True
+        return False
+
+    def isdisjoint(self, other: "Iterable[PlutusV2Script]") -> bool:
+        """
+        Returns True if the set has no elements in common with other.
+
+        Args:
+            other: Another iterable to compare with.
+
+        Returns:
+            True if the sets are disjoint.
+        """
+        for item in other:
+            if item in self:
+                return False
+        return True

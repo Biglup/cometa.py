@@ -15,15 +15,16 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Sequence
 
-from typing import Iterator, List
+from typing import Iterator, Optional
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..common import GovernanceActionId
 
 
-class GovernanceActionIdList:
+class GovernanceActionIdList(Sequence["GovernanceActionId"]):
     """
     Represents a list of Governance Action IDs.
 
@@ -85,7 +86,7 @@ class GovernanceActionIdList:
         return len(self) > 0
 
     @classmethod
-    def from_list(cls, action_ids: List[GovernanceActionId]) -> GovernanceActionIdList:
+    def from_list(cls, action_ids: list[GovernanceActionId]) -> GovernanceActionIdList:
         """
         Creates a GovernanceActionIdList from a Python list of GovernanceActionId objects.
 
@@ -153,3 +154,41 @@ class GovernanceActionIdList:
             CardanoError: If appending fails.
         """
         self.add(action_id)
+    def index(self, value: GovernanceActionId, start: int = 0, stop: Optional[int] = None) -> int:
+        """
+        Returns the index of the first occurrence of value.
+
+        Args:
+            value: The value to search for.
+            start: Start searching from this index.
+            stop: Stop searching at this index.
+
+        Returns:
+            The index of the first occurrence.
+
+        Raises:
+            ValueError: If the value is not found.
+        """
+        if stop is None:
+            stop = len(self)
+        for i in range(start, stop):
+            if self[i] == value:
+                return i
+        raise ValueError(f"{value!r} is not in list")
+
+    def count(self, value: GovernanceActionId) -> int:
+        """
+        Returns the number of occurrences of value.
+
+        Args:
+            value: The value to count.
+
+        Returns:
+            The number of occurrences.
+        """
+        return sum(1 for item in self if item == value)
+
+    def __reversed__(self) -> Iterator[GovernanceActionId]:
+        """Iterates over elements in reverse order."""
+        for i in range(len(self) - 1, -1, -1):
+            yield self[i]

@@ -15,8 +15,9 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Sequence
 
-from typing import TYPE_CHECKING, Iterator, Union, Iterable, Any
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional, Union
 
 from ..._ffi import ffi, lib
 from ...errors import CardanoError
@@ -46,7 +47,7 @@ else:
     NativeScriptLike = Any # pylint: disable=invalid-name
 
 
-class NativeScriptList:
+class NativeScriptList(Sequence["NativeScript"]):
     """
     Represents a list of native scripts.
 
@@ -229,3 +230,41 @@ class NativeScriptList:
     def __bool__(self) -> bool:
         """Returns True if the list is not empty."""
         return len(self) > 0
+    def index(self, value: NativeScript, start: int = 0, stop: Optional[int] = None) -> int:
+        """
+        Returns the index of the first occurrence of value.
+
+        Args:
+            value: The value to search for.
+            start: Start searching from this index.
+            stop: Stop searching at this index.
+
+        Returns:
+            The index of the first occurrence.
+
+        Raises:
+            ValueError: If the value is not found.
+        """
+        if stop is None:
+            stop = len(self)
+        for i in range(start, stop):
+            if self[i] == value:
+                return i
+        raise ValueError(f"{value!r} is not in list")
+
+    def count(self, value: NativeScript) -> int:
+        """
+        Returns the number of occurrences of value.
+
+        Args:
+            value: The value to count.
+
+        Returns:
+            The number of occurrences.
+        """
+        return sum(1 for item in self if item == value)
+
+    def __reversed__(self) -> Iterator[NativeScript]:
+        """Iterates over elements in reverse order."""
+        for i in range(len(self) - 1, -1, -1):
+            yield self[i]

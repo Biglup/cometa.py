@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Union, Iterable, overload
+from collections.abc import Sequence
+from typing import Iterable, Iterator, Union, overload
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -23,7 +24,7 @@ from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 
 
-class PlutusList:
+class PlutusList(Sequence["PlutusData"]):
     """
     Represents a list of Plutus data elements.
 

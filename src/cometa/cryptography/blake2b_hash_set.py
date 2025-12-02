@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Iterable
+from collections.abc import Set
+from typing import Iterable, Iterator
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -24,7 +25,7 @@ from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 
 
-class Blake2bHashSet:
+class Blake2bHashSet(Set["Blake2bHash"]):
     """
     Represents a set of Blake2b hashes.
 
@@ -182,5 +183,19 @@ class Blake2bHashSet:
             return False
         for i in range(len(self)):
             if self.get(i) != other.get(i):
+                return False
+        return True
+    def isdisjoint(self, other: "Iterable[Blake2bHash]") -> bool:
+        """
+        Returns True if the set has no elements in common with other.
+
+        Args:
+            other: Another iterable to compare with.
+
+        Returns:
+            True if the sets are disjoint.
+        """
+        for item in other:
+            if item in self:
                 return False
         return True

@@ -15,8 +15,9 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Sequence
 
-from typing import Iterator, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator, Optional
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     from ..address import RewardAddress
 
 
-class RewardAddressList:
+class RewardAddressList(Sequence["RewardAddress"]):
     """
     Represents a list of reward addresses.
 
@@ -87,7 +88,7 @@ class RewardAddressList:
         return len(self) > 0
 
     @classmethod
-    def from_list(cls, addresses: List["RewardAddress"]) -> RewardAddressList:
+    def from_list(cls, addresses: list["RewardAddress"]) -> RewardAddressList:
         """
         Creates a RewardAddressList from a Python list of RewardAddress objects.
 
@@ -153,3 +154,41 @@ class RewardAddressList:
             address: The RewardAddress to append.
         """
         self.add(address)
+    def index(self, value: RewardAddress, start: int = 0, stop: Optional[int] = None) -> int:
+        """
+        Returns the index of the first occurrence of value.
+
+        Args:
+            value: The value to search for.
+            start: Start searching from this index.
+            stop: Stop searching at this index.
+
+        Returns:
+            The index of the first occurrence.
+
+        Raises:
+            ValueError: If the value is not found.
+        """
+        if stop is None:
+            stop = len(self)
+        for i in range(start, stop):
+            if self[i] == value:
+                return i
+        raise ValueError(f"{value!r} is not in list")
+
+    def count(self, value: RewardAddress) -> int:
+        """
+        Returns the number of occurrences of value.
+
+        Args:
+            value: The value to count.
+
+        Returns:
+            The number of occurrences.
+        """
+        return sum(1 for item in self if item == value)
+
+    def __reversed__(self) -> Iterator[RewardAddress]:
+        """Iterates over elements in reverse order."""
+        for i in range(len(self) - 1, -1, -1):
+            yield self[i]

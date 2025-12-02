@@ -273,7 +273,7 @@ class BlockfrostProvider:
     # Provider Protocol Implementation
     # -------------------------------------------------------------------------
 
-    def get_name(self) -> str:
+    def get_name(self) -> str:  # pylint: disable=no-self-use
         """Get the provider name."""
         return "Blockfrost"
 
@@ -668,8 +668,7 @@ class BlockfrostProvider:
         original_redeemers = parsed_tx.witness_set.redeemers
 
         redeemer_map = {}
-        if original_redeemers:
-            # pylint: disable=not-an-iterable
+        if original_redeemers is not None:
             for original_redeemer in original_redeemers:
                 redeemer_map[(original_redeemer.tag, original_redeemer.index)] = original_redeemer
 

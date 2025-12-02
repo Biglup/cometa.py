@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 from typing import Iterator, Tuple
 
 from .._ffi import ffi, lib
@@ -23,7 +24,7 @@ from .asset_id import AssetId
 from .asset_id_list import AssetIdList
 
 
-class AssetIdMap:
+class AssetIdMap(Mapping["AssetId", "int"]):
     """
     Represents a map of asset IDs to their quantities.
 
@@ -79,23 +80,23 @@ class AssetIdMap:
         if err != 0:
             raise CardanoError(f"Failed to insert into AssetIdMap (error code: {err})")
 
-    def get(self, key: AssetId) -> int:
+    def get(  # pylint: disable=arguments-differ
+        self, key: AssetId, default: "int | None" = None
+    ) -> "int | None":
         """
         Retrieves the quantity for a given asset ID.
 
         Args:
             key: The asset ID to look up.
+            default: Value to return if key is not found. Defaults to None.
 
         Returns:
-            The quantity associated with the asset ID.
-
-        Raises:
-            CardanoError: If the key is not found or retrieval fails.
+            The quantity associated with the asset ID, or default if not found.
         """
         value = ffi.new("int64_t*")
         err = lib.cardano_asset_id_map_get(self._ptr, key._ptr, value)
         if err != 0:
-            raise CardanoError(f"Failed to get from AssetIdMap (error code: {err})")
+            return default
         return int(value[0])
 
     def get_keys(self) -> AssetIdList:
@@ -192,11 +193,7 @@ class AssetIdMap:
 
     def __contains__(self, item: AssetId) -> bool:
         """Checks if an asset ID is in the map."""
-        try:
-            self.get(item)
-            return True
-        except CardanoError:
-            return False
+        return self.get(item) is not None
 
     def __bool__(self) -> bool:
         """Returns True if the map is not empty."""

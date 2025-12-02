@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 
 from typing import Optional, Iterator, Tuple, TYPE_CHECKING
 
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     from ...witness_set import Redeemer
 
 
-class InputToRedeemerMap:
+class InputToRedeemerMap(Mapping["TransactionInput", "Redeemer"]):
     """
     A map of transaction inputs to redeemers.
 
@@ -79,9 +80,10 @@ class InputToRedeemerMap:
     def __len__(self) -> int:
         return int(lib.cardano_input_to_redeemer_map_get_length(self._ptr))
 
-    def __iter__(self) -> Iterator[Tuple["TransactionInput", "Redeemer"]]:
+    def __iter__(self) -> Iterator["TransactionInput"]:
+        """Iterate over keys (TransactionInputs)."""
         for i in range(len(self)):
-            yield self.get_key_value_at(i)
+            yield self.get_key_at(i)
 
     @classmethod
     def new(cls) -> InputToRedeemerMap:
@@ -115,7 +117,7 @@ class InputToRedeemerMap:
                 f"Failed to insert into InputToRedeemerMap (error code: {err})"
             )
 
-    def get(self, key: "TransactionInput") -> Optional["Redeemer"]:
+    def __getitem__(self, key: "TransactionInput") -> "Redeemer":
         """
         Get the redeemer associated with a transaction input.
 
@@ -123,9 +125,10 @@ class InputToRedeemerMap:
             key: The transaction input to look up.
 
         Returns:
-            The associated redeemer, or None if not found.
+            The associated redeemer.
 
         Raises:
+            KeyError: If key is not found.
             CardanoError: If lookup fails.
         """
         from ...witness_set import Redeemer
@@ -133,13 +136,27 @@ class InputToRedeemerMap:
         redeemer_out = ffi.new("cardano_redeemer_t**")
         err = lib.cardano_input_to_redeemer_map_get(self._ptr, key._ptr, redeemer_out)
         if err != 0:
-            raise CardanoError(
-                f"Failed to get from InputToRedeemerMap (error code: {err})"
-            )
+            raise KeyError(key)
 
         if redeemer_out[0] == ffi.NULL:
-            return None
+            raise KeyError(key)
         return Redeemer(redeemer_out[0])
+
+    def get(self, key: "TransactionInput", default: Optional["Redeemer"] = None) -> Optional["Redeemer"]:
+        """
+        Get the redeemer associated with a transaction input.
+
+        Args:
+            key: The transaction input to look up.
+            default: Value to return if key is not found.
+
+        Returns:
+            The associated redeemer, or default if not found.
+        """
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def get_key_at(self, index: int) -> "TransactionInput":
         """

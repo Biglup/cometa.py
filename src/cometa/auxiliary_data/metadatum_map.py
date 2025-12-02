@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 from typing import Iterator, Tuple, TYPE_CHECKING, Union
 
 from .._ffi import ffi, lib
@@ -43,7 +44,7 @@ def _to_metadatum(value: MetadatumLike) -> Metadatum:
     raise TypeError(f"Cannot convert {type(value).__name__} to Metadatum")
 
 
-class MetadatumMap:
+class MetadatumMap(Mapping["Metadatum", "Metadatum"]):
     """
     Represents a map of metadatum keys to metadatum values.
 
@@ -131,25 +132,27 @@ class MetadatumMap:
         if err != 0:
             raise CardanoError(f"Failed to insert into MetadatumMap (error code: {err})")
 
-    def get(self, key: MetadatumLike) -> Metadatum:
+    def get(  # pylint: disable=arguments-differ
+        self, key: MetadatumLike, default: "Metadatum | None" = None
+    ) -> "Metadatum | None":
         """
         Retrieves the value for a given key.
 
         Args:
             key: The metadatum key to look up. Can be a Metadatum or primitive.
+            default: Value to return if key is not found. Defaults to None.
 
         Returns:
-            The Metadatum value associated with the key.
+            The Metadatum value associated with the key, or default if not found.
 
         Raises:
-            CardanoError: If the key is not found or retrieval fails.
             TypeError: If key cannot be converted to Metadatum.
         """
         key_meta = _to_metadatum(key)
         out = ffi.new("cardano_metadatum_t**")
         err = lib.cardano_metadatum_map_get(self._ptr, key_meta._ptr, out)
         if err != 0:
-            raise CardanoError(f"Failed to get from MetadatumMap (error code: {err})")
+            return default
         return Metadatum(out[0])
 
     def get_at(self, index: int) -> Tuple[Metadatum, Metadatum]:
@@ -219,11 +222,7 @@ class MetadatumMap:
 
     def __contains__(self, key: MetadatumLike) -> bool:
         """Checks if a key is in the map. Accepts primitives."""
-        try:
-            self.get(key)
-            return True
-        except CardanoError:
-            return False
+        return self.get(key) is not None
 
     def keys(self) -> Iterator[Metadatum]:
         """Returns an iterator over keys (like Python dict)."""

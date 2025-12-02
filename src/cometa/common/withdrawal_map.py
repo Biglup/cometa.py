@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Mapping
 
 from typing import Iterator, Tuple, TYPE_CHECKING
 
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from .reward_address_list import RewardAddressList
 
 
-class WithdrawalMap:
+class WithdrawalMap(Mapping["RewardAddress", "int"]):
     """
     Represents a map of reward addresses to lovelace amounts.
 
@@ -138,23 +139,23 @@ class WithdrawalMap:
                 f"Failed to insert into WithdrawalMap (error code: {err})"
             )
 
-    def get(self, key: RewardAddress) -> int:
+    def get(  # pylint: disable=arguments-differ
+        self, key: RewardAddress, default: "int | None" = None
+    ) -> "int | None":
         """
         Retrieves the withdrawal amount for a given reward address.
 
         Args:
             key: The reward address to look up.
+            default: Value to return if key is not found. Defaults to None.
 
         Returns:
-            The withdrawal amount in lovelace.
-
-        Raises:
-            CardanoError: If the key is not found or retrieval fails.
+            The withdrawal amount in lovelace, or default if not found.
         """
         value = ffi.new("uint64_t*")
         err = lib.cardano_withdrawal_map_get(self._ptr, key._ptr, value)
         if err != 0:
-            raise CardanoError(f"Failed to get from WithdrawalMap (error code: {err})")
+            return default
         return int(value[0])
 
     def get_key_at(self, index: int) -> RewardAddress:
@@ -277,11 +278,7 @@ class WithdrawalMap:
 
     def __contains__(self, item: RewardAddress) -> bool:
         """Checks if a reward address is in the map."""
-        try:
-            self.get(item)
-            return True
-        except CardanoError:
-            return False
+        return self.get(item) is not None
 
     def keys(self) -> Iterator[RewardAddress]:
         """Returns an iterator over keys (like Python dict)."""

@@ -15,8 +15,9 @@ limitations under the License.
 """
 
 from __future__ import annotations
+from collections.abc import Set
 
-from typing import Iterator, Iterable
+from typing import Iterable, Iterator
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -25,7 +26,7 @@ from ..cbor.cbor_writer import CborWriter
 from .transaction_input import TransactionInput
 
 
-class TransactionInputSet:
+class TransactionInputSet(Set["TransactionInput"]):
     """
     Represents an ordered set of transaction inputs.
 
@@ -209,3 +210,24 @@ class TransactionInputSet:
         err = lib.cardano_transaction_input_set_to_cip116_json(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")
+    def __contains__(self, item: object) -> bool:
+        """Checks if an item is in the set."""
+        for element in self:
+            if element == item:
+                return True
+        return False
+
+    def isdisjoint(self, other: "Iterable[TransactionInput]") -> bool:
+        """
+        Returns True if the set has no elements in common with other.
+
+        Args:
+            other: Another iterable to compare with.
+
+        Returns:
+            True if the sets are disjoint.
+        """
+        for item in other:
+            if item in self:
+                return False
+        return True

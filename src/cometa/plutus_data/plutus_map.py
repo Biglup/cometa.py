@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 from __future__ import annotations
-from typing import Iterator, Union, Tuple, Mapping, Optional
+from collections.abc import Mapping
+from typing import Iterator, Union, Tuple, Optional
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
@@ -27,7 +28,7 @@ from ..cbor.cbor_writer import CborWriter
 PlutusDataLike = Union["PlutusData", int, str, bytes]
 
 
-class PlutusMap:
+class PlutusMap(Mapping["PlutusData", "PlutusData"]):
     """
     Represents a map of Plutus data to Plutus data.
 
