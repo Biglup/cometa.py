@@ -248,30 +248,7 @@ def main():
         os.makedirs(OUTPUT_DIR)
 
     prepare_assets_and_readme()
-
-    generated_files = []
-    modules = discover_modules()
-
-    for mod_name in modules:
-        try:
-            mod = importlib.import_module(mod_name)
-            classes = [
-                obj for name, obj in inspect.getmembers(mod, inspect.isclass)
-                if obj.__module__ == mod_name
-            ]
-
-            for cls in classes:
-                file_path = generate_rst_for_class(cls, mod_name)
-                generated_files.append(file_path)
-        except ImportError as e:
-            print(f"Error importing {mod_name}: {e}")
-
-    if generated_files:
-        generate_index(generated_files)
-
-    # Crucial step for RTD: Sync version and force rebuild
     update_conf_py()
-
 
 if __name__ == "__main__":
     main()

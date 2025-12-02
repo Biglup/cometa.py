@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 project = 'Cometa.py'
 copyright = '2025, Biglup Labs'
 author = 'Biglup Labs'
-release = '0.1.3'
+release = '0.1.34'
 
 # -- General configuration ---------------------------------------------------
 extensions = [

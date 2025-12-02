@@ -1,42 +1,33 @@
-biglup-cometa 0.1.3
-===================
+biglup-cometa 0.1.33
+====================
 
 .. include:: README_docs.md
    :parser: myst_parser.sphinx_
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: API Reference
-   :titlesonly:
-   :hidden:
 
-   api/address
-   api/address_type
-   api/base_address
-   api/big_int
-   api/blake2b_hash
-   api/buffer
-   api/byron_address
-   api/byron_address_attributes
-   api/byron_address_type
-   api/byte_order
-   api/cardano_error
-   api/cbor_major_type
-   api/cbor_reader
-   api/cbor_reader_state
-   api/cbor_simple_value
-   api/cbor_tag
-   api/cbor_writer
-   api/credential
-   api/credential_type
-   api/enterprise_address
-   api/json_context
-   api/json_format
-   api/json_object
-   api/json_object_type
-   api/json_writer
-   api/network_id
-   api/pointer_address
-   api/protocol_version
-   api/reward_address
-   api/stake_pointer
+   api/address/index
+   api/assets/index
+   api/auxiliary_data/index
+   api/bip39/index
+   api/cbor/index
+   api/certificates/index
+   api/common/index
+   api/cryptography/index
+   api/encoding/index
+   api/json/index
+   api/message_signing/index
+   api/plutus_data/index
+   api/pool_params/index
+   api/proposal_procedures/index
+   api/protocol_params/index
+   api/providers/index
+   api/scripts/index
+   api/transaction/index
+   api/transaction_body/index
+   api/transaction_builder/index
+   api/utilities/index
+   api/voting_procedures/index
+   api/witness_set/index

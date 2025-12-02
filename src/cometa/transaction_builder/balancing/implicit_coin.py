@@ -38,11 +38,6 @@ class ImplicitCoin:
     - Deposits for registrations (stake keys, pools, governance actions)
     - Reclaimed deposits from deregistrations
 
-    Attributes:
-        withdrawals: The total amount of reward withdrawals in lovelace.
-        deposits: The total amount of deposits required in lovelace.
-        reclaim_deposits: The total amount of deposits being reclaimed in lovelace.
-
     Example:
         >>> from cometa.transaction_builder.balancing import compute_implicit_coin
         >>> implicit = compute_implicit_coin(tx, protocol_params)
@@ -52,8 +47,11 @@ class ImplicitCoin:
     """
 
     withdrawals: int
+    """The total amount of reward withdrawals in lovelace."""
     deposits: int
+    """The total amount of deposits required in lovelace."""
     reclaim_deposits: int
+    """The total amount of deposits being reclaimed in lovelace."""
 
     @property
     def net_value(self) -> int:

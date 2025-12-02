@@ -1,9 +1,9 @@
-BigInt
-======
+AuxiliaryData
+=============
 
-.. currentmodule:: cometa.common.bigint
+.. currentmodule:: cometa.auxiliary_data.auxiliary_data
 
-.. autoclass:: BigInt
+.. autoclass:: AuxiliaryData
    :members:
    :undoc-members:
    :show-inheritance:

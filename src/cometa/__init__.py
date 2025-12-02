@@ -109,6 +109,7 @@ from .voting_procedures import (
     VoterType,
     VotingProcedure,
     VotingProcedures,
+    GovernanceActionIdList,
 )
 from .scripts import (
     PlutusLanguageVersion,
@@ -355,6 +356,7 @@ __all__ = [
     "VoterType",
     "VotingProcedure",
     "VotingProcedures",
+    "GovernanceActionIdList",
     # Scripts
     "PlutusLanguageVersion",
     "Script",

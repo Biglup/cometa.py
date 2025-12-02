@@ -1,9 +1,9 @@
-CardanoError
-============
+MirCertType
+===========
 
-.. currentmodule:: cometa.errors
+.. currentmodule:: cometa.certificates.mir_cert_type
 
-.. autoclass:: CardanoError
+.. autoclass:: MirCertType
    :members:
    :undoc-members:
    :show-inheritance:

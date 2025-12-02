@@ -25,16 +25,14 @@ class StakePointer:
 
     Used in pointer addresses to indirectly reference a stake key through its
     registration certificate location rather than embedding the key directly.
-
-    Attributes:
-        slot: The slot number where the stake key registration certificate is recorded.
-        tx_index: The index of the transaction within the slot.
-        cert_index: The index of the certificate within the transaction.
     """
 
     slot: int
+    """The slot number of the stake key registration certificate."""
     tx_index: int
+    """The transaction index within the slot."""
     cert_index: int
+    """The certificate index within the transaction."""
 
     def __post_init__(self) -> None:
         if self.slot < 0:

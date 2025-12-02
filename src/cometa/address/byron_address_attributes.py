@@ -26,14 +26,12 @@ class ByronAddressAttributes:
     Byron addresses contain optional attributes used during the Byron era of Cardano.
     The derivation_path was used by legacy random wallets for key derivation, while
     the magic attribute serves as a network identifier for test networks.
-
-    Attributes:
-        derivation_path: Encrypted derivation path used by legacy wallets (may be empty).
-        magic: Network magic identifier (-1 if not associated with a specific network).
     """
 
     derivation_path: bytes = b""
+    """Encrypted derivation path used by legacy wallets (maybe empty)."""
     magic: int = -1
+    """Network magic identifier (-1 if not associated with a specific network)."""
 
     @classmethod
     def mainnet(cls) -> ByronAddressAttributes:

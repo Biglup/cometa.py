@@ -273,7 +273,7 @@ class BlockfrostProvider:
     # Provider Protocol Implementation
     # -------------------------------------------------------------------------
 
-    def get_name(self) -> str: # pylint: disable=no-self-use
+    def get_name(self) -> str:
         """Get the provider name."""
         return "Blockfrost"
 
