@@ -22,7 +22,7 @@ import datetime
 import time
 from typing import Optional, Union, List, TYPE_CHECKING, Dict, Any
 
-from ..scripts import Script, ScriptLike, PlutusV2Script, PlutusV3Script, NativeScriptLike, PlutusV1Script
+from ..scripts import Script, PlutusV2Script, PlutusV3Script, NativeScriptLike, PlutusV1Script
 from ..providers import Provider, ProviderHandle
 from ..common.network_id import NetworkId
 from .._ffi import ffi, lib
@@ -42,10 +42,10 @@ from .evaluation import (
 if TYPE_CHECKING:
     from ..protocol_params import ProtocolParameters
     from ..address import Address, RewardAddress
-    from ..common import UtxoList, Utxo
+    from ..common import Datum, UtxoList, Utxo
     from ..transaction import Transaction
     from ..transaction_body import TransactionOutput, Value
-    from ..plutus_data import PlutusData, Datum, Script
+    from ..plutus_data import PlutusData, PlutusDataLike
     from ..common import (
         DRep,
         Voter,
@@ -77,6 +77,15 @@ def _to_drep(value: Union["DRep", str]) -> "DRep":
         from ..common import DRep
         return DRep.from_string(value)
     return value
+
+
+def _to_plutus_data_ptr(value: Optional["PlutusDataLike"]):
+    """Convert PlutusDataLike to a PlutusData object, or return None if None."""
+    if value is None:
+        return None
+    from ..plutus_data import PlutusData
+    data = PlutusData.to_plutus_data(value)
+    return data
 
 
 class TxBuilder:
@@ -669,10 +678,11 @@ class TxBuilder:
             Self for method chaining.
 
         Example:
-            >>> from cometa.plutus_data import PlutusData
+            >>> from cometa import Datum, PlutusData
             >>>
-            >>> # Create datum (e.g., a simple integer)
-            >>> datum = PlutusData.from_int(42)
+            >>> # Create inline datum from PlutusData
+            >>> plutus_data = PlutusData.from_int(42)
+            >>> datum = Datum.from_inline_data(plutus_data)
             >>>
             >>> # Lock 10 ADA at script
             >>> builder.lock_lovelace(script_address, 10_000_000, datum)
@@ -709,9 +719,16 @@ class TxBuilder:
             Self for method chaining.
 
         Example:
-            >>> # Lock tokens at a script address
+            >>> from cometa import Datum, PlutusData
+            >>>
+            >>> # Create value with ADA and tokens
             >>> value = Value.from_coin(5_000_000)
             >>> value.add_asset(policy_id, asset_name, 50)
+            >>>
+            >>> # Create inline datum
+            >>> datum = Datum.from_inline_data(PlutusData.from_int(42))
+            >>>
+            >>> # Lock at script address
             >>> builder.lock_value(script_addr, value, datum)
         """
         if isinstance(script_address, str):
@@ -728,8 +745,8 @@ class TxBuilder:
     def add_input(
         self,
         utxo: "Utxo",
-        redeemer: Optional["PlutusData"] = None,
-        datum: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
+        datum: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Add a specific UTXO as a transaction input.
@@ -758,8 +775,12 @@ class TxBuilder:
             >>> # Spend from a script address
             >>> builder.add_input(script_utxo, redeemer=spend_redeemer)
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
-        datum_ptr = datum._ptr if datum else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        datum_obj = _to_plutus_data_ptr(datum)
+
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
+        datum_ptr = datum_obj._ptr if datum_obj is not None else ffi.NULL
+
         lib.cardano_tx_builder_add_input(self._ptr, utxo._ptr, redeemer_ptr, datum_ptr)
         return self
 
@@ -815,7 +836,7 @@ class TxBuilder:
         policy_id: Union["Blake2bHash", str, bytes],
         asset_name: Union["AssetName", str, bytes],
         amount: int,
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Mint or burn native tokens.
@@ -827,7 +848,7 @@ class TxBuilder:
             policy_id: The minting policy hash. Can be a ``Blake2bHash`` object,
                 the raw bytes, or a hex-encoded string.
             asset_name: The token name. Can be an ``AssetName`` object, hex string,
-                or raw bytes. Empty string for ADA-like unnamed tokens.
+                or raw bytes. Empty string for unnamed tokens.
             amount: Number of tokens to mint (positive) or burn (negative).
             redeemer: The redeemer for Plutus minting policies.
 
@@ -846,7 +867,8 @@ class TxBuilder:
             >>> # Burn 50 tokens
             >>> builder.mint_token(policy_id, asset_name, amount=-50, redeemer=burn_redeemer)
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(policy_id, Blake2bHash):
             policy_obj = policy_id
@@ -860,13 +882,10 @@ class TxBuilder:
         if isinstance(asset_name, AssetName):
             name_obj = asset_name
         elif isinstance(asset_name, str):
-            s = asset_name
-
-            if s == "":
+            if asset_name == "":
                 name_bytes = b""
             else:
-                name_bytes = bytes.fromhex(s.strip())
-
+                name_bytes = bytes.fromhex(asset_name.strip())
             name_obj = AssetName.from_bytes(name_bytes)
         elif isinstance(asset_name, (bytes, bytearray, memoryview)):
             name_obj = AssetName.from_bytes(bytes(asset_name))
@@ -887,7 +906,7 @@ class TxBuilder:
         self,
         asset_id: Union["AssetId", str, bytes],
         amount: int,
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Mint or burn tokens using an asset ID.
@@ -897,7 +916,7 @@ class TxBuilder:
 
         Args:
             asset_id: The full asset identifier. Can be an ``AssetId`` object
-                or a hex string in the format "policy_id.asset_name".
+                or a hex string in the format "{policy_id}{asset_name}".
             amount: Number of tokens to mint (positive) or burn (negative).
             redeemer: The redeemer for Plutus minting policies.
 
@@ -911,7 +930,8 @@ class TxBuilder:
             ...     redeemer=mint_redeemer,
             ... )
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(asset_id, AssetId):
             lib.cardano_tx_builder_mint_token_with_id(
@@ -942,7 +962,7 @@ class TxBuilder:
                 id_bytes,
                 len(id_bytes),
                 amount,
-                redeemer_ptr,
+                redeemer_obj._ptr,
             )
             return self
 
@@ -986,7 +1006,7 @@ class TxBuilder:
         lib.cardano_tx_builder_add_script(self._ptr, script._ptr)
         return self
 
-    def add_datum(self, datum: "PlutusData") -> TxBuilder:
+    def add_datum(self, datum: "PlutusDataLike") -> TxBuilder:
         """
         Add a datum to the transaction witness set.
 
@@ -1002,7 +1022,10 @@ class TxBuilder:
         Example:
             >>> builder.add_datum(original_datum)
         """
-        lib.cardano_tx_builder_add_datum(self._ptr, datum._ptr)
+        datum_obj = _to_plutus_data_ptr(datum)
+        datum_ptr = datum_obj._ptr if datum_obj is not None else ffi.NULL
+
+        lib.cardano_tx_builder_add_datum(self._ptr, datum_ptr)
         return self
 
     def add_signer(self, pub_key_hash: Union["Blake2bHash", str]) -> TxBuilder:
@@ -1114,7 +1137,7 @@ class TxBuilder:
         self,
         reward_address: Union["RewardAddress", str],
         amount: int,
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Withdraw staking rewards.
@@ -1135,7 +1158,8 @@ class TxBuilder:
             >>> rewards = provider.get_rewards(stake_address)
             >>> builder.withdraw_rewards("stake_test1...", rewards)
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(reward_address, str):
             addr_bytes = reward_address.encode("utf-8")
@@ -1151,7 +1175,7 @@ class TxBuilder:
     def register_reward_address(
         self,
         reward_address: Union["RewardAddress", str],
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Register a stake address.
@@ -1172,7 +1196,8 @@ class TxBuilder:
         Example:
             >>> builder.register_reward_address("stake_test1...")
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(reward_address, str):
             addr_bytes = reward_address.encode("utf-8")
@@ -1188,7 +1213,7 @@ class TxBuilder:
     def deregister_reward_address(
         self,
         reward_address: Union["RewardAddress", str],
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Deregister a stake address.
@@ -1206,16 +1231,16 @@ class TxBuilder:
         Example:
             >>> builder.deregister_reward_address("stake_test1...")
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
 
         if isinstance(reward_address, str):
             addr_bytes = reward_address.encode("utf-8")
             lib.cardano_tx_builder_deregister_reward_address_ex(
-                self._ptr, addr_bytes, len(addr_bytes), redeemer_ptr
+                self._ptr, addr_bytes, len(addr_bytes), redeemer_obj._ptr
             )
         else:
             lib.cardano_tx_builder_deregister_reward_address(
-                self._ptr, reward_address._ptr, redeemer_ptr
+                self._ptr, reward_address._ptr, redeemer_obj._ptr
             )
         return self
 
@@ -1223,7 +1248,7 @@ class TxBuilder:
         self,
         reward_address: Union["RewardAddress", str],
         pool_id: Union["Blake2bHash", str],
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Delegate stake to a pool.
@@ -1246,7 +1271,8 @@ class TxBuilder:
             ...     "pool1abc123...",
             ... )
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(reward_address, str) and isinstance(pool_id, str):
             addr_bytes = reward_address.encode("utf-8")
@@ -1271,7 +1297,7 @@ class TxBuilder:
         self,
         reward_address: Union["RewardAddress", str],
         drep: Union["DRep", str],
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Delegate voting power to a DRep.
@@ -1294,7 +1320,8 @@ class TxBuilder:
             ...     "drep1abc123...",
             ... )
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(reward_address, str) and isinstance(drep, str):
             addr_bytes = reward_address.encode("utf-8")
@@ -1309,7 +1336,7 @@ class TxBuilder:
             )
         else:
             lib.cardano_tx_builder_delegate_voting_power(
-                self._ptr, reward_address._ptr, drep._ptr, redeemer_ptr
+                self._ptr, reward_address._ptr, drep._ptr, redeemer_obj._ptr
             )
         return self
 
@@ -1317,7 +1344,7 @@ class TxBuilder:
         self,
         drep: Union["DRep", str],
         anchor: Optional["Anchor"] = None,
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Register as a DRep.
@@ -1338,7 +1365,9 @@ class TxBuilder:
             >>> builder.register_drep("drep1...", anchor=my_anchor)
         """
         drep_obj = _to_drep(drep)
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
+
         anchor_ptr = anchor._ptr if anchor else ffi.NULL
         lib.cardano_tx_builder_register_drep(
             self._ptr, drep_obj._ptr, anchor_ptr, redeemer_ptr
@@ -1349,7 +1378,7 @@ class TxBuilder:
         self,
         drep: Union["DRep", str],
         anchor: Optional["Anchor"] = None,
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Update DRep metadata.
@@ -1369,7 +1398,8 @@ class TxBuilder:
             >>> builder.update_drep("drep1...", anchor=new_anchor)
         """
         drep_obj = _to_drep(drep)
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
         anchor_ptr = anchor._ptr if anchor else ffi.NULL
         lib.cardano_tx_builder_update_drep(
             self._ptr, drep_obj._ptr, anchor_ptr, redeemer_ptr
@@ -1379,7 +1409,7 @@ class TxBuilder:
     def deregister_drep(
         self,
         drep: Union["DRep", str],
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Deregister as a DRep.
@@ -1394,7 +1424,8 @@ class TxBuilder:
             Self for method chaining.
         """
         drep_obj = _to_drep(drep)
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
         lib.cardano_tx_builder_deregister_drep(self._ptr, drep_obj._ptr, redeemer_ptr)
         return self
 
@@ -1403,7 +1434,7 @@ class TxBuilder:
         voter: "Voter",
         action_id: "GovernanceActionId",
         voting_procedure: "VotingProcedure",
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Cast a governance vote.
@@ -1426,7 +1457,8 @@ class TxBuilder:
             ...     voting_procedure=yes_vote,
             ... )
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
         lib.cardano_tx_builder_vote(
             self._ptr,
             voter._ptr,
@@ -1439,7 +1471,7 @@ class TxBuilder:
     def add_certificate(
         self,
         certificate: "Certificate",
-        redeemer: Optional["PlutusData"] = None,
+        redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
         Add a certificate to the transaction.
@@ -1454,7 +1486,8 @@ class TxBuilder:
         Returns:
             Self for method chaining.
         """
-        redeemer_ptr = redeemer._ptr if redeemer else ffi.NULL
+        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
         lib.cardano_tx_builder_add_certificate(self._ptr, certificate._ptr, redeemer_ptr)
         return self
 

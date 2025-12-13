@@ -16,13 +16,15 @@ limitations under the License.
 
 from __future__ import annotations
 from collections.abc import Sequence
-from typing import Iterable, Iterator, Union, overload
+from typing import TYPE_CHECKING, Iterable, Iterator, Union, overload
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 
+if TYPE_CHECKING:
+    from .plutus_data import PlutusData, PlutusDataLike
 
 class PlutusList(Sequence["PlutusData"]):
     """
@@ -139,7 +141,7 @@ class PlutusList(Sequence["PlutusData"]):
         for i in range(len(self) - 1, -1, -1):
             yield self._get_at(i)
 
-    def __contains__(self, item: Union["PlutusData", int, str, bytes]) -> bool:
+    def __contains__(self, item: "PlutusDataLike") -> bool:
         """
         Checks if an item is in the list.
 
@@ -196,7 +198,7 @@ class PlutusList(Sequence["PlutusData"]):
         return self
 
     @classmethod
-    def from_list(cls, elements: Iterable[Union["PlutusData", int, str, bytes]]) -> PlutusList:
+    def from_list(cls, elements: Iterable["PlutusDataLike"]) -> PlutusList:
         """
         Creates a PlutusList from an iterable of values.
 
@@ -290,7 +292,7 @@ class PlutusList(Sequence["PlutusData"]):
         if err != 0:
             raise CardanoError(f"Failed to add element to PlutusList (error code: {err})")
 
-    def append(self, value: Union["PlutusData", int, str, bytes]) -> None:
+    def append(self, value: "PlutusDataLike") -> None:
         """
         Appends a value to the end of the list.
 
@@ -311,7 +313,7 @@ class PlutusList(Sequence["PlutusData"]):
         data = PlutusData.to_plutus_data(value)
         self.add(data)
 
-    def extend(self, values: Iterable[Union["PlutusData", int, str, bytes]]) -> None:
+    def extend(self, values: Iterable["PlutusDataLike"]) -> None:
         """
         Extends the list with multiple values.
 
@@ -337,7 +339,7 @@ class PlutusList(Sequence["PlutusData"]):
         """
         return self[index]
 
-    def index(self, value: Union["PlutusData", int, str, bytes], start: int = 0, stop: int = None) -> int:
+    def index(self, value: "PlutusDataLike", start: int = 0, stop: int = None) -> int:
         """
         Returns the index of the first occurrence of a value.
 
@@ -361,7 +363,7 @@ class PlutusList(Sequence["PlutusData"]):
                 return i
         raise ValueError("Value not found in PlutusList")
 
-    def count(self, value: Union["PlutusData", int, str, bytes]) -> int:
+    def count(self, value: "PlutusDataLike") -> int:
         """
         Returns the number of occurrences of a value.
 

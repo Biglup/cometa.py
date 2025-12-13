@@ -53,6 +53,7 @@ from .message_signing.cip8 import CIP8SignResult, sign as cip8_sign, sign_with_k
 from .plutus_data import (
     PlutusDataKind,
     PlutusData,
+    PlutusDataLike,
     PlutusList,
     PlutusMap,
     ConstrPlutusData,
@@ -325,6 +326,7 @@ __all__ = [
     "PlutusDataKind",
     "PlutusList",
     "PlutusMap",
+    "PlutusDataLike",
     # Assets
     "AssetId",
     "AssetIdList",

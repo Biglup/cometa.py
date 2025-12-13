@@ -87,29 +87,29 @@ def main() -> None:
     # or directly from BIP-39 mnemonics or entropy.
     # You can then securely store it for future use with serialize().
 
-    print("[INFO] Use passphrase: 'password'")
-    print("[INFO] Deserializing secure key handler from stored data...")
+    print("Use passphrase: 'password'")
+    print("Deserializing secure key handler from stored data...")
 
     secure_key_handler = SoftwareBip32SecureKeyHandler.deserialize(
         bytes.fromhex(SERIALIZED_BIP32_KEY_HANDLER),
         get_password
     )
 
-    print("[INFO] Requesting extended account public key...")
+    print("Requesting extended account public key...")
 
     root_account_pub_key = secure_key_handler.get_account_public_key(
         AccountDerivationPath(
-            account=harden(0),
+            purpose=harden(KeyDerivationPurpose.STANDARD),
             coin_type=harden(CoinType.CARDANO),
-            purpose=harden(KeyDerivationPurpose.STANDARD)
+            account=harden(0)
         )
     )
 
-    print(f"[INFO] Extended account public key: {root_account_pub_key.to_hex()}")
+    print(f"Extended account public key: {root_account_pub_key.to_hex()}")
 
     # The secure key handler can be used to sign transaction with more than
     # one key at a time.
-    print("[INFO] Signing transaction...")
+    print("Signing transaction...")
 
     reader = CborReader.from_hex(TX_CBOR)
     transaction = Transaction.from_cbor(reader)
@@ -118,22 +118,22 @@ def main() -> None:
         transaction,
         [
             DerivationPath(
-                account=harden(0),
-                coin_type=harden(CoinType.CARDANO),
-                index=0,
                 purpose=harden(KeyDerivationPurpose.STANDARD),
-                role=KeyDerivationRole.EXTERNAL
+                coin_type=harden(CoinType.CARDANO),
+                account=harden(0),
+                role=KeyDerivationRole.EXTERNAL,
+                index=0
             )
         ]
     )
 
-    print("[INFO] Transaction signed successfully.")
-    print(f"[INFO] Witness set has {len(witness_set)} witnesses")
+    print("Transaction signed successfully.")
+    print(f"Witness set has {len(witness_set)} witnesses")
 
     for i, witness in enumerate(witness_set):
         print(f"  Witness {i}:")
-        print(f"    vkey: {witness.vkey.to_hex()}")
-        print(f"    signature: {witness.signature.to_hex()}")
+        print(f"    vkey: {witness.vkey.hex()}")
+        print(f"    signature: {witness.signature.hex()}")
 
 
 if __name__ == "__main__":

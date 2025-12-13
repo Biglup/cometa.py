@@ -224,31 +224,3 @@ class ConstrPlutusData:
         err = lib.cardano_constr_plutus_data_to_cip116_json(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")
-
-    @classmethod
-    def new(
-        cls,
-        alternative: int,
-        *args: Union["PlutusData", int, str, bytes]
-    ) -> ConstrPlutusData:
-        """
-        Creates a new ConstrPlutusData with the given alternative and arguments.
-
-        This is a convenience factory method that accepts native Python types
-        for the arguments.
-
-        Args:
-            alternative: The constructor alternative number.
-            *args: Arguments to the constructor (PlutusData, int, str, or bytes).
-
-        Returns:
-            A new ConstrPlutusData instance.
-
-        Example:
-            >>> # Create constructor 0 with arguments 42 and "hello"
-            >>> constr = ConstrPlutusData.new(0, 42, "hello")
-        """
-        data = PlutusList()
-        for arg in args:
-            data.append(arg)
-        return cls(alternative, data)

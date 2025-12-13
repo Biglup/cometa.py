@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import asyncio
 import pytest
 import cometa
 from cometa import (
@@ -27,6 +26,8 @@ from cometa import (
     DerivationPath,
     SoftwareBip32SecureKeyHandler,
     SoftwareEd25519SecureKeyHandler,
+    Transaction,
+    CborReader,
 )
 
 
@@ -56,14 +57,20 @@ LIBCARDANO_C_SERIALIZED_BIP32_KEY_HANDLER = (
 )
 
 
-async def get_passphrase():
+def get_passphrase():
     """Returns the correct passphrase."""
     return bytes(PASSWORD)
 
 
-async def get_wrong_passphrase():
+def get_wrong_passphrase():
     """Returns an incorrect passphrase."""
     return bytes(WRONG_PASSWORD)
+
+
+def get_transaction():
+    """Parse and return the test transaction."""
+    reader = CborReader.from_hex(TX_CBOR)
+    return Transaction.from_cbor(reader)
 
 
 class TestSoftwareBip32SecureKeyHandler:
@@ -71,124 +78,110 @@ class TestSoftwareBip32SecureKeyHandler:
 
     def test_can_be_created_from_entropy_and_derive_public_key(self):
         """Test creating handler from entropy and deriving a public key."""
-        async def run_test():
-            handler = SoftwareBip32SecureKeyHandler.from_entropy(
-                entropy=bytes(ENTROPY_BYTES),
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_passphrase
-            )
+        handler = SoftwareBip32SecureKeyHandler.from_entropy(
+            entropy=bytes(ENTROPY_BYTES),
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_passphrase
+        )
 
-            account_path = AccountDerivationPath(
-                purpose=harden(KeyDerivationPurpose.STANDARD),
-                coin_type=harden(CoinType.CARDANO),
-                account=harden(0)
-            )
+        account_path = AccountDerivationPath(
+            purpose=harden(KeyDerivationPurpose.STANDARD),
+            coin_type=harden(CoinType.CARDANO),
+            account=harden(0)
+        )
 
-            public_key = await handler.get_account_public_key(account_path)
-            assert public_key.to_hex() == EXTENDED_ACCOUNT_0_PUB_KEY
-
-        asyncio.run(run_test())
+        public_key = handler.get_account_public_key(account_path)
+        assert public_key.to_hex() == EXTENDED_ACCOUNT_0_PUB_KEY
 
     def test_can_sign_a_transaction(self):
         """Test signing a transaction."""
-        async def run_test():
-            handler = SoftwareBip32SecureKeyHandler.from_entropy(
-                entropy=bytes(ENTROPY_BYTES),
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_passphrase
-            )
+        handler = SoftwareBip32SecureKeyHandler.from_entropy(
+            entropy=bytes(ENTROPY_BYTES),
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_passphrase
+        )
 
-            derivation_paths = [
-                DerivationPath(
-                    purpose=harden(KeyDerivationPurpose.STANDARD),
-                    coin_type=harden(CoinType.CARDANO),
-                    account=harden(0),
-                    role=KeyDerivationRole.EXTERNAL,
-                    index=0
-                ),
-                DerivationPath(
-                    purpose=harden(KeyDerivationPurpose.STANDARD),
-                    coin_type=harden(CoinType.CARDANO),
-                    account=harden(0),
-                    role=KeyDerivationRole.STAKING,
-                    index=0
-                )
-            ]
-
-            witnesses = await handler.sign_transaction(TX_CBOR, derivation_paths)
-            assert len(witnesses) == 2
-            assert witnesses[0].vkey.hex() == "07473467683e6a30a13d471a68641f311a14e2b37a38ea592e5d6efc2b446bce"
-            assert witnesses[0].signature.hex() == (
-                "5f9f725da55e2a89e725f2c147512c0508956aae6a99cb2f3150c73c812c7373"
-                "f57311dcee14cb02ad1ab7b1940aecc5bbf0769a9b77aafb996393b08d48830b"
+        derivation_paths = [
+            DerivationPath(
+                purpose=harden(KeyDerivationPurpose.STANDARD),
+                coin_type=harden(CoinType.CARDANO),
+                account=harden(0),
+                role=KeyDerivationRole.EXTERNAL,
+                index=0
+            ),
+            DerivationPath(
+                purpose=harden(KeyDerivationPurpose.STANDARD),
+                coin_type=harden(CoinType.CARDANO),
+                account=harden(0),
+                role=KeyDerivationRole.STAKING,
+                index=0
             )
-            assert witnesses[1].vkey.hex() == "48f090d48246134d6307267451fcefbe4cd9df1530b9ac9a267e3e8cf28b6c61"
-            assert witnesses[1].signature.hex() == (
-                "9219b195082d71a1b6b9109862a6a053dc8b5342d3a31cc9067330c8f83824a9"
-                "2803a5fe39087fb8c73c746c6e278e98be24b1ddc0c1408c7d5a02776a7e3f07"
-            )
+        ]
 
-        asyncio.run(run_test())
+        transaction = get_transaction()
+        witnesses = handler.sign_transaction(transaction, derivation_paths)
+        assert len(witnesses) == 2
+        assert witnesses[0].vkey.hex() == "07473467683e6a30a13d471a68641f311a14e2b37a38ea592e5d6efc2b446bce"
+        assert witnesses[0].signature.hex() == (
+            "5f9f725da55e2a89e725f2c147512c0508956aae6a99cb2f3150c73c812c7373"
+            "f57311dcee14cb02ad1ab7b1940aecc5bbf0769a9b77aafb996393b08d48830b"
+        )
+        assert witnesses[1].vkey.hex() == "48f090d48246134d6307267451fcefbe4cd9df1530b9ac9a267e3e8cf28b6c61"
+        assert witnesses[1].signature.hex() == (
+            "9219b195082d71a1b6b9109862a6a053dc8b5342d3a31cc9067330c8f83824a9"
+            "2803a5fe39087fb8c73c746c6e278e98be24b1ddc0c1408c7d5a02776a7e3f07"
+        )
 
     def test_can_be_serialized_and_deserialized_correctly(self):
         """Test serialization and deserialization."""
-        async def run_test():
-            original_handler = SoftwareBip32SecureKeyHandler.from_entropy(
-                entropy=bytes(ENTROPY_BYTES),
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_passphrase
-            )
-            serialized_data = await original_handler.serialize()
-            deserialized_handler = SoftwareBip32SecureKeyHandler.deserialize(
-                serialized_data, get_passphrase
-            )
+        original_handler = SoftwareBip32SecureKeyHandler.from_entropy(
+            entropy=bytes(ENTROPY_BYTES),
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_passphrase
+        )
+        serialized_data = original_handler.serialize()
+        deserialized_handler = SoftwareBip32SecureKeyHandler.deserialize(
+            serialized_data, get_passphrase
+        )
 
-            account_path = AccountDerivationPath(
-                purpose=harden(KeyDerivationPurpose.STANDARD),
-                coin_type=harden(CoinType.CARDANO),
-                account=harden(0)
-            )
-            public_key = await deserialized_handler.get_account_public_key(account_path)
-            assert public_key.to_hex() == EXTENDED_ACCOUNT_0_PUB_KEY
-
-        asyncio.run(run_test())
+        account_path = AccountDerivationPath(
+            purpose=harden(KeyDerivationPurpose.STANDARD),
+            coin_type=harden(CoinType.CARDANO),
+            account=harden(0)
+        )
+        public_key = deserialized_handler.get_account_public_key(account_path)
+        assert public_key.to_hex() == EXTENDED_ACCOUNT_0_PUB_KEY
 
     def test_can_be_created_from_serialized_data_from_libcardano_c(self):
         """Test deserializing data created by libcardano-c."""
-        async def run_test():
-            handler = SoftwareBip32SecureKeyHandler.deserialize(
-                bytes.fromhex(LIBCARDANO_C_SERIALIZED_BIP32_KEY_HANDLER),
-                get_passphrase
-            )
+        handler = SoftwareBip32SecureKeyHandler.deserialize(
+            bytes.fromhex(LIBCARDANO_C_SERIALIZED_BIP32_KEY_HANDLER),
+            get_passphrase
+        )
 
-            account_path = AccountDerivationPath(
-                purpose=harden(KeyDerivationPurpose.STANDARD),
-                coin_type=harden(CoinType.CARDANO),
-                account=harden(0)
-            )
-            public_key = await handler.get_account_public_key(account_path)
-            assert public_key.to_hex() == EXTENDED_ACCOUNT_0_PUB_KEY
-
-        asyncio.run(run_test())
+        account_path = AccountDerivationPath(
+            purpose=harden(KeyDerivationPurpose.STANDARD),
+            coin_type=harden(CoinType.CARDANO),
+            account=harden(0)
+        )
+        public_key = handler.get_account_public_key(account_path)
+        assert public_key.to_hex() == EXTENDED_ACCOUNT_0_PUB_KEY
 
     def test_fails_to_decrypt_with_wrong_passphrase(self):
         """Test that decryption fails with wrong passphrase."""
-        async def run_test():
-            handler = SoftwareBip32SecureKeyHandler.from_entropy(
-                entropy=bytes(ENTROPY_BYTES),
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_wrong_passphrase
-            )
+        handler = SoftwareBip32SecureKeyHandler.from_entropy(
+            entropy=bytes(ENTROPY_BYTES),
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_wrong_passphrase
+        )
 
-            account_path = AccountDerivationPath(
-                purpose=harden(KeyDerivationPurpose.STANDARD),
-                coin_type=harden(CoinType.CARDANO),
-                account=harden(0)
-            )
-            with pytest.raises(cometa.CardanoError):
-                await handler.get_account_public_key(account_path)
-
-        asyncio.run(run_test())
+        account_path = AccountDerivationPath(
+            purpose=harden(KeyDerivationPurpose.STANDARD),
+            coin_type=harden(CoinType.CARDANO),
+            account=harden(0)
+        )
+        with pytest.raises(cometa.CardanoError):
+            handler.get_account_public_key(account_path)
 
 
 class TestSoftwareEd25519SecureKeyHandler:
@@ -196,58 +189,50 @@ class TestSoftwareEd25519SecureKeyHandler:
 
     def test_can_be_created_from_ed25519_key_and_get_public_key(self):
         """Test creating handler from Ed25519 key and getting public key."""
-        async def run_test():
-            private_key = Ed25519PrivateKey.from_extended_hex(ED25519_PRIVATE_KEY_HEX)
-            handler = await SoftwareEd25519SecureKeyHandler.from_ed25519_key(
-                private_key=private_key,
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_passphrase
-            )
+        private_key = Ed25519PrivateKey.from_extended_hex(ED25519_PRIVATE_KEY_HEX)
+        handler = SoftwareEd25519SecureKeyHandler.from_ed25519_key(
+            private_key=private_key,
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_passphrase
+        )
 
-            public_key = await handler.get_public_key()
-            assert public_key.to_hex() == ED25519_PUBLIC_KEY_HEX
-
-        asyncio.run(run_test())
+        public_key = handler.get_public_key()
+        assert public_key.to_hex() == ED25519_PUBLIC_KEY_HEX
 
     def test_can_sign_a_transaction(self):
         """Test signing a transaction."""
-        async def run_test():
-            private_key = Ed25519PrivateKey.from_extended_hex(ED25519_PRIVATE_KEY_HEX)
-            handler = await SoftwareEd25519SecureKeyHandler.from_ed25519_key(
-                private_key=private_key,
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_passphrase
-            )
-            witnesses = await handler.sign_transaction(TX_CBOR)
+        private_key = Ed25519PrivateKey.from_extended_hex(ED25519_PRIVATE_KEY_HEX)
+        handler = SoftwareEd25519SecureKeyHandler.from_ed25519_key(
+            private_key=private_key,
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_passphrase
+        )
+        transaction = get_transaction()
+        witnesses = handler.sign_transaction(transaction)
 
-            assert len(witnesses) == 1
-            assert witnesses[0].vkey.hex() == ED25519_PUBLIC_KEY_HEX
-            assert witnesses[0].signature.hex() == (
-                "5f9f725da55e2a89e725f2c147512c0508956aae6a99cb2f3150c73c812c7373"
-                "f57311dcee14cb02ad1ab7b1940aecc5bbf0769a9b77aafb996393b08d48830b"
-            )
-
-        asyncio.run(run_test())
+        assert len(witnesses) == 1
+        assert witnesses[0].vkey.hex() == ED25519_PUBLIC_KEY_HEX
+        assert witnesses[0].signature.hex() == (
+            "5f9f725da55e2a89e725f2c147512c0508956aae6a99cb2f3150c73c812c7373"
+            "f57311dcee14cb02ad1ab7b1940aecc5bbf0769a9b77aafb996393b08d48830b"
+        )
 
     def test_can_be_serialized_and_deserialized_correctly(self):
         """Test serialization and deserialization."""
-        async def run_test():
-            private_key = Ed25519PrivateKey.from_extended_hex(ED25519_PRIVATE_KEY_HEX)
-            original_handler = await SoftwareEd25519SecureKeyHandler.from_ed25519_key(
-                private_key=private_key,
-                passphrase=bytes(PASSWORD),
-                get_passphrase=get_passphrase
-            )
+        private_key = Ed25519PrivateKey.from_extended_hex(ED25519_PRIVATE_KEY_HEX)
+        original_handler = SoftwareEd25519SecureKeyHandler.from_ed25519_key(
+            private_key=private_key,
+            passphrase=bytes(PASSWORD),
+            get_passphrase=get_passphrase
+        )
 
-            serialized_data = await original_handler.serialize()
-            deserialized_handler = SoftwareEd25519SecureKeyHandler.deserialize(
-                serialized_data, get_passphrase
-            )
+        serialized_data = original_handler.serialize()
+        deserialized_handler = SoftwareEd25519SecureKeyHandler.deserialize(
+            serialized_data, get_passphrase
+        )
 
-            public_key = await deserialized_handler.get_public_key()
-            assert public_key.to_hex() == ED25519_PUBLIC_KEY_HEX
-
-        asyncio.run(run_test())
+        public_key = deserialized_handler.get_public_key()
+        assert public_key.to_hex() == ED25519_PUBLIC_KEY_HEX
 
 
 class TestHardenFunction:

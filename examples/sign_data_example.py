@@ -79,12 +79,10 @@ def main() -> None:
     print("This example will sign some data with CIP-008 standard.")
     print()
 
-    provider = MockProvider()
-
-    print("[INFO] Creating wallet from mnemonics...")
+    print("Creating wallet from mnemonics...")
     wallet = SingleAddressWallet.create_from_mnemonics(
         mnemonics=MNEMONICS.split(),
-        provider=provider,
+        provider=MockProvider(), # We dont need a real provider for signing example
         credentials_config=SingleAddressCredentialsConfig(
             account=0,
             payment_index=0,
@@ -96,14 +94,14 @@ def main() -> None:
     reward_addresses = wallet.get_reward_addresses()
     address = reward_addresses[0]
 
-    print(f"[INFO] Signing data with {address.to_bech32()}")
+    print(f"Signing data with {address.to_bech32()}")
 
     message = "Hello, Cometa!"
     result = wallet.sign_data(address.to_address(), utf8_to_hex(message))
 
-    print("[INFO] Data signed successfully!")
-    print(f"[INFO] Cose Key: {result['key']}")
-    print(f"[INFO] Cose Sign1: {result['signature']}")
+    print("Data signed successfully!")
+    print(f"Cose Key: {result['key']}")
+    print(f"Cose Sign1: {result['signature']}")
 
 
 if __name__ == "__main__":

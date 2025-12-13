@@ -29,6 +29,16 @@ if TYPE_CHECKING:
     from .constr_plutus_data import ConstrPlutusData
     from ..common.bigint import BigInt
 
+# Type alias for values that can be converted to PlutusData
+PlutusDataLike = Union[
+    "PlutusData",
+    "PlutusList",
+    "PlutusMap",
+    "ConstrPlutusData",
+    int,
+    str,
+    bytes,
+]
 
 class PlutusData:
     """
@@ -447,22 +457,23 @@ class PlutusData:
         return ConstrPlutusData(ptr=out[0])
 
     @staticmethod
-    def to_plutus_data(value: Union[PlutusData, int, str, bytes]) -> PlutusData:
+    def to_plutus_data(value: PlutusDataLike) -> "PlutusData":
         """
-        Converts a native Python value to PlutusData.
+        Converts a native Python value or Plutus container to PlutusData.
 
-        This is a convenience method that allows using native Python types
-        where PlutusData is expected.
-
-        Args:
-            value: A PlutusData, int, str, or bytes value.
-
-        Returns:
-            A PlutusData instance.
-
-        Raises:
-            TypeError: If the value type is not supported.
+        Supports:
+        - PlutusData
+        - PlutusList
+        - PlutusMap
+        - ConstrPlutusData
+        - int
+        - str (UTF-8)
+        - bytes
         """
+        from .plutus_list import PlutusList
+        from .plutus_map import PlutusMap
+        from .constr_plutus_data import ConstrPlutusData
+
         if isinstance(value, PlutusData):
             return value
         if isinstance(value, int):
@@ -471,4 +482,11 @@ class PlutusData:
             return PlutusData.from_string(value)
         if isinstance(value, bytes):
             return PlutusData.from_bytes(value)
+        if isinstance(value, PlutusList):
+            return PlutusData.from_list(value)
+        if isinstance(value, PlutusMap):
+            return PlutusData.from_map(value)
+        if isinstance(value, ConstrPlutusData):
+            return PlutusData.from_constr(value)
+
         raise TypeError(f"Cannot convert {type(value).__name__} to PlutusData")

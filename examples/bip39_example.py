@@ -66,9 +66,9 @@ def main() -> None:
     print("Get account public key")
     extended_public_key = secure_key_handler.get_account_public_key(
         AccountDerivationPath(
-            account=harden(0),
+            purpose=harden(KeyDerivationPurpose.STANDARD),
             coin_type=harden(CoinType.CARDANO),
-            purpose=harden(KeyDerivationPurpose.STANDARD)
+            account=harden(0)
         )
     )
 

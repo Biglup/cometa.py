@@ -149,7 +149,7 @@ class Datum:
             CardanoError: If creation fails.
 
         Example:
-            >>> plutus_data = PlutusData.new_integer(42)
+            >>> plutus_data = PlutusData.from_int(42)
             >>> datum = Datum.from_inline_data(plutus_data)
         """
         out = ffi.new("cardano_datum_t**")

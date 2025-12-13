@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from .plutus_data_kind import PlutusDataKind
-from .plutus_data import PlutusData
+from .plutus_data import PlutusData, PlutusDataLike
 from .plutus_list import PlutusList
 from .plutus_map import PlutusMap
 from .constr_plutus_data import ConstrPlutusData
@@ -23,6 +23,7 @@ from .constr_plutus_data import ConstrPlutusData
 __all__ = [
     "PlutusDataKind",
     "PlutusData",
+    "PlutusDataLike",
     "PlutusList",
     "PlutusMap",
     "ConstrPlutusData",

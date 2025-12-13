@@ -16,17 +16,16 @@ limitations under the License.
 
 from __future__ import annotations
 from collections.abc import Mapping
-from typing import Iterator, Union, Tuple, Optional
+from typing import TYPE_CHECKING, Iterator, Union, Tuple, Optional
 
 from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
 
-
-# Type alias for values that can be converted to PlutusData
-PlutusDataLike = Union["PlutusData", int, str, bytes]
-
+if TYPE_CHECKING:
+    from .plutus_data import PlutusData, PlutusDataLike
+    from .plutus_list import PlutusList
 
 class PlutusMap(Mapping["PlutusData", "PlutusData"]):
     """
@@ -96,7 +95,7 @@ class PlutusMap(Mapping["PlutusData", "PlutusData"]):
             return False
         return bool(lib.cardano_plutus_map_equals(self._ptr, other._ptr))
 
-    def __getitem__(self, key: PlutusDataLike) -> "PlutusData":
+    def __getitem__(self, key: "PlutusDataLike") -> "PlutusData":
         """
         Gets a value by key using bracket notation.
 

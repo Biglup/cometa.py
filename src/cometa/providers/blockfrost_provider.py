@@ -22,6 +22,7 @@ from typing import Union, List, Optional, Any, Dict
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+from ..protocol_params import Costmdls
 from ..cbor import CborReader
 from .. import CardanoError
 from ..common.network_magic import NetworkMagic
@@ -43,7 +44,7 @@ def _prepare_utxos_for_evaluation(utxos: List["Utxo"]) -> List:
     result = []
     for utxo in utxos:
         input_json = {
-            "id": utxo.input.id.to_hex(),
+            "id": utxo.input.transaction_id.hex(),
             "index": utxo.input.index
         }
 
@@ -293,7 +294,9 @@ class BlockfrostProvider:
             CardanoError: If the request fails.
         """
         from ..protocol_params import ProtocolParameters, ExUnitPrices
+        from ..protocol_params.cost_model import CostModel
         from ..common import UnitInterval, ExUnits, ProtocolVersion
+        from ..scripts.plutus_scripts import PlutusLanguageVersion
 
         data = self._get("epochs/latest/parameters")
         if data is None:
@@ -334,6 +337,10 @@ class BlockfrostProvider:
             params.expansion_rate = UnitInterval.from_float(float(data["rho"]))
         if data.get("tau") is not None:
             params.treasury_growth_rate = UnitInterval.from_float(float(data["tau"]))
+        if data.get("decentralisation_param") is not None:
+            params.decentralisation_param = UnitInterval.from_float(
+                float(data["decentralisation_param"])
+            )
 
         major = data.get("protocol_major_ver", 0)
         minor = data.get("protocol_minor_ver", 0)
@@ -360,7 +367,9 @@ class BlockfrostProvider:
         max_block_mem = data.get("max_block_ex_mem")
         max_block_steps = data.get("max_block_ex_steps")
         if max_block_mem is not None and max_block_steps is not None:
-            params.max_block_ex_units = ExUnits.new(int(max_block_mem), int(max_block_steps))
+            params.max_block_ex_units = ExUnits.new(
+                int(max_block_mem), int(max_block_steps)
+            )
 
         price_mem = data.get("price_mem")
         price_step = data.get("price_step")
@@ -376,7 +385,9 @@ class BlockfrostProvider:
         if data.get("gov_action_deposit") is not None:
             params.governance_action_deposit = int(data["gov_action_deposit"])
         if data.get("gov_action_lifetime") is not None:
-            params.governance_action_validity_period = int(data["gov_action_lifetime"])
+            params.governance_action_validity_period = int(
+                data["gov_action_lifetime"]
+            )
         if data.get("committee_min_size") is not None:
             params.min_committee_size = int(data["committee_min_size"])
         if data.get("committee_max_term_length") is not None:
@@ -384,7 +395,35 @@ class BlockfrostProvider:
 
         ref_script_cost = data.get("min_fee_ref_script_cost_per_byte")
         if ref_script_cost is not None:
-            params.ref_script_cost_per_byte = UnitInterval.from_float(float(ref_script_cost))
+            params.ref_script_cost_per_byte = UnitInterval.from_float(
+                float(ref_script_cost)
+            )
+
+        raw_models = data.get("cost_models_raw") or {}
+        cost_models = Costmdls.new()
+
+        if isinstance(raw_models, dict):
+            for language_key, costs in raw_models.items():
+                if not isinstance(costs, (list, tuple)):
+                    continue
+
+                key_norm = str(language_key).lower()
+
+                if "v1" in key_norm:
+                    lang_enum = PlutusLanguageVersion.V1
+                elif "v2" in key_norm:
+                    lang_enum = PlutusLanguageVersion.V2
+                elif "v3" in key_norm:
+                    lang_enum = PlutusLanguageVersion.V3
+                else:
+                    continue
+
+                cost_ints = [int(c) for c in costs]
+                model = CostModel.new(lang_enum, cost_ints)
+                cost_models.insert(model)
+
+        if cost_models:
+            params.cost_models = cost_models
 
         return params
 
