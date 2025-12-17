@@ -341,29 +341,28 @@ spend_tx = (
 ### Working with Plutus Data
 
 ```python
-from cometa import ConstrPlutusData, PlutusList, PlutusMap, PlutusInteger, PlutusBytes
-
+from cometa import ConstrPlutusData, PlutusList, PlutusMap
 # Constructor with fields (most common pattern)
 # Represents: data MyDatum = MyDatum { owner: PubKeyHash, amount: Integer }
 datum = ConstrPlutusData(
     0,  # Constructor index
     [
-        PlutusBytes(b"pubkey_hash_here"),  # owner
-        PlutusInteger(1000000)              # amount
+        b"pubkey_hash_here", # owner
+        1000000              # amount
     ]
 )
 
 # List of integers
-int_list = PlutusList([
-    PlutusInteger(1),
-    PlutusInteger(2),
-    PlutusInteger(3)
+int_list = PlutusList.from_list([
+    1,
+    2,
+    3
 ])
 
 # Map (key-value pairs)
 plutus_map = PlutusMap()
-plutus_map[PlutusBytes(b"key1")] = PlutusInteger(100)
-plutus_map[PlutusBytes(b"key2")] = PlutusInteger(200)
+plutus_map[b"key1"] = 100
+plutus_map[b"key2"] = 200
 ```
 
 <hr>
