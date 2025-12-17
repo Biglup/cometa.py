@@ -24,7 +24,7 @@ from urllib.error import HTTPError, URLError
 
 from ..protocol_params import Costmdls
 from ..cbor import CborReader
-from .. import CardanoError
+from ..errors import CardanoError
 from ..common.network_magic import NetworkMagic
 
 

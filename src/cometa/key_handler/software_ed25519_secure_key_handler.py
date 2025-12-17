@@ -28,7 +28,6 @@ from ..cryptography.emip3 import emip3_encrypt, emip3_decrypt
 from ..witness_set.vkey_witness import VkeyWitness
 from ..witness_set.vkey_witness_set import VkeyWitnessSet
 from ..transaction import Transaction
-from ..cbor import CborReader
 
 
 class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):

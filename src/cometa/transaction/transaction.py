@@ -219,7 +219,6 @@ class Transaction:
             >>> tx.to_cip116_json(writer)
             >>> json_str = writer.encode()
         """
-        from ..json.json_writer import JsonWriter
         if not isinstance(writer, JsonWriter):
             raise TypeError("writer must be a JsonWriter instance")
         err = lib.cardano_transaction_to_cip116_json(self._ptr, writer._ptr)
