@@ -75,7 +75,7 @@ def get_blockfrost_project_id() -> str:
 
 def get_password() -> bytes:
     """Callback that returns the passphrase for decryption."""
-    return input("Enter password: ").encode("utf-8")
+    return "password".encode("utf-8")
 
 
 def sign_and_submit(wallet, provider, transaction) -> None:

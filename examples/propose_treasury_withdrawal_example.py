@@ -26,7 +26,7 @@ from cometa import (
     NetworkMagic,
     Anchor,
     Blake2bHash,
-    TransactionInput,
+    TransactionInput, WithdrawalMap,
 )
 from single_address_wallet import SingleAddressWallet, SingleAddressCredentialsConfig
 
@@ -99,17 +99,12 @@ def main() -> None:
     reward_address = reward_addresses[0]
 
     reference_input = provider.resolve_unspent_outputs([
-        TransactionInput.new(
-            Blake2bHash.from_hex(
-                "9aabbac24d1e39cb3e677981c84998a4210bae8d56b0f60908eedb9f59efffc8"
-            ),
-            0
-        )
+        TransactionInput.from_hex("9aabbac24d1e39cb3e677981c84998a4210bae8d56b0f60908eedb9f59efffc8",0)
     ])[0]
 
-    withdrawals = {
+    withdrawals = WithdrawalMap.from_dict({
         reward_address.to_bech32(): WITHDRAWAL_AMOUNT
-    }
+    })
 
     transaction = builder \
         .add_reference_input(reference_input) \

@@ -61,11 +61,11 @@ def _prepare_utxos_for_evaluation(utxos: List["Utxo"]) -> List:
         assets = output.value.multi_asset
         if assets:
             for policy_id, asset_map in assets.items():
-                pid_hex = policy_id.hex()
+                pid_hex = policy_id.to_hex()
                 if pid_hex not in output_json["value"]:
                     output_json["value"][pid_hex] = {}
                 for asset_name, qty in asset_map.items():
-                    name_hex = asset_name.hex()
+                    name_hex = asset_name.to_hex()
                     output_json["value"][pid_hex][name_hex] = qty
 
         result.extend([input_json, output_json])
@@ -158,7 +158,7 @@ class BlockfrostProvider:
         Fetch and resolve a reference script by its hash.
         This handles both Plutus (CBOR) and Native (JSON) scripts.
         """
-        from ..scripts import PlutusV1Script, PlutusV2Script, PlutusV3Script, NativeScript
+        from ..scripts import PlutusV1Script, PlutusV2Script, PlutusV3Script, NativeScript, Script
         from ..scripts.plutus_scripts import PlutusLanguageVersion
 
         meta_data = self._get(f"scripts/{script_hash}")
@@ -171,7 +171,7 @@ class BlockfrostProvider:
             json_data = self._get(f"scripts/{script_hash}/json")
             if not json_data or "json" not in json_data:
                 return None
-            return NativeScript.from_json(json_data["json"])
+            return Script.from_native(NativeScript.from_json(json_data["json"]))
 
         version_map = {
             "plutusV1": PlutusLanguageVersion.V1,
@@ -188,13 +188,13 @@ class BlockfrostProvider:
             cbor_bytes = bytes.fromhex(cbor_data["cbor"])
 
             if plutus_version == PlutusLanguageVersion.V1:
-                return PlutusV1Script.new(cbor_bytes)
+                return Script.from_plutus_v1(PlutusV1Script.new(cbor_bytes))
 
             if plutus_version == PlutusLanguageVersion.V2:
-                return PlutusV2Script.new(cbor_bytes)
+                return Script.from_plutus_v2(PlutusV2Script.new(cbor_bytes))
 
             if plutus_version == PlutusLanguageVersion.V3:
-                return PlutusV3Script.new(cbor_bytes)
+                return Script.from_plutus_v3(PlutusV3Script.new(cbor_bytes))
 
         return None
 
@@ -581,7 +581,7 @@ class BlockfrostProvider:
         results = []
 
         for tx_in in inputs:
-            tx_id = tx_in.id.to_hex()
+            tx_id = tx_in.transaction_id.hex()
             index = tx_in.index
 
             data = self._get(f"txs/{tx_id}/utxos")

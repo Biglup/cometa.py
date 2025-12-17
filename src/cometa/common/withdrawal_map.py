@@ -102,6 +102,32 @@ class WithdrawalMap(Mapping["RewardAddress", "int"]):
                 f"Failed to serialize WithdrawalMap to CBOR (error code: {err})"
             )
 
+    @classmethod
+    def from_dict(cls, data: dict[str, int]) -> WithdrawalMap:
+        """
+        Creates a WithdrawalMap from a dictionary mapping Bech32 addresses to amounts.
+
+        Args:
+            data: A dictionary where keys are Bech32-encoded reward addresses
+                  (e.g., "stake1...") and values are amounts in lovelace.
+
+        Returns:
+            A new WithdrawalMap populated with the provided entries.
+
+        Raises:
+            CardanoError: If creation or insertion fails.
+
+        Example:
+            >>> withdrawals = WithdrawalMap.from_dict({
+            ...     "stake_test1uq...": 1000000,
+            ...     "stake_test1up...": 2000000
+            ... })
+        """
+        withdrawal_map = cls()
+        for address, amount in data.items():
+            withdrawal_map.insert_ex(address, amount)
+        return withdrawal_map
+
     def insert(self, key: RewardAddress, value: int) -> None:
         """
         Inserts or updates a reward address with its withdrawal amount.
