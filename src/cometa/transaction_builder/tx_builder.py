@@ -70,7 +70,6 @@ def _to_reward_address(value: Union["RewardAddress", str]) -> "RewardAddress":
         return RewardAddress.from_bech32(value)
     return value
 
-
 def _to_drep(value: Union["DRep", str]) -> "DRep":
     """Convert string to DRep if needed."""
     if isinstance(value, str):
@@ -962,7 +961,7 @@ class TxBuilder:
                 id_bytes,
                 len(id_bytes),
                 amount,
-                redeemer_obj._ptr,
+                redeemer_ptr,
             )
             return self
 
@@ -1232,24 +1231,25 @@ class TxBuilder:
             >>> builder.deregister_reward_address("stake_test1...")
         """
         redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(reward_address, str):
             addr_bytes = reward_address.encode("utf-8")
             lib.cardano_tx_builder_deregister_reward_address_ex(
-                self._ptr, addr_bytes, len(addr_bytes), redeemer_obj._ptr
+                self._ptr, addr_bytes, len(addr_bytes), redeemer_ptr
             )
         else:
             lib.cardano_tx_builder_deregister_reward_address(
-                self._ptr, reward_address._ptr, redeemer_obj._ptr
+                self._ptr, reward_address._ptr, redeemer_ptr
             )
         return self
 
     def delegate_stake(
-        self,
-        reward_address: Union["RewardAddress", str],
-        pool_id: Union["Blake2bHash", str],
-        redeemer: Optional["PlutusDataLike"] = None,
-    ) -> TxBuilder:
+            self,
+            reward_address: Union["RewardAddress", str],
+            pool_id: str,
+            redeemer: Optional["PlutusDataLike"] = None,
+    ) -> "TxBuilder":
         """
         Delegate stake to a pool.
 
@@ -1258,39 +1258,32 @@ class TxBuilder:
 
         Args:
             reward_address: The stake address to delegate.
-            pool_id: The pool to delegate to. Can be a ``Blake2bHash`` or
-                a bech32 pool ID (pool1...) or hex hash.
+            pool_id: a bech32 pool ID (pool1...).
             redeemer: Redeemer for script-based stake credentials.
 
         Returns:
             Self for method chaining.
-
-        Example:
-            >>> builder.delegate_stake(
-            ...     "stake_test1...",
-            ...     "pool1abc123...",
-            ... )
         """
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
-        if isinstance(reward_address, str) and isinstance(pool_id, str):
-            addr_bytes = reward_address.encode("utf-8")
-            pool_bytes = pool_id.encode("utf-8")
-            lib.cardano_tx_builder_delegate_stake_ex(
-                self._ptr,
-                addr_bytes,
-                len(addr_bytes),
-                pool_bytes,
-                len(pool_bytes),
-                redeemer_ptr,
-            )
+        if isinstance(reward_address, str):
+            reward_str = reward_address
         else:
-            pool_ptr = pool_id if not isinstance(pool_id, str) else pool_id._ptr
-            addr_ptr = reward_address if not isinstance(reward_address, str) else reward_address._ptr
-            lib.cardano_tx_builder_delegate_stake(
-                self._ptr, addr_ptr, pool_ptr, redeemer_ptr
-            )
+            reward_str = reward_address.to_bech32()
+
+        addr_bytes = reward_str.encode("utf-8")
+        pool_bytes = pool_id.encode("utf-8")
+
+        lib.cardano_tx_builder_delegate_stake_ex(
+            self._ptr,
+            addr_bytes,
+            len(addr_bytes),
+            pool_bytes,
+            len(pool_bytes),
+            redeemer_ptr,
+        )
+
         return self
 
     def delegate_voting_power(
@@ -1336,7 +1329,7 @@ class TxBuilder:
             )
         else:
             lib.cardano_tx_builder_delegate_voting_power(
-                self._ptr, reward_address._ptr, drep._ptr, redeemer_obj._ptr
+                self._ptr, reward_address._ptr, drep._ptr, redeemer_ptr
             )
         return self
 

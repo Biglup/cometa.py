@@ -748,8 +748,8 @@ class BlockfrostProvider:
             tag_map = {
                 "spend": RedeemerTag.SPEND,
                 "mint": RedeemerTag.MINT,
-                "cert": RedeemerTag.CERTIFYING,
-                "reward": RedeemerTag.REWARD,
+                "certificate": RedeemerTag.CERTIFYING,
+                "withdrawal": RedeemerTag.REWARD,
                 "vote": RedeemerTag.VOTING,
                 "propose": RedeemerTag.PROPOSING,
             }

@@ -27,7 +27,7 @@ from cometa import (
     ScriptAll,
     ScriptInvalidAfter,
     Value,
-    NativeScriptLike,
+    NativeScriptLike, get_lib_version,
 )
 from single_address_wallet import SingleAddressWallet, SingleAddressCredentialsConfig
 
