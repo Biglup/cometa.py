@@ -48,12 +48,15 @@ unsigned_tx = (
 
 Cometa.py supports all features up to the Conway era, which is the current era of the Cardano blockchain. Conway era brought decentralized governance to Cardano, including:
 
-- **DRep Registration**: Register as a Delegated Representative (DRep) using public keys or scripts
-- **Voting**: Vote on governance proposals as a DRep, SPO, or Constitutional Committee member
-- **Governance Actions**: Submit proposals for treasury withdrawals, parameter changes, hard forks, and more
-- **Stake Delegation**: Delegate voting power to DReps
+- [Register as DRep (PubKey)](examples/drep_pubkey_example.py)
+-  [Register as DRep (Script)](examples/drep_script_example.py)
+-  [Submit governance action proposal (Withdrawing from treasury)](examples/propose_treasury_withdrawal_example.py)
+-  [Vote for proposal (PubKey DRep)](examples/vote_for_proposal_drep_pubkey_example.py)
+-  [Vote for proposal (Script DRep)](examples/vote_for_proposal_drep_script_example.py)
 
-See the [Documentation](https://cometapy.readthedocs.io/) for more information on governance features.
+These are some of the examples illustrated in the [examples](examples/) directory. However, you should
+be able to build any valid transaction for the current era. See the [Documentation](https://cometapy.readthedocs.io/) for more information.
+
 
 <hr>
 
@@ -123,20 +126,582 @@ unsigned_tx = (
 )
 ```
 
-Sign the transaction with your private key:
-
-```python
-
-```
-
-Submit the signed transaction:
+Sign and submit the transaction:
 
 ```python
 tx_hash = provider.submit_transaction(signed_tx)
 print(f"Transaction submitted! TxHash: {tx_hash}")
 ```
 
-You can see the full capabilities of the transaction builder in the [TxBuilder API documentation](https://cometapy.readthedocs.io/).
+<hr>
+
+## **Transaction Builder Examples**
+
+The `TxBuilder` supports a wide range of transaction types. Here are some common patterns:
+
+### Sending Multiple Outputs
+
+```python
+builder = TxBuilder(protocol_params, provider)
+
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .send_lovelace("addr_test1qz...", 5_000_000)   # Send 5 ADA
+    .send_lovelace("addr_test1qp...", 10_000_000)  # Send 10 ADA
+    .send_lovelace("addr_test1qr...", 2_000_000)   # Send 2 ADA
+    .expires_in(7200)  # Expires in 2 hours
+    .build()
+)
+```
+
+### Minting Tokens with Native Scripts
+
+```python
+from cometa import ScriptAll, ScriptPubkey, Value
+
+# Create a native script policy
+pub_key_hash = payment_key.to_hash()
+native_script = ScriptAll.new([
+    ScriptPubkey.new(pub_key_hash)
+])
+policy_id = native_script.hash
+
+# Mint tokens
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .mint_token(amount=100, policy_id=policy_id, asset_name=b"MyToken")
+    .add_script(native_script)
+    .send_value(
+        address=str(sender_address),
+        value=Value.from_dict([2_000_000, {policy_id: {b"MyToken": 100}}])
+    )
+    .expires_in(3600)
+    .build()
+)
+```
+
+### Burning Tokens
+
+```python
+# Burn tokens (negative amount)
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .mint_token(amount=-50, policy_id=policy_id, asset_name=b"MyToken")
+    .add_script(native_script)
+    .expires_in(3600)
+    .build()
+)
+```
+
+### Attaching Metadata (CIP-25 NFTs)
+
+```python
+# CIP-25 NFT metadata
+nft_metadata = {
+    policy_id.hex(): {
+        "MyNFT": {
+            "name": "My Awesome NFT",
+            "image": "ipfs://QmXyz...",
+            "description": "A unique digital artwork"
+        }
+    }
+}
+
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .mint_token(amount=1, policy_id=policy_id, asset_name=b"MyNFT")
+    .add_script(native_script)
+    .set_metadata(metadata=nft_metadata, tag=721)  # CIP-25 uses tag 721
+    .send_value(
+        address=recipient_address,
+        value=Value.from_dict([2_000_000, {policy_id: {b"MyNFT": 1}}])
+    )
+    .expires_in(3600)
+    .build()
+)
+```
+
+### Staking Operations
+
+```python
+from cometa import DRep
+
+# Delegate stake to a pool
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .delegate_stake(
+        reward_address=reward_address,
+        pool_id="pool1..."
+    )
+    .build()
+)
+
+# Delegate voting power to a DRep (Conway era)
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .delegate_voting_power(
+        reward_address=reward_address,
+        drep=DRep.from_key_hash("drep_key_hash_hex...")
+    )
+    .build()
+)
+```
+
+### Treasury Donation
+
+```python
+# Donate to the Cardano treasury
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .donate(1_000_000_000)  # Donate 1000 ADA
+    .build()
+)
+```
+
+<hr>
+
+## **Plutus Smart Contracts**
+
+Cometa.py supports Plutus V1, V2, and V3 scripts for smart contract interactions. Plutus scripts can be used for spending validation, minting policies, and staking operations.
+
+### Loading Plutus Scripts
+
+```python
+from cometa import PlutusV3Script, PlutusV2Script, PlutusV1Script, Script
+
+# Load a Plutus V3 script from CBOR hex
+plutus_v3 = PlutusV3Script.from_hex("590dff010000323232...")
+script = Script.from_plutus_v3(plutus_v3)
+
+# Load Plutus V2 or V1 similarly
+plutus_v2 = PlutusV2Script.from_hex("...")
+script_v2 = Script.from_plutus_v2(plutus_v2)
+
+# Get the script hash (used as policy ID for minting)
+script_hash = script.hash
+print(f"Script hash: {script_hash.hex()}")
+```
+
+### Creating Script Addresses
+
+```python
+from cometa import EnterpriseAddress, Credential, NetworkId
+
+# Create a credential from the script hash
+script_credential = Credential.from_script_hash(script_hash)
+
+# Create an enterprise address (no staking) for the script
+script_address = EnterpriseAddress.from_credentials(
+    NetworkId.TESTNET,
+    script_credential
+).to_address()
+
+print(f"Script address: {script_address}")
+```
+
+### Spending from a Plutus Script
+
+```python
+from cometa import ConstrPlutusData
+
+# Get UTXOs locked at the script address
+script_utxos = provider.get_unspent_outputs(str(script_address))
+
+# Create a redeemer (argument to the script)
+# ConstrPlutusData(0) is a simple constructor - your script defines the format
+redeemer = ConstrPlutusData(0)
+
+# Build transaction to spend from the script
+spend_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .add_input(utxo=script_utxos[0], redeemer=redeemer)  # Script input with redeemer
+    .send_lovelace(address=recipient_address, amount=5_000_000)
+    .add_script(script)  # Include the script for validation
+    .expires_in(3600)
+    .build()
+)
+```
+
+### Working with Plutus Data
+
+```python
+from cometa import ConstrPlutusData, PlutusList, PlutusMap, PlutusInteger, PlutusBytes
+
+# Constructor with fields (most common pattern)
+# Represents: data MyDatum = MyDatum { owner: PubKeyHash, amount: Integer }
+datum = ConstrPlutusData(
+    0,  # Constructor index
+    [
+        PlutusBytes(b"pubkey_hash_here"),  # owner
+        PlutusInteger(1000000)              # amount
+    ]
+)
+
+# List of integers
+int_list = PlutusList([
+    PlutusInteger(1),
+    PlutusInteger(2),
+    PlutusInteger(3)
+])
+
+# Map (key-value pairs)
+plutus_map = PlutusMap()
+plutus_map[PlutusBytes(b"key1")] = PlutusInteger(100)
+plutus_map[PlutusBytes(b"key2")] = PlutusInteger(200)
+```
+
+<hr>
+
+## **Conway Governance**
+
+Cardano's Conway era introduced decentralized governance. Cometa.py supports all governance features including DRep registration, voting, and proposal submission.
+
+### Registering as a DRep
+
+Delegated Representatives (DReps) vote on governance proposals on behalf of delegators:
+
+```python
+from cometa import DRep, DRepType, Credential, Anchor, Blake2bHash, Ed25519PublicKey
+
+# Create DRep credential from your DRep key
+drep_pub_key = Ed25519PublicKey.from_hex("your_drep_public_key_hex")
+drep_credential = Credential.from_key_hash(drep_pub_key.to_hash())
+
+# Create the DRep object
+drep = DRep.new(drep_type=DRepType.KEY_HASH, credential=drep_credential)
+print(f"DRep ID: {drep.to_cip129_string()}")
+
+# Create an anchor (metadata URL + hash)
+anchor = Anchor.new(
+    url="https://example.com/drep-metadata.jsonld",
+    hash_value=Blake2bHash.from_hex("metadata_hash_hex...")
+)
+
+# Register as a DRep
+register_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .register_drep(drep=drep, anchor=anchor)
+    .build()
+)
+```
+
+### Delegating Voting Power
+
+ADA holders can delegate their voting power to a DRep:
+
+```python
+from cometa import DRep
+
+# Delegate to a specific DRep
+drep = DRep.from_string("drep1...")  # DRep ID in CIP-129 format
+
+# First register your stake key (if not already registered)
+register_stake_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .register_reward_address(reward_address=reward_address)
+    .build()
+)
+
+# Then delegate voting power
+delegate_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .delegate_voting_power(
+        drep=drep,
+        reward_address=reward_address
+    )
+    .build()
+)
+
+# You can also delegate to special DReps
+from cometa import DRep
+
+# Delegate to "Abstain" (participate in quorum but don't vote)
+abstain_drep = DRep.new_abstain()
+
+# Delegate to "No Confidence" (vote no on everything)
+no_confidence_drep = DRep.new_no_confidence()
+```
+
+### Voting on Proposals
+
+DReps can vote on governance proposals:
+
+```python
+from cometa import (
+    Voter, VoterType, Vote, VotingProcedure,
+    GovernanceActionId, Anchor, Blake2bHash
+)
+
+# Create the voter (DRep credential)
+voter = Voter.new(VoterType.DREP_KEY_HASH, drep_credential)
+
+# Reference the governance action to vote on
+action_id = GovernanceActionId.from_bech32(
+    "gov_action1u8gafgcskj6sqvgwqse7adc0h9438m535lg97czcvxntscvw7f5sqgf2n7j"
+)
+
+# Create voting procedure with rationale anchor
+rationale_anchor = Anchor.new(
+    url="https://example.com/vote-rationale.jsonld",
+    hash_value=Blake2bHash.from_hex("rationale_hash...")
+)
+voting_procedure = VotingProcedure.new(Vote.YES, rationale_anchor)
+
+# Cast the vote
+vote_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .vote(
+        voter=voter,
+        action_id=action_id,
+        voting_procedure=voting_procedure
+    )
+    .build()
+)
+```
+
+### Proposing Governance Actions
+
+Submit proposals for on-chain governance:
+
+```python
+from cometa import Anchor, Blake2bHash
+
+# All proposals require an anchor with metadata
+proposal_anchor = Anchor.new(
+    url="https://example.com/proposal-metadata.jsonld",
+    hash_value=Blake2bHash.from_hex("metadata_hash...")
+)
+
+# Info action (non-binding poll)
+info_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .propose_info(
+        reward_address=reward_address,  # Deposit refund address
+        anchor=proposal_anchor
+    )
+    .build()
+)
+```
+
+### Deregistering a DRep
+
+```python
+# Deregister and reclaim your deposit
+deregister_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .deregister_drep(drep=drep)
+    .build()
+)
+```
+
+### Withdrawing Staking Rewards
+
+```python
+# Get current rewards balance
+rewards_balance = provider.get_rewards_balance(reward_address)
+
+# Withdraw all rewards
+withdraw_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .withdraw_rewards(
+        amount=rewards_balance,
+        reward_address=reward_address
+    )
+    .build()
+)
+
+# Optionally deregister stake key to reclaim deposit
+deregister_stake_tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .withdraw_rewards(amount=rewards_balance, reward_address=reward_address)
+    .deregister_reward_address(reward_address=reward_address)
+    .build()
+)
+```
+
+You can see the full capabilities of the transaction builder in the [TxBuilder API documentation](https://cometapy.readthedocs.io/en/latest/api/transaction_builder/tx_builder.html).
+
+<hr>
+
+## **Working with CBOR**
+
+Cardano uses [CBOR (Concise Binary Object Representation)](https://cbor.io/) for serialization. Cometa.py provides `CborReader` and `CborWriter` for encoding and decoding CBOR data.
+
+### Writing CBOR Data
+
+```python
+from cometa import CborWriter
+
+# Create a writer
+writer = CborWriter()
+
+# Write primitive values
+writer.write_int(42)
+writer.write_str("Hello, Cardano!")
+writer.write_bytes(b"\x01\x02\x03")
+writer.write_bool(True)
+writer.write_null()
+
+# Get the encoded bytes
+cbor_bytes = writer.encode()
+cbor_hex = writer.to_hex()
+```
+
+### Reading CBOR Data
+
+```python
+from cometa import CborReader, CborReaderState
+
+# Create a reader from hex or bytes
+reader = CborReader.from_hex("83010203")  # Array [1, 2, 3]
+
+# Check what type of data is next
+state = reader.peek_state()
+if state == CborReaderState.START_ARRAY:
+    length = reader.read_array_len()
+    for _ in range(length):
+        value = reader.read_uint()
+        print(value)
+    reader.read_array_end()
+```
+
+<hr>
+
+## **Cryptography**
+
+Cometa.py provides comprehensive cryptographic primitives for Cardano development, including Ed25519 key pairs, BIP32 hierarchical deterministic keys, and BIP39 mnemonic support.
+
+### Working with Mnemonics (BIP39)
+
+BIP39 mnemonics are human-readable word sequences that encode cryptographic entropy:
+
+```python
+from cometa import mnemonic_to_entropy, entropy_to_mnemonic
+
+# Convert a mnemonic phrase to entropy
+mnemonic_words = [
+    "abandon", "abandon", "abandon", "abandon",
+    "abandon", "abandon", "abandon", "abandon",
+    "abandon", "abandon", "abandon", "about"
+]
+entropy = mnemonic_to_entropy(mnemonic_words)
+print(f"Entropy: {entropy.hex()}")
+```
+
+### Deriving Keys from Mnemonics (CIP-1852)
+
+Cardano uses CIP-1852 for HD wallet key derivation:
+
+```python
+from cometa import (
+    mnemonic_to_entropy,
+    Bip32PrivateKey,
+    harden,
+    BaseAddress,
+    NetworkId,
+    Credential
+)
+
+# Convert mnemonic to entropy
+mnemonic = "your 24 word mnemonic phrase here...".split()
+entropy = mnemonic_to_entropy(mnemonic)
+
+# Create root key from entropy
+root_key = Bip32PrivateKey.from_bip39_entropy(b"optional-passphrase", entropy)
+
+# Derive account key using CIP-1852 path: m/1852'/1815'/0'
+# 1852' = Cardano purpose, 1815' = ADA coin type, 0' = account 0
+account_key = root_key.derive([
+    harden(1852),  # Purpose
+    harden(1815),  # Coin type (ADA)
+    harden(0)      # Account index
+])
+
+# Get account public key (can be shared safely)
+account_pub_key = account_key.get_public_key()
+
+# Derive payment key: m/1852'/1815'/0'/0/0
+payment_key = account_pub_key.derive([0, 0])  # External chain, address 0
+
+# Derive staking key: m/1852'/1815'/0'/2/0
+staking_key = account_pub_key.derive([2, 0])  # Staking chain, index 0
+
+# Create credentials from key hashes
+payment_credential = Credential.from_key_hash(
+    payment_key.to_ed25519_key().to_hash()
+)
+staking_credential = Credential.from_key_hash(
+    staking_key.to_ed25519_key().to_hash()
+)
+
+# Create a base address
+address = BaseAddress.from_credentials(
+    NetworkId.MAINNET,
+    payment_credential,
+    staking_credential
+)
+print(f"Address: {address.to_bech32()}")
+```
+
+### Signing and Verifying Messages
+
+Ed25519 signatures are used for transaction signing and message authentication:
+
+```python
+from cometa import Ed25519PrivateKey, Ed25519PublicKey
+
+# Create a private key (in practice, derive from HD wallet)
+private_key = Ed25519PrivateKey.from_normal_bytes(bytes(32))
+
+# Get the corresponding public key
+public_key = private_key.get_public_key()
+print(f"Public key hash: {public_key.to_hash().to_hex()}")
+
+# Sign a message
+message = b"Hello, Cardano!"
+signature = private_key.sign(message)
+print(f"Signature: {signature.to_hex()}")
+
+# Verify the signature
+is_valid = public_key.verify(signature, message)
+print(f"Signature valid: {is_valid}")
+
+# Verification fails with wrong message
+is_valid = public_key.verify(signature, b"Wrong message")
+print(f"Wrong message valid: {is_valid}")  # False
+```
 
 <hr>
 
