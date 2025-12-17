@@ -93,7 +93,48 @@ class TxBuilder:
 
     The ``TxBuilder`` provides a fluent, Pythonic interface for constructing
     Cardano transactions. It encapsulates the complexities of transaction
-    assembly, balancing, fee calculation, and validation.
+    assembly, balancing, fee calculation, and UTXO management.
+
+    **Key Concepts:**
+
+    - **UTXOs**: Cardano uses an Unspent Transaction Output model. Each output
+      from a previous transaction becomes an input for future transactions.
+    - **Coin Selection**: The builder automatically selects UTXOs to cover the
+      transaction's outputs and fees using configurable strategies.
+    - **Balancing**: The builder ensures inputs equal outputs + fees, sending
+      any excess to the change address.
+    - **Plutus Scripts**: Smart contracts that validate spending, minting, or
+      staking operations. They require redeemers (arguments) and consume
+      execution units (CPU/memory).
+
+    **Transaction Types Supported:**
+
+    - Simple ADA transfers (``send_lovelace``)
+    - Multi-asset transfers (``send_value``)
+    - Script interactions (``lock_lovelace``, ``add_input`` with redeemer)
+    - Token minting/burning (``mint_token``)
+    - Staking operations (``delegate_stake``, ``withdraw_rewards``)
+    - Conway-era governance (``vote``, ``propose_*``, ``register_drep``)
+
+    **Basic Usage:**
+
+    Example:
+        >>> from cometa import TxBuilder, NetworkId
+        >>>
+        >>> # Create builder with protocol params and provider
+        >>> builder = TxBuilder(protocol_params, provider)
+        >>>
+        >>> # Configure and build a simple transfer
+        >>> tx = builder \\
+        ...     .set_change_address(my_address) \\
+        ...     .set_utxos(my_utxos) \\
+        ...     .send_lovelace(recipient, 5_000_000) \\
+        ...     .expires_in(3600) \\
+        ...     .build()
+        >>>
+        >>> # Sign and submit
+        >>> signed_tx = wallet.sign_transaction(tx)
+        >>> tx_hash = provider.submit_transaction(signed_tx)
 
     Note:
         All configuration and validation errors are deferred until ``build()``
@@ -1253,16 +1294,38 @@ class TxBuilder:
         """
         Delegate stake to a pool.
 
-        Delegates the stake associated with a stake credential to a
-        stake pool. Takes effect at the next epoch boundary.
+        Delegates the stake associated with a stake credential to a stake pool.
+        Delegation determines which pool produces blocks on your behalf and earns
+        you staking rewards.
+
+        **How Staking Works:**
+
+        - Delegation takes effect at the next epoch boundary (~5 days on mainnet)
+        - Your ADA remains in your wallet - only voting rights are delegated
+        - Rewards start accumulating after 2 epochs from delegation
+        - You can re-delegate at any time; the new delegation replaces the old one
+
+        Note:
+            The stake address must be registered before delegating. Use
+            ``register_reward_address()`` first if the address is new.
 
         Args:
-            reward_address: The stake address to delegate.
-            pool_id: a bech32 pool ID (pool1...).
-            redeemer: Redeemer for script-based stake credentials.
+            reward_address: The stake address to delegate. Can be a
+                ``RewardAddress`` object or bech32 string (e.g., "stake_test1...").
+            pool_id: The stake pool's bech32 ID (e.g., "pool1..."). You can find
+                pool IDs on explorers like pool.pm or adapools.org.
+            redeemer: Redeemer for script-based stake credentials. Only needed
+                if the stake credential is controlled by a Plutus script.
 
         Returns:
             Self for method chaining.
+
+        Example:
+            >>> # Delegate to a stake pool
+            >>> builder.delegate_stake(
+            ...     "stake_test1uqfu74w3wh4gfzu8m6e7j987h4lq9r3t7ef5gaw497uu85qsqfy27",
+            ...     "pool1pu5jlj4q9w9jlxeu370a3c9myx47md5j5m2str0naunn2q3lkdy",
+            ... )
         """
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
@@ -1293,25 +1356,47 @@ class TxBuilder:
         redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
-        Delegate voting power to a DRep.
+        Delegate voting power to a DRep (Delegated Representative).
 
-        Conway-era governance feature that delegates voting power to a
-        Delegated Representative (DRep).
+        **Conway-era Governance:**
+
+        The Conway hard fork introduced on-chain governance to Cardano. DReps
+        are community members who vote on governance proposals on behalf of
+        delegators. Your voting power is proportional to your staked ADA.
+
+        **Delegation Options:**
+
+        - **DRep**: Delegate to a specific representative who votes on your behalf
+        - **Abstain**: Your stake counts toward quorum but not for/against proposals
+        - **No Confidence**: Signals distrust in the current governance system
+
+        Note:
+            Voting power delegation is separate from stake pool delegation.
+            You can delegate to a pool for block production rewards and to
+            a DRep for governance voting simultaneously.
 
         Args:
-            reward_address: The stake address delegating voting power.
-            drep: The DRep to delegate to. Can be a ``DRep`` object,
-                a DRep ID string, or special values like "abstain" or "no_confidence".
+            reward_address: The stake address delegating voting power. Can be
+                a ``RewardAddress`` object or bech32 string (e.g., "stake_test1...").
+            drep: The DRep to delegate to. Can be:
+                - A ``DRep`` object
+                - A DRep ID string (e.g., "drep1...")
+                - ``DRep.always_abstain()`` for abstaining
+                - ``DRep.always_no_confidence()`` for no confidence
             redeemer: Redeemer for script-based stake credentials.
 
         Returns:
             Self for method chaining.
 
         Example:
-            >>> builder.delegate_voting_power(
-            ...     "stake_test1...",
-            ...     "drep1abc123...",
-            ... )
+            >>> from cometa import DRep, DRepType, Credential
+            >>>
+            >>> # Delegate to a specific DRep
+            >>> drep = DRep.new(DRepType.KEY_HASH, drep_credential)
+            >>> builder.delegate_voting_power(reward_address, drep)
+            >>>
+            >>> # Or delegate to abstain (count towards quorum only)
+            >>> builder.delegate_voting_power(reward_address, DRep.always_abstain())
         """
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
@@ -1340,22 +1425,49 @@ class TxBuilder:
         redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
-        Register as a DRep.
+        Register as a DRep (Delegated Representative).
 
         Registers a new Delegated Representative for Conway-era governance.
+        DReps vote on governance proposals on behalf of ADA holders who
+        delegate their voting power to them.
+
+        **Requirements:**
+
+        - A deposit is required (defined in protocol parameters, ~500 ADA)
+        - The deposit is refunded when the DRep is deregistered
+        - An optional anchor can provide off-chain metadata about the DRep
+
+        **The Anchor:**
+
+        The anchor is a URL + hash pair pointing to off-chain metadata (usually
+        JSON-LD) describing the DRep's identity, platform, and voting philosophy.
+        This helps delegators choose representatives.
 
         Args:
             drep: The DRep credential to register. Can be a ``DRep`` object
-                or a DRep ID string (e.g., "drep1...").
-            anchor: Optional metadata anchor with URL and hash.
-            redeemer: Redeemer for script-based DRep credentials.
+                constructed from a key hash or script hash.
+            anchor: Optional metadata anchor with URL pointing to DRep information
+                and the hash of that document for verification.
+            redeemer: Redeemer for script-based DRep credentials. Required when
+                the DRep credential is controlled by a Plutus script.
 
         Returns:
             Self for method chaining.
 
         Example:
-            >>> builder.register_drep(drep, anchor=my_anchor)
-            >>> builder.register_drep("drep1...", anchor=my_anchor)
+            >>> from cometa import DRep, DRepType, Credential, Anchor, Blake2bHash
+            >>>
+            >>> # Create DRep from key credential
+            >>> cred = Credential.from_key_hash(my_pub_key_hash)
+            >>> drep = DRep.new(DRepType.KEY_HASH, cred)
+            >>>
+            >>> # Create anchor pointing to metadata
+            >>> anchor = Anchor.new(
+            ...     url="https://example.com/drep-metadata.json",
+            ...     hash_value=Blake2bHash.from_hex("abc123...")
+            ... )
+            >>>
+            >>> builder.register_drep(drep, anchor=anchor)
         """
         drep_obj = _to_drep(drep)
         redeemer_obj = _to_plutus_data_ptr(redeemer)
@@ -1415,6 +1527,9 @@ class TxBuilder:
 
         Returns:
             Self for method chaining.
+
+        Example:
+            >>> builder.deregister_drep(drep)
         """
         drep_obj = _to_drep(drep)
         redeemer_obj = _to_plutus_data_ptr(redeemer)
@@ -1430,25 +1545,48 @@ class TxBuilder:
         redeemer: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
-        Cast a governance vote.
+        Cast a governance vote on a proposal.
 
-        Submits a vote on a governance action.
+        **Conway-era Voting:**
+
+        Governance votes are cast on active proposals by three voter types:
+
+        - **DReps**: Delegated Representatives vote based on their delegators' stake
+        - **SPOs**: Stake Pool Operators vote with their pledged stake
+        - **Constitutional Committee**: Vote on constitutional matters
+
+        **Vote Options:**
+
+        - **Yes**: Support the proposal
+        - **No**: Oppose the proposal
+        - **Abstain**: Neither support nor oppose (counts toward quorum)
+
+        Each vote can include an optional anchor pointing to rationale.
 
         Args:
-            voter: The voter (DRep, SPO, or Committee member).
-            action_id: The governance action being voted on.
-            voting_procedure: The vote (yes, no, abstain) with optional anchor.
-            redeemer: Redeemer for script-based voters.
+            voter: The voter identity. Create with ``Voter.new()`` specifying
+                the voter type and credential.
+            action_id: The governance action to vote on. This identifies the
+                specific proposal being decided.
+            voting_procedure: The vote choice (yes/no/abstain) and optional
+                anchor to voting rationale.
+            redeemer: Redeemer for script-based voters. Required if the voter
+                credential is controlled by a Plutus script.
 
         Returns:
             Self for method chaining.
 
         Example:
-            >>> builder.vote(
-            ...     voter=my_drep_voter,
-            ...     action_id=proposal_id,
-            ...     voting_procedure=yes_vote,
-            ... )
+            >>> from cometa import Voter, VoterType, Vote, VotingProcedure
+            >>>
+            >>> # Create voter from DRep credential
+            >>> voter = Voter.new(VoterType.DREP, drep_credential)
+            >>>
+            >>> # Create voting procedure (yes vote with rationale)
+            >>> procedure = VotingProcedure.new(Vote.YES, rationale_anchor)
+            >>>
+            >>> # Cast the vote
+            >>> builder.vote(voter, proposal_action_id, procedure)
         """
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
@@ -1473,11 +1611,19 @@ class TxBuilder:
         prefer the specific methods like ``delegate_stake()``, ``register_reward_address()``, etc.
 
         Args:
-            certificate: The certificate to include.
+            certificate: The certificate to include. This should be a ``Certificate``
+                wrapper object created from a specific certificate type.
             redeemer: Redeemer for script-based certificates.
 
         Returns:
             Self for method chaining.
+
+        Example:
+            >>> from cometa import StakeRegistrationCert, Certificate
+            >>>
+            >>> stake_reg = StakeRegistrationCert.new(credential)
+            >>> cert = Certificate(stake_reg)
+            >>> builder.add_certificate(cert)
         """
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
@@ -1492,19 +1638,42 @@ class TxBuilder:
         """
         Submit an info governance action.
 
-        Info actions are used for signaling or polling without on-chain effects.
+        **Info Actions:**
+
+        Info actions are used for signaling, polling, or community sentiment
+        without any on-chain effects. They're useful for:
+
+        - Community sentiment polling
+        - Non-binding resolutions
+        - Signaling intent before formal proposals
+        - Gathering feedback on ideas
+
+        **Deposits and Refunds:**
+
+        All governance proposals require a deposit (defined in protocol parameters)
+        that is refunded to the specified reward address after the proposal is
+        ratified, expired, or dropped.
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string (e.g., "stake1...").
-            anchor: Metadata anchor with proposal details.
+            reward_address: Address to receive the deposit refund after the
+                proposal concludes. Can be a ``RewardAddress`` object or
+                bech32 string (e.g., "stake_test1...").
+            anchor: Metadata anchor with URL and hash pointing to proposal details.
+                The document should explain the purpose and rationale.
 
         Returns:
             Self for method chaining.
 
         Example:
+            >>> from cometa import Anchor, Blake2bHash
+            >>>
+            >>> # Create anchor pointing to proposal metadata
+            >>> anchor = Anchor.new(
+            ...     url="https://example.com/proposal.json",
+            ...     hash_value=Blake2bHash.from_hex("abc123...")
+            ... )
+            >>>
             >>> builder.propose_info(reward_address, anchor)
-            >>> builder.propose_info("stake1...", anchor)
         """
         addr = _to_reward_address(reward_address)
         lib.cardano_tx_builder_propose_info(
@@ -1522,24 +1691,48 @@ class TxBuilder:
         """
         Submit a new constitution governance action.
 
-        Proposes a new constitution to replace the current one.
+        **The Constitution:**
+
+        The Cardano constitution is the foundational governance document that
+        defines the rules, principles, and constraints for on-chain governance.
+        It includes:
+
+        - Governance principles and values
+        - Rules for proposal submission and voting
+        - Optional guardrails script for automated validation
+
+        **Guardrails Script:**
+
+        A constitution can include an optional Plutus script (guardrails) that
+        automatically validates governance actions against constitutional rules.
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string.
-            anchor: Metadata anchor with proposal details.
-            constitution: The new constitution being proposed.
-            governance_action_id: Optional ID of the previous governance action
+            reward_address: Address to receive the proposal deposit refund.
+                Can be a ``RewardAddress`` object or bech32 string.
+            anchor: Metadata anchor pointing to the full constitution document
+                (typically JSON-LD format with hash verification).
+            constitution: The new constitution object containing the anchor
+                and optional guardrails script hash.
+            governance_action_id: Optional ID of a previous constitution action
                 this proposal builds upon.
 
         Returns:
             Self for method chaining.
 
         Example:
+            >>> from cometa import Constitution, Anchor, Blake2bHash
+            >>>
+            >>> # Create constitution with anchor and optional guardrails
+            >>> const_anchor = Anchor.new(
+            ...     url="https://example.com/constitution.json",
+            ...     hash_value=Blake2bHash.from_hex("abc123...")
+            ... )
+            >>> constitution = Constitution.new(const_anchor, guardrails_script_hash)
+            >>>
             >>> builder.propose_new_constitution(
             ...     reward_address,
-            ...     anchor,
-            ...     new_constitution,
+            ...     proposal_anchor,
+            ...     constitution,
             ... )
         """
         addr = _to_reward_address(reward_address)
@@ -1565,27 +1758,60 @@ class TxBuilder:
         """
         Submit an update committee governance action.
 
-        Proposes changes to the constitutional committee membership.
+        **Constitutional Committee:**
+
+        The Constitutional Committee (CC) is a group of members who vote on
+        governance actions to ensure they align with the constitution. They
+        serve as a check on the governance process.
+
+        **Committee Updates:**
+
+        This action can:
+        - Add new committee members with term limits (epoch expiry)
+        - Remove existing committee members
+        - Change the quorum threshold (minimum votes required)
+
+        **Quorum:**
+
+        The quorum is expressed as a fraction (e.g., 2/3 means 67% must vote yes).
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string.
-            anchor: Metadata anchor with proposal details.
-            members_to_remove: Set of committee member credentials to remove.
-            members_to_add: Map of new committee members with their term limits.
-            new_quorum: The new quorum threshold for committee decisions.
-            governance_action_id: Optional ID of the previous governance action.
+            reward_address: Address to receive the proposal deposit refund.
+                Can be a ``RewardAddress`` object or bech32 string.
+            anchor: Metadata anchor with URL and hash pointing to documentation
+                explaining the rationale for committee changes.
+            members_to_remove: Set of credentials for members being removed.
+                Use ``CredentialSet`` to specify multiple credentials.
+            members_to_add: Map of new member credentials to their term limits
+                (epoch number when their term expires).
+            new_quorum: The new quorum threshold as a ``UnitInterval`` fraction
+                (e.g., ``UnitInterval.new(2, 3)`` for 2/3 majority).
+            governance_action_id: Optional ID of a previous committee update
+                action this proposal builds upon.
 
         Returns:
             Self for method chaining.
 
         Example:
+            >>> from cometa import CredentialSet, CommitteeMembersMap, UnitInterval
+            >>>
+            >>> # Remove one member
+            >>> to_remove = CredentialSet()
+            >>> to_remove.add(old_member_credential)
+            >>>
+            >>> # Add new member with term limit at epoch 500
+            >>> to_add = CommitteeMembersMap()
+            >>> to_add.insert(new_member_credential, 500)
+            >>>
+            >>> # Set 2/3 quorum
+            >>> quorum = UnitInterval.new(2, 3)
+            >>>
             >>> builder.propose_update_committee(
             ...     reward_address,
             ...     anchor,
-            ...     members_to_remove,
-            ...     members_to_add,
-            ...     new_quorum,
+            ...     to_remove,
+            ...     to_add,
+            ...     quorum,
             ... )
         """
         addr = _to_reward_address(reward_address)
@@ -1610,20 +1836,43 @@ class TxBuilder:
         """
         Submit a no confidence governance action.
 
-        Proposes a vote of no confidence in the current constitutional committee.
+        **No Confidence Motion:**
+
+        A no confidence action proposes that the community has lost trust in
+        the current Constitutional Committee. If ratified:
+
+        - The current committee enters a "state of no confidence"
+        - A new committee must be elected before certain actions can proceed
+        - Existing members remain until replaced by an Update Committee action
+
+        **When to Use:**
+
+        This action is appropriate when the committee:
+        - Fails to fulfill their constitutional duties
+        - Acts against the interests of the community
+        - Becomes unresponsive or non-functional
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string.
-            anchor: Metadata anchor with proposal details.
-            governance_action_id: Optional ID of the previous governance action.
+            reward_address: Address to receive the proposal deposit refund.
+                Can be a ``RewardAddress`` object or bech32 string.
+            anchor: Metadata anchor with URL and hash pointing to documentation
+                explaining the rationale for the no confidence motion.
+            governance_action_id: Optional ID of a previous no confidence or
+                committee-related action this proposal builds upon.
 
         Returns:
             Self for method chaining.
 
         Example:
+            >>> from cometa import Anchor, Blake2bHash
+            >>>
+            >>> # Create anchor with rationale for no confidence
+            >>> anchor = Anchor.new(
+            ...     url="https://example.com/no-confidence-rationale.json",
+            ...     hash_value=Blake2bHash.from_hex("abc123...")
+            ... )
+            >>>
             >>> builder.propose_no_confidence(reward_address, anchor)
-            >>> builder.propose_no_confidence("stake1...", anchor)
         """
         addr = _to_reward_address(reward_address)
         gov_action_ptr = governance_action_id._ptr if governance_action_id else ffi.NULL
@@ -1645,19 +1894,40 @@ class TxBuilder:
         """
         Submit a treasury withdrawals governance action.
 
-        Proposes withdrawals from the Cardano treasury.
+        **Treasury System:**
+
+        The Cardano treasury accumulates funds from transaction fees and
+        monetary expansion. Treasury withdrawals allow the community to fund
+        development, marketing, or other initiatives through governance votes.
+
+        **Withdrawal Map:**
+
+        The withdrawals parameter specifies which addresses receive funds and
+        how much. Multiple recipients can be included in a single proposal.
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string.
-            anchor: Metadata anchor with proposal details.
-            withdrawals: Map of reward addresses to withdrawal amounts.
-            policy_hash: Optional policy hash for guardrails script.
+            reward_address: Address to receive the proposal deposit refund.
+                Can be a ``RewardAddress`` object or bech32 string.
+            anchor: Metadata anchor with URL and hash pointing to proposal
+                documentation explaining the purpose of the withdrawal.
+            withdrawals: Map of recipient reward addresses to lovelace amounts.
+                Use ``WithdrawalMap.from_dict()`` for convenient construction.
+            policy_hash: Optional hash of the constitution guardrails script.
+                Required if the current constitution has a guardrails script.
 
         Returns:
             Self for method chaining.
 
         Example:
+            >>> from cometa import WithdrawalMap, Anchor, Blake2bHash
+            >>>
+            >>> # Define withdrawal recipients and amounts
+            >>> withdrawals = WithdrawalMap.from_dict({
+            ...     "stake_test1uq...": 1_000_000_000_000,  # 1M ADA
+            ...     "stake_test1up...": 500_000_000_000,   # 500K ADA
+            ... })
+            >>>
+            >>> # Create proposal
             >>> builder.propose_treasury_withdrawals(
             ...     reward_address,
             ...     anchor,
@@ -1685,24 +1955,39 @@ class TxBuilder:
         """
         Submit a hardfork initiation governance action.
 
-        Proposes a protocol version upgrade (hardfork).
+        **Hardfork Process:**
+
+        A hardfork (protocol upgrade) changes the rules of the blockchain.
+        This includes major feature additions and breaking changes that
+        require all nodes to upgrade. Examples: Shelley, Alonzo, Babbage, Conway.
+
+        **Approval Requirements:**
+
+        Hardfork proposals require approval from:
+        - SPOs (Stake Pool Operators)
+        - Constitutional Committee
+
+        The hardfork is enacted at an epoch boundary after ratification.
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string.
-            anchor: Metadata anchor with proposal details.
-            protocol_version: The target protocol version for the hardfork.
-            governance_action_id: Optional ID of the previous governance action.
+            reward_address: Address to receive the proposal deposit refund.
+                Can be a ``RewardAddress`` object or bech32 string.
+            anchor: Metadata anchor with URL and hash pointing to hardfork
+                documentation, including rationale and upgrade instructions.
+            protocol_version: The target protocol version. Use
+                ``ProtocolVersion.new(major, minor)`` to create.
+            governance_action_id: Optional ID of a previous hardfork action
+                this proposal builds upon (for chained upgrades).
 
         Returns:
             Self for method chaining.
 
         Example:
-            >>> builder.propose_hardfork(
-            ...     reward_address,
-            ...     anchor,
-            ...     protocol_version,
-            ... )
+            >>> from cometa import ProtocolVersion
+            >>>
+            >>> # Propose upgrade to protocol version 10.0
+            >>> version = ProtocolVersion.new(10, 0)
+            >>> builder.propose_hardfork(reward_address, anchor, version)
         """
         addr = _to_reward_address(reward_address)
         gov_action_ptr = governance_action_id._ptr if governance_action_id else ffi.NULL
@@ -1726,24 +2011,48 @@ class TxBuilder:
         """
         Submit a parameter change governance action.
 
-        Proposes changes to protocol parameters.
+        **Protocol Parameters:**
+
+        Protocol parameters control network behavior including:
+
+        - **Economic**: Transaction fees, minimum UTXO value, treasury cut
+        - **Technical**: Max block/tx size, max execution units
+        - **Governance**: DRep deposit, proposal deposit, voting thresholds
+        - **Security**: Collateral percentage, max collateral inputs
+
+        Parameter changes take effect at an epoch boundary after ratification.
+
+        **Guardrails:**
+
+        Some parameters may be constrained by a constitution guardrails script
+        that validates proposed changes are within acceptable bounds.
 
         Args:
-            reward_address: Address to receive the deposit refund. Can be a
-                ``RewardAddress`` object or bech32 string.
-            anchor: Metadata anchor with proposal details.
-            protocol_param_update: The proposed parameter changes.
-            governance_action_id: Optional ID of the previous governance action.
-            policy_hash: Optional policy hash for guardrails script.
+            reward_address: Address to receive the proposal deposit refund.
+                Can be a ``RewardAddress`` object or bech32 string.
+            anchor: Metadata anchor with URL and hash pointing to documentation
+                explaining the rationale for the parameter changes.
+            protocol_param_update: The proposed parameter changes. Only changed
+                parameters need to be specified; others remain unchanged.
+            governance_action_id: Optional ID of a previous parameter change
+                action this proposal builds upon.
+            policy_hash: Optional hash of the constitution guardrails script.
+                Required if the constitution includes guardrails validation.
 
         Returns:
             Self for method chaining.
 
         Example:
+            >>> from cometa import ProtocolParamUpdate
+            >>>
+            >>> # Create update with new min fee coefficient
+            >>> update = ProtocolParamUpdate()
+            >>> update.set_min_fee_a(45)  # Change min fee coefficient
+            >>>
             >>> builder.propose_parameter_change(
             ...     reward_address,
             ...     anchor,
-            ...     param_update,
+            ...     update,
             ... )
         """
         addr = _to_reward_address(reward_address)
