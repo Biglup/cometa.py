@@ -107,15 +107,6 @@ class TxBuilder:
       staking operations. They require redeemers (arguments) and consume
       execution units (CPU/memory).
 
-    **Transaction Types Supported:**
-
-    - Simple ADA transfers (``send_lovelace``)
-    - Multi-asset transfers (``send_value``)
-    - Script interactions (``lock_lovelace``, ``add_input`` with redeemer)
-    - Token minting/burning (``mint_token``)
-    - Staking operations (``delegate_stake``, ``withdraw_rewards``)
-    - Conway-era governance (``vote``, ``propose_*``, ``register_drep``)
-
     **Basic Usage:**
 
     Example:
