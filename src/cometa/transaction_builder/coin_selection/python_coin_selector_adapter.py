@@ -92,7 +92,7 @@ class CoinSelectorHandle:
             "cardano_utxo_list_t*, cardano_value_t*, cardano_utxo_list_t**, "
             "cardano_utxo_list_t**)"
         )
-        def cb_select(
+        def cb_select( # pylint: disable=too-many-locals
             _impl, c_pre_selected, c_available, c_target, out_selection, out_remaining
         ):
             try:
