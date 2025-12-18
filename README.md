@@ -368,7 +368,7 @@ plutus_map[b"key2"] = 200
 ```
 
 
-### Working With Scripts
+### Working with Scripts
 
 Cometa.py provides some utilities to parameterize scripts and local transaction evaluation using the Aiken UPLC evaluator.
 
