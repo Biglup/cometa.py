@@ -18,6 +18,7 @@ from .provider import Provider, ProviderProtocol
 from .python_provider_adapter import ProviderHandle
 from .c_provider_wrapper import CProviderWrapper
 from .blockfrost_provider import BlockfrostProvider
+from .provider_tx_evaluator import ProviderTxEvaluator
 
 __all__ = [
     "Provider",
@@ -25,4 +26,5 @@ __all__ = [
     "ProviderHandle",
     "CProviderWrapper",
     "BlockfrostProvider",
+    "ProviderTxEvaluator",
 ]

@@ -84,12 +84,6 @@ class TxEvaluatorHandle:
         """
         evaluator = self._evaluator
 
-        def set_error_message(msg: str) -> None:
-            """Helper to set error message in impl struct."""
-            msg_bytes = msg.encode("utf-8")[: len(impl.error_message) - 1]
-            ffi.memmove(impl.error_message, msg_bytes, len(msg_bytes))
-            impl.error_message[len(msg_bytes)] = b"\x00"
-
         # ----------------------------------------------------------------
         # evaluate callback
         # ----------------------------------------------------------------
@@ -129,8 +123,16 @@ class TxEvaluatorHandle:
                 out_redeemers[0] = redeemer_list._ptr
                 return 0
             except Exception as exc:
-                set_error_message(f"evaluate: {exc}")
-                return 1  # CARDANO_ERROR_GENERIC
+                msg = f"{exc}"
+                msg_bytes = msg.encode("utf-8")
+
+                max_len = len(_impl.error_message) - 1
+                msg_bytes = msg_bytes[:max_len]
+
+                ffi.memmove(_impl.error_message, msg_bytes, len(msg_bytes))
+                _impl.error_message[len(msg_bytes)] = b"\x00"
+
+                return 1
 
         self._cb_evaluate = cb_evaluate
         impl.evaluate = cb_evaluate

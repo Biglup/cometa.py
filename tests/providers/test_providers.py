@@ -32,6 +32,7 @@ from cometa.providers import (
     ProviderHandle,
     CProviderWrapper,
     BlockfrostProvider,
+    ProviderTxEvaluator,
 )
 
 
@@ -907,3 +908,70 @@ class TestBlockfrostProviderNetworks:
             base_url="https://custom.blockfrost.io/api/v0",
         )
         assert provider._base_url == "https://custom.blockfrost.io/api/v0/"
+
+
+class TestProviderTxEvaluator:
+    """Tests for ProviderTxEvaluator."""
+
+    def test_create_from_blockfrost_provider(self):
+        """Test creating ProviderTxEvaluator from a Blockfrost provider."""
+        provider = BlockfrostProvider(
+            network=NetworkMagic.PREPROD,
+            project_id="test_project_id",
+        )
+        evaluator = ProviderTxEvaluator(provider)
+
+        assert evaluator is not None
+        assert evaluator.provider is provider
+
+    def test_get_name_returns_provider_name(self):
+        """Test get_name returns the provider's name."""
+        provider = BlockfrostProvider(
+            network=NetworkMagic.PREPROD,
+            project_id="test_project_id",
+        )
+        evaluator = ProviderTxEvaluator(provider)
+
+        assert evaluator.get_name() == "Blockfrost"
+
+    def test_provider_property(self):
+        """Test provider property returns the provider."""
+        provider = BlockfrostProvider(
+            network=NetworkMagic.PREPROD,
+            project_id="test_project_id",
+        )
+        evaluator = ProviderTxEvaluator(provider)
+
+        assert evaluator.provider is provider
+
+    def test_evaluator_with_mock_provider(self):
+        """Test ProviderTxEvaluator can wrap any provider implementing ProviderProtocol."""
+        provider = MockProvider(name="CustomProvider")
+        evaluator = ProviderTxEvaluator(provider)
+
+        assert evaluator.get_name() == "CustomProvider"
+        assert evaluator.provider is provider
+
+    def test_evaluator_implements_protocol(self):
+        """Test that ProviderTxEvaluator has required protocol methods."""
+        provider = MockProvider()
+        evaluator = ProviderTxEvaluator(provider)
+
+        assert hasattr(evaluator, "get_name")
+        assert hasattr(evaluator, "evaluate")
+        assert callable(evaluator.get_name)
+        assert callable(evaluator.evaluate)
+
+    def test_evaluator_name_changes_with_provider(self):
+        """Test that evaluator name reflects the underlying provider name."""
+        mock_provider = MockProvider(name="MyCustomProvider")
+        blockfrost_provider = BlockfrostProvider(
+            network=NetworkMagic.PREPROD,
+            project_id="test",
+        )
+
+        mock_evaluator = ProviderTxEvaluator(mock_provider)
+        blockfrost_evaluator = ProviderTxEvaluator(blockfrost_provider)
+
+        assert mock_evaluator.get_name() == "MyCustomProvider"
+        assert blockfrost_evaluator.get_name() == "Blockfrost"

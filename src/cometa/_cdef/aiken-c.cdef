@@ -1,0 +1,32 @@
+typedef unsigned int       uint32_t;
+typedef long long          int64_t;
+typedef unsigned long long uint64_t;
+
+/* ---- Generated Declarations ---- */
+
+typedef struct SlotConfig {
+    uint32_t slot_length;
+    uint64_t zero_slot;
+    uint64_t zero_time;
+} SlotConfig;
+
+typedef struct InitialBudget {
+    int64_t mem;
+    int64_t cpu;
+} InitialBudget;
+
+const char* eval_phase_two(
+    const char* tx_hex,
+    const char* inputs,
+    const char* outputs,
+    const char* cost_mdls,
+    InitialBudget initial_budget,
+    SlotConfig* slot_config
+);
+
+const char* apply_params_to_plutus_script(
+    const char* params,
+    const char* plutus_script
+);
+
+void drop_char_pointer(const char* pointer);

@@ -260,8 +260,15 @@ from .transaction_builder import (
     TxBuilder,
 )
 
-from .providers import Provider, ProviderProtocol, BlockfrostProvider
+from .providers import Provider, ProviderProtocol, BlockfrostProvider, ProviderTxEvaluator
 from .message_signing import sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
+from .aiken import (
+    SlotConfig,
+    AikenTxEvaluator,
+    TxEvaluationError,
+    apply_params_to_script,
+    ApplyParamsError,
+)
 
 __all__ = [
     # Common
@@ -523,7 +530,14 @@ __all__ = [
     "Provider",
     "ProviderProtocol",
     "BlockfrostProvider",
+    "ProviderTxEvaluator",
     # Message Signing
     "cip8_sign",
     "cip8_sign_with_key_hash",
+    # Aiken
+    "SlotConfig",
+    "AikenTxEvaluator",
+    "TxEvaluationError",
+    "apply_params_to_script",
+    "ApplyParamsError",
 ]
