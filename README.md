@@ -367,6 +367,123 @@ plutus_map[b"key1"] = 100
 plutus_map[b"key2"] = 200
 ```
 
+
+### Working With Scripts
+
+Cometa.py provides some utilities to parameterize scripts and local transaction evaluation using the Aiken UPLC evaluator.
+
+#### Applying Parameters to Scripts
+
+Many contracts are parameterized—they require configuration data to be applied before deployment. Use `apply_params_to_script` to apply parameters to compiled scripts:
+
+```python
+from cometa import PlutusV2Script, Script, PlutusList, PlutusData, ConstrPlutusData
+from cometa.aiken import apply_params_to_script
+
+# Load your compiled script
+compiled_code = "590221010000323232..."
+
+# Build parameters as Plutus Data
+# Example: Gift Card contract requires token_name and utxo_ref
+token_name = "MyToken"
+output_ref = ConstrPlutusData(0, [
+    ConstrPlutusData(0, [PlutusData.from_hex(utxo.input.transaction_id.hex())]),
+    PlutusData.from_int(utxo.input.index)
+])
+
+params = PlutusList.from_list([
+    PlutusData.from_string(token_name),
+    PlutusData.from_constr(output_ref)
+])
+
+# Apply parameters to get the final script
+parameterized_code = apply_params_to_script(params, compiled_code)
+
+# Create the script object
+plutus_script = PlutusV2Script.from_hex(parameterized_code)
+script = Script.from_plutus_v2(plutus_script)
+
+# Get the policy ID (script hash)
+policy_id = script.hash
+print(f"Policy ID: {policy_id.hex()}")
+```
+
+#### Example: Minting with Parameterized Script
+
+```python
+from cometa import (
+    BlockfrostProvider, NetworkMagic, TxBuilder,
+    PlutusV2Script, Script, Value,
+    PlutusList, PlutusData, ConstrPlutusData,
+)
+from cometa.aiken import AikenTxEvaluator, SlotConfig, apply_params_to_script
+
+# Setup provider
+provider = BlockfrostProvider(
+    network=NetworkMagic.PREPROD,
+    project_id="YOUR_PROJECT_ID"
+)
+
+# Get protocol parameters and UTXOs
+protocol_params = provider.get_parameters()
+utxos = provider.get_unspent_outputs(sender_address)
+
+# Select a UTXO to use as parameter (ensures script uniqueness)
+param_utxo = utxos[0]
+
+# Build script parameters
+token_name = "MyNFT"
+output_ref = ConstrPlutusData(0, [
+    ConstrPlutusData(0, [PlutusData.from_hex(param_utxo.input.transaction_id.hex())]),
+    PlutusData.from_int(param_utxo.input.index)
+])
+
+params = PlutusList.from_list([
+    PlutusData.from_string(token_name),
+    PlutusData.from_constr(output_ref)
+])
+
+# Apply parameters and create script
+compiled_code = "590221010000323232..."
+parameterized = apply_params_to_script(params, compiled_code)
+script = Script.from_plutus_v2(PlutusV2Script.from_hex(parameterized))
+
+# Create evaluator (This step is optiona you can also just use the default evaluator in the TX builder)
+evaluator = AikenTxEvaluator(
+    cost_models=protocol_params.cost_models,
+    slot_config=SlotConfig.preprod(),
+    max_tx_ex_units=protocol_params.max_tx_ex_units,
+)
+
+# Build mint transaction
+policy_id = script.hash
+asset_name = token_name.encode("utf-8")
+mint_redeemer = ConstrPlutusData(0)  # Mint action
+
+builder = TxBuilder(protocol_params, provider)
+builder.set_evaluator(evaluator)
+
+tx = (
+    builder
+    .set_change_address(sender_address)
+    .set_utxos(utxos)
+    .add_input(param_utxo)  # Must spend the referenced UTXO
+    .mint_token(policy_id=policy_id, asset_name=asset_name, amount=1, redeemer=mint_redeemer)
+    .add_script(script)
+    .send_value(
+        address=str(recipient_address),
+        value=Value.from_dict([2_000_000, {policy_id: {asset_name: 1}}])
+    )
+    .expires_in(3600)
+    .build()
+)
+
+# Sign and submit
+signed_tx = sign_transaction(tx, private_key)
+tx_hash = provider.submit_transaction(signed_tx.serialize_to_cbor())
+print(f"Transaction submitted: {tx_hash}")
+```
+
 <hr>
 
 ## **Conway Governance**
@@ -702,124 +819,6 @@ print(f"Signature valid: {is_valid}")
 # Verification fails with wrong message
 is_valid = public_key.verify(signature, b"Wrong message")
 print(f"Wrong message valid: {is_valid}")  # False
-```
-
-<hr>
-
-## **Working With Scripts**
-
-Cometa.py provides some utilities to parameterize scripts and local transaction evaluation using the Aiken UPLC evaluator.
-
-### Applying Parameters to Scripts
-
-Many contracts are parameterized—they require configuration data to be applied before deployment. Use `apply_params_to_script` to apply parameters to compiled scripts:
-
-```python
-from cometa import PlutusV2Script, Script, PlutusList, PlutusData, ConstrPlutusData
-from cometa.aiken import apply_params_to_script
-
-# Load your compiled script
-compiled_code = "590221010000323232..."
-
-# Build parameters as Plutus Data
-# Example: Gift Card contract requires token_name and utxo_ref
-token_name = "MyToken"
-output_ref = ConstrPlutusData(0, [
-    ConstrPlutusData(0, [PlutusData.from_hex(utxo.input.transaction_id.hex())]),
-    PlutusData.from_int(utxo.input.index)
-])
-
-params = PlutusList.from_list([
-    PlutusData.from_string(token_name),
-    PlutusData.from_constr(output_ref)
-])
-
-# Apply parameters to get the final script
-parameterized_code = apply_params_to_script(params, compiled_code)
-
-# Create the script object
-plutus_script = PlutusV2Script.from_hex(parameterized_code)
-script = Script.from_plutus_v2(plutus_script)
-
-# Get the policy ID (script hash)
-policy_id = script.hash
-print(f"Policy ID: {policy_id.hex()}")
-```
-
-### Example: Minting with Parameterized Script
-
-```python
-from cometa import (
-    BlockfrostProvider, NetworkMagic, TxBuilder,
-    PlutusV2Script, Script, Value,
-    PlutusList, PlutusData, ConstrPlutusData,
-)
-from cometa.aiken import AikenTxEvaluator, SlotConfig, apply_params_to_script
-
-# Setup provider
-provider = BlockfrostProvider(
-    network=NetworkMagic.PREPROD,
-    project_id="YOUR_PROJECT_ID"
-)
-
-# Get protocol parameters and UTXOs
-protocol_params = provider.get_parameters()
-utxos = provider.get_unspent_outputs(sender_address)
-
-# Select a UTXO to use as parameter (ensures script uniqueness)
-param_utxo = utxos[0]
-
-# Build script parameters
-token_name = "MyNFT"
-output_ref = ConstrPlutusData(0, [
-    ConstrPlutusData(0, [PlutusData.from_hex(param_utxo.input.transaction_id.hex())]),
-    PlutusData.from_int(param_utxo.input.index)
-])
-
-params = PlutusList.from_list([
-    PlutusData.from_string(token_name),
-    PlutusData.from_constr(output_ref)
-])
-
-# Apply parameters and create script
-compiled_code = "590221010000323232..."
-parameterized = apply_params_to_script(params, compiled_code)
-script = Script.from_plutus_v2(PlutusV2Script.from_hex(parameterized))
-
-# Create evaluator (This step is optiona you can also just use the default evaluator in the TX builder)
-evaluator = AikenTxEvaluator(
-    cost_models=protocol_params.cost_models,
-    slot_config=SlotConfig.preprod(),
-    max_tx_ex_units=protocol_params.max_tx_ex_units,
-)
-
-# Build mint transaction
-policy_id = script.hash
-asset_name = token_name.encode("utf-8")
-mint_redeemer = ConstrPlutusData(0)  # Mint action
-
-builder = TxBuilder(protocol_params, provider)
-builder.set_evaluator(evaluator)
-
-tx = (
-    builder
-    .set_change_address(sender_address)
-    .set_utxos(utxos)
-    .add_input(param_utxo)  # Must spend the referenced UTXO
-    .mint_token(policy_id=policy_id, asset_name=asset_name, amount=1, redeemer=mint_redeemer)
-    .add_script(script)
-    .send_value(
-        address=str(recipient_address),
-        value=Value.from_dict([2_000_000, {policy_id: {asset_name: 1}}])
-    )
-    .expires_in(3600)
-    .build()
-)
-
-# Sign and submit
-signed_tx = sign_transaction(tx, private_key)
-tx_hash = provider.submit_transaction(signed_tx.serialize_to_cbor())
-print(f"Transaction submitted: {tx_hash}")
 ```
 
 <hr>
