@@ -8,3 +8,4 @@ This section of the documentation introduces the data providers for interacting 
 
    provider
    blockfrost_provider
+   provider_tx_evaluator

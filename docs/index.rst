@@ -1,4 +1,4 @@
-biglup-cometa 0.1.34
+biglup-cometa 0.1.35
 ====================
 
 .. include:: README_docs.md
@@ -9,6 +9,7 @@ biglup-cometa 0.1.34
    :caption: API Reference
 
    api/address/index
+   api/aiken/index
    api/assets/index
    api/auxiliary_data/index
    api/bip39/index
