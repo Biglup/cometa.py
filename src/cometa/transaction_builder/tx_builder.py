@@ -22,8 +22,9 @@ import datetime
 import time
 from typing import Optional, Union, List, TYPE_CHECKING, Dict, Any
 
+from ..common.slot_config import SlotConfig
+from ..aiken import AikenTxEvaluator
 from ..scripts import Script, PlutusV2Script, PlutusV3Script, NativeScriptLike, PlutusV1Script
-from ..providers import Provider, ProviderHandle
 from ..common.network_id import NetworkId
 from .._ffi import ffi, lib
 from ..errors import CardanoError, cardano_error_to_string
@@ -110,10 +111,11 @@ class TxBuilder:
     **Basic Usage:**
 
     Example:
-        >>> from cometa import TxBuilder, NetworkId
+        >>> from cometa import TxBuilder, SlotConfig
         >>>
-        >>> # Create builder with protocol params and provider
-        >>> builder = TxBuilder(protocol_params, provider)
+        >>> # Initialize with protocol parameters and slot configuration
+        >>> slot_config = SlotConfig.mainnet()
+        >>> builder = TxBuilder(protocol_params, slot_config)
         >>>
         >>> # Configure and build a simple transfer
         >>> tx = builder \\
@@ -134,42 +136,40 @@ class TxBuilder:
     See Also:
         - :class:`Transaction`: The resulting transaction object
         - :class:`ProtocolParameters`: Required protocol configuration
+        - :class:`SlotConfig`: Network timing configuration
         - :class:`CoinSelector`: Customizable UTXO selection strategies
         - :class:`TxEvaluator`: Customizable Plutus script evaluation strategies
     """
 
     def __init__(
-        self,
-        protocol_params: ProtocolParameters,
-        provider: Provider,
+            self,
+            protocol_params: ProtocolParameters,
+            slot_config: SlotConfig,
     ) -> None:
         """
         Create a new transaction builder.
-
-        Args:
-            protocol_params: Protocol parameters for fee calculation and validation.
-                These define network-specific rules like minimum fees, max transaction
-                size, and execution unit costs.
-            provider: A provider instance for fetching chain data. The provider is
-                used to resolve UTXOs, query protocol parameters, and evaluate
-                Plutus scripts.
-
-        Raises:
-            CardanoError: If the builder cannot be initialized (e.g., invalid
-                parameters or provider).
-
-        Example:
-            >>> from cometa import TxBuilder
-            >>>
-            >>> builder = TxBuilder(protocol_params, provider)
+        ...
         """
-        self._provider = ProviderHandle(provider)
-        self._ptr = lib.cardano_tx_builder_new(protocol_params._ptr, self._provider.ptr)
+        c_config = ffi.new("cardano_slot_config_t *")
+        c_config.zero_time = slot_config.zero_time
+        c_config.zero_slot = slot_config.zero_slot
+        c_config.slot_length = slot_config.slot_length
+
+        self._ptr = lib.cardano_tx_builder_new(protocol_params._ptr, c_config)
+
         if self._ptr == ffi.NULL:
             raise CardanoError("Failed to create transaction builder")
 
         self._coin_selector_handle: Optional[CoinSelectorHandle] = None
         self._evaluator_handle: Optional[TxEvaluatorHandle] = None
+
+        evaluator = AikenTxEvaluator(
+            cost_models=protocol_params.cost_models,
+            slot_config=slot_config,
+            max_tx_ex_units=protocol_params.max_tx_ex_units
+        )
+
+        self.set_evaluator(evaluator)
 
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):

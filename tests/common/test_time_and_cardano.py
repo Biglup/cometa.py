@@ -21,7 +21,6 @@ from cometa import (
     memzero,
     slot_from_unix_time,
     unix_time_from_slot,
-    epoch_from_unix_time,
 )
 
 
@@ -180,32 +179,3 @@ class TestUnixTimeFromSlot:
         assert abs(recovered_unix_time - original_unix_time) <= 1
 
 
-class TestEpochFromUnixTime:
-    """Tests for the epoch_from_unix_time function."""
-
-    def test_epoch_from_unix_time_mainnet(self):
-        """Test computing epoch from unix time on mainnet."""
-        unix_time = 1700000000
-        epoch = epoch_from_unix_time(NetworkMagic.MAINNET, unix_time)
-
-        assert isinstance(epoch, int)
-        assert epoch > 0
-
-    def test_epoch_from_unix_time_with_int_magic(self):
-        """Test that integer magic values work."""
-        unix_time = 1700000000
-        epoch1 = epoch_from_unix_time(NetworkMagic.MAINNET, unix_time)
-        epoch2 = epoch_from_unix_time(764824073, unix_time)
-
-        assert epoch1 == epoch2
-
-    def test_epoch_increases_with_time(self):
-        """Test that epoch increases as time increases."""
-        # One year apart in seconds
-        unix_time1 = 1700000000
-        unix_time2 = 1700000000 + (365 * 24 * 60 * 60)
-
-        epoch1 = epoch_from_unix_time(NetworkMagic.MAINNET, unix_time1)
-        epoch2 = epoch_from_unix_time(NetworkMagic.MAINNET, unix_time2)
-
-        assert epoch2 > epoch1

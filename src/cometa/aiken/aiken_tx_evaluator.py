@@ -23,7 +23,7 @@ from .._aiken_ffi import aiken_ffi, aiken_lib
 from ..errors import CardanoError
 from ..cbor import CborReader, CborWriter
 from ..common.ex_units import ExUnits
-from .slot_config import SlotConfig
+from ..common.slot_config import SlotConfig
 
 if TYPE_CHECKING:
     from ..transaction import Transaction
@@ -54,8 +54,8 @@ class AikenTxEvaluator:
     the Aiken library's phase-two validation. It implements the TxEvaluatorProtocol.
 
     Example:
-        >>> from cometa.aiken import AikenTxEvaluator, SlotConfig
-        >>> from cometa import ExUnits
+        >>> from cometa.aiken import AikenTxEvaluator
+        >>> from cometa import ExUnits, SlotConfig
         >>>
         >>> # Create evaluator with cost models (required for evaluation)
         >>> evaluator = AikenTxEvaluator(cost_models=cost_models)

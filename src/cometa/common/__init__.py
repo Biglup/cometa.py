@@ -31,6 +31,7 @@ from .governance_action_id import GovernanceActionId
 from .datum import Datum
 from .withdrawal_map import WithdrawalMap
 from .reward_address_list import RewardAddressList
+from .slot_config import SlotConfig
 
 __all__ = [
     "Anchor",
@@ -50,4 +51,5 @@ __all__ = [
     "RewardAddressList",
     "UnitInterval",
     "WithdrawalMap",
+    "SlotConfig",
 ]

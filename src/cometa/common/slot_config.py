@@ -31,8 +31,6 @@ class SlotConfig:
         zero_time: Start time in milliseconds since Unix epoch, aligns with zero_slot.
         zero_slot: Initial slot number corresponding to zero_time.
         slot_length: Duration of each slot in milliseconds (typically 1000).
-        start_epoch: Epoch number at zero_time (baseline epoch).
-        epoch_length: Number of slots in a single epoch.
 
     Example:
         >>> # Mainnet configuration
@@ -44,16 +42,12 @@ class SlotConfig:
         ...     zero_time=1596059091000,
         ...     zero_slot=4492800,
         ...     slot_length=1000,
-        ...     start_epoch=208,
-        ...     epoch_length=432000,
         ... )
     """
 
     zero_time: int
     zero_slot: int
     slot_length: int
-    start_epoch: int
-    epoch_length: int
 
     @classmethod
     def mainnet(cls) -> SlotConfig:
@@ -67,8 +61,6 @@ class SlotConfig:
             zero_time=1596059091000,
             zero_slot=4492800,
             slot_length=1000,
-            start_epoch=208,
-            epoch_length=432000,
         )
 
     @classmethod
@@ -83,8 +75,6 @@ class SlotConfig:
             zero_time=1666656000000,
             zero_slot=0,
             slot_length=1000,
-            start_epoch=0,
-            epoch_length=86400,
         )
 
     @classmethod
@@ -99,6 +89,4 @@ class SlotConfig:
             zero_time=1654041600000 + 1728000000,
             zero_slot=86400,
             slot_length=1000,
-            start_epoch=4,
-            epoch_length=432000,
         )

@@ -63,8 +63,6 @@ class TestSlotConfig:
         assert config.zero_time == 1596059091000
         assert config.zero_slot == 4492800
         assert config.slot_length == 1000
-        assert config.start_epoch == 208
-        assert config.epoch_length == 432000
 
     def test_preview_config(self):
         """Test Preview testnet slot configuration."""
@@ -72,8 +70,6 @@ class TestSlotConfig:
         assert config.zero_time == 1666656000000
         assert config.zero_slot == 0
         assert config.slot_length == 1000
-        assert config.start_epoch == 0
-        assert config.epoch_length == 86400
 
     def test_preprod_config(self):
         """Test Preprod testnet slot configuration."""
@@ -81,8 +77,6 @@ class TestSlotConfig:
         assert config.zero_time == 1654041600000 + 1728000000
         assert config.zero_slot == 86400
         assert config.slot_length == 1000
-        assert config.start_epoch == 4
-        assert config.epoch_length == 432000
 
     def test_custom_config(self):
         """Test custom slot configuration."""
@@ -90,14 +84,10 @@ class TestSlotConfig:
             zero_time=1700000000000,
             zero_slot=100,
             slot_length=500,
-            start_epoch=10,
-            epoch_length=100000,
         )
         assert config.zero_time == 1700000000000
         assert config.zero_slot == 100
         assert config.slot_length == 500
-        assert config.start_epoch == 10
-        assert config.epoch_length == 100000
 
     def test_dataclass_equality(self):
         """Test that SlotConfig instances are equal when values match."""
@@ -106,8 +96,6 @@ class TestSlotConfig:
             zero_time=1596059091000,
             zero_slot=4492800,
             slot_length=1000,
-            start_epoch=208,
-            epoch_length=432000,
         )
         assert config1 == config2
 

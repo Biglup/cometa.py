@@ -243,6 +243,7 @@ typedef struct cardano_provider_impl_t { char name[256]; char error_message[1024
 typedef struct cardano_implicit_coin_t { uint64_t withdrawals; uint64_t deposits; uint64_t reclaim_deposits; } cardano_implicit_coin_t;
 typedef struct cardano_coin_selector_impl_t { char name[256]; char error_message[1024]; cardano_object_t* context; cardano_coin_select_func_t select; } cardano_coin_selector_impl_t;
 typedef struct cardano_tx_evaluator_impl_t { char name[256]; char error_message[1024]; cardano_object_t* context; cardano_tx_evaluate_func_t evaluate; } cardano_tx_evaluator_impl_t;
+typedef struct cardano_slot_config_t { uint64_t zero_time; uint64_t zero_slot; uint64_t slot_length; } cardano_slot_config_t;
 
 /* -- Functions -- */
 cardano_error_t cardano_address_from_bytes( const byte_t* data, size_t size, cardano_address_t** address);
@@ -2391,9 +2392,10 @@ void cardano_script_ref(cardano_script_t* script);
 size_t cardano_script_refcount(const cardano_script_t* script);
 void cardano_script_set_last_error(cardano_script_t* script, const char* message);
 const char* cardano_script_get_last_error(const cardano_script_t* script);
+uint64_t slot_to_begin_unix_time(uint64_t slot, const cardano_slot_config_t* config);
+uint64_t unix_time_to_enclosing_slot(uint64_t unix_time, const cardano_slot_config_t* config);
 uint64_t cardano_compute_slot_from_unix_time(cardano_network_magic_t magic, uint64_t unix_time);
 uint64_t cardano_compute_unix_time_from_slot(cardano_network_magic_t magic, uint64_t slot);
-uint64_t cardano_compute_epoch_from_unix_time(cardano_network_magic_t magic, uint64_t unix_time);
 cardano_error_t cardano_transaction_new( cardano_transaction_body_t* body, cardano_witness_set_t* witness_set, cardano_auxiliary_data_t* auxiliary_data, cardano_transaction_t** transaction);
 cardano_error_t cardano_transaction_from_cbor(cardano_cbor_reader_t* reader, cardano_transaction_t** transaction);
 cardano_error_t cardano_transaction_to_cbor( const cardano_transaction_t* transaction, cardano_cbor_writer_t* writer);
@@ -2606,7 +2608,7 @@ cardano_error_t cardano_get_serialized_output_size(cardano_transaction_output_t*
 cardano_error_t cardano_get_serialized_script_size(cardano_script_t* script, size_t* size_in_bytes);
 cardano_error_t cardano_get_serialized_transaction_size(cardano_transaction_t* transaction, size_t* size_in_bytes);
 cardano_error_t cardano_compute_script_data_hash( cardano_costmdls_t* costmdls, cardano_redeemer_list_t* redeemers, cardano_plutus_data_set_t* datums, cardano_blake2b_hash_t** data_hash);
-cardano_tx_builder_t* cardano_tx_builder_new( cardano_protocol_parameters_t* params, cardano_provider_t* provider);
+cardano_tx_builder_t* cardano_tx_builder_new(cardano_protocol_parameters_t* params, const cardano_slot_config_t*   slot_config);
 void cardano_tx_builder_set_coin_selector( cardano_tx_builder_t* builder, cardano_coin_selector_t* coin_selector);
 void cardano_tx_builder_set_tx_evaluator( cardano_tx_builder_t* builder, cardano_tx_evaluator_t* tx_evaluator);
 void cardano_tx_builder_set_network_id(cardano_tx_builder_t* builder, cardano_network_id_t network_id);

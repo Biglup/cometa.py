@@ -80,33 +80,3 @@ def unix_time_from_slot(network: Union[NetworkMagic, int], slot: int) -> int:
     """
     magic = network if isinstance(network, int) else network.value
     return int(lib.cardano_compute_unix_time_from_slot(magic, slot))
-
-
-def epoch_from_unix_time(network: Union[NetworkMagic, int], unix_time: int) -> int:
-    """
-    Computes the epoch number corresponding to a given Unix timestamp.
-
-    This function determines the epoch number for a specified Unix time (in seconds)
-    based on the network configuration. Different networks may have distinct epoch
-    configurations, so this calculation takes the network's settings into account.
-
-    Args:
-        network: The network magic identifying the specific Cardano network.
-            Can be a NetworkMagic enum value or an integer.
-        unix_time: The Unix timestamp in seconds for which to compute the epoch.
-
-    Returns:
-        The epoch number corresponding to the specified Unix time.
-
-    Example:
-        >>> from cometa import NetworkMagic, epoch_from_unix_time
-        >>> epoch = epoch_from_unix_time(NetworkMagic.MAINNET, 1700000000)
-        >>> print(f"Epoch: {epoch}")
-
-    Note:
-        This function leverages network-specific configurations, such as epoch length
-        and initial slot settings, to compute the epoch accurately. It is useful for
-        converting timestamps to Cardano's epoch-based timekeeping system.
-    """
-    magic = network if isinstance(network, int) else network.value
-    return int(lib.cardano_compute_epoch_from_unix_time(magic, unix_time))

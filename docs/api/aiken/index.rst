@@ -8,5 +8,4 @@ Classes and functions for working with scripts from Aiken. These allow to evalua
 
     ./aiken_tx_evaluator
     ./script_util
-    ./slot_config
 

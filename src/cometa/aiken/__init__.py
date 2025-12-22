@@ -14,13 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .slot_config import SlotConfig
 from .aiken_tx_evaluator import AikenTxEvaluator, TxEvaluationError
 from .script_util import apply_params_to_script, ApplyParamsError
 
 __all__ = [
-    # Configuration
-    "SlotConfig",
     # Evaluator
     "AikenTxEvaluator",
     "TxEvaluationError",

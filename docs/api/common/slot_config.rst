@@ -1,7 +1,7 @@
 SlotConfig
 ==================
 
-.. currentmodule:: cometa.aiken.slot_config
+.. currentmodule:: cometa.slot_config
 
 .. autoclass:: SlotConfig
    :members:

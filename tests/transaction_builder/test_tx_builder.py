@@ -19,13 +19,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from typing import List, Union, Optional
-
 import pytest
 
 from cometa import (
     Address,
-    AssetId,
     AssetName,
     Blake2bHash,
     ConstrPlutusData,
@@ -33,13 +30,12 @@ from cometa import (
     DRep,
     DRepType,
     NetworkId,
-    NetworkMagic,
     ProtocolParameters,
-    Redeemer,
     RewardAddress,
     Script,
     ScriptAll,
     ScriptInvalidAfter,
+    SlotConfig,
     Transaction,
     TransactionInput,
     TransactionOutput,
@@ -97,94 +93,6 @@ def create_test_utxo_with_value(
     return Utxo.new(tx_input, tx_output)
 
 
-class MockProvider:
-    """Mock provider implementation for testing TxBuilder."""
-
-    def __init__(
-        self,
-        name: str = "MockProvider",
-        network: NetworkMagic = NetworkMagic.PREPROD
-    ):
-        self._name = name
-        self._network = network
-        self._utxos: List[Utxo] = []
-        self._rewards_balance = 0
-        self._datums = {}
-        self._submitted_txs = []
-
-    def get_name(self) -> str:
-        return self._name
-
-    def get_network_magic(self) -> int:
-        return int(self._network)
-
-    def get_parameters(self) -> ProtocolParameters:
-        params = ProtocolParameters.new()
-        params.min_fee_a = 44
-        params.min_fee_b = 155381
-        params.coins_per_utxo_byte = 4310
-        params.max_tx_size = 16384
-        params.max_value_size = 5000
-        params.key_deposit = 2_000_000
-        params.pool_deposit = 500_000_000
-        params.drep_deposit = 2_000_000
-        params.gov_action_deposit = 100_000_000_000
-        params.collateral_percentage = 150
-        params.max_collateral_inputs = 3
-        return params
-
-    def get_unspent_outputs(self, address: Union[Address, str]) -> List[Utxo]:
-        return self._utxos
-
-    def get_rewards_balance(self, reward_account: Union[RewardAddress, str]) -> int:
-        return self._rewards_balance
-
-    def get_unspent_outputs_with_asset(
-        self, address: Union[Address, str], asset_id: Union[AssetId, str]
-    ) -> List[Utxo]:
-        return self._utxos
-
-    def get_unspent_output_by_nft(self, asset_id: Union[AssetId, str]) -> Utxo:
-        if not self._utxos:
-            raise Exception("NFT not found")
-        return self._utxos[0]
-
-    def resolve_unspent_outputs(
-        self, tx_ins: Union["TransactionInputSet", List[TransactionInput]]
-    ) -> List[Utxo]:
-        return self._utxos
-
-    def resolve_datum(self, datum_hash: Union[Blake2bHash, str]) -> str:
-        hash_str = datum_hash.to_hex() if hasattr(datum_hash, "to_hex") else str(datum_hash)
-        if hash_str in self._datums:
-            return self._datums[hash_str]
-        raise Exception(f"Datum not found: {hash_str}")
-
-    def confirm_transaction(self, tx_id: str, timeout_ms: Optional[int] = None) -> bool:
-        return tx_id in self._submitted_txs
-
-    def submit_transaction(self, tx_cbor_hex: str) -> str:
-        tx_id = "abcd1234" + "0" * 56
-        self._submitted_txs.append(tx_id)
-        return tx_id
-
-    def evaluate_transaction(
-        self,
-        tx_cbor_hex: str,
-        additional_utxos: Union[UtxoList, List[Utxo], None] = None,
-    ) -> List[Redeemer]:
-        return []
-
-    def add_utxo(self, utxo: Utxo) -> None:
-        self._utxos.append(utxo)
-
-    def set_rewards_balance(self, balance: int) -> None:
-        self._rewards_balance = balance
-
-    def add_datum(self, hash_hex: str, cbor_hex: str) -> None:
-        self._datums[hash_hex] = cbor_hex
-
-
 def create_protocol_params() -> ProtocolParameters:
     """Create test protocol parameters."""
     params = ProtocolParameters.new()
@@ -209,26 +117,23 @@ def protocol_params():
 
 
 @pytest.fixture
-def provider():
-    """Create a mock provider with test UTXOs."""
-    mock = MockProvider()
-    for i in range(5):
-        mock.add_utxo(create_test_utxo(index=i, lovelace=50_000_000 * (i + 1)))
-    return mock
+def slot_config():
+    """Create test slot configuration."""
+    return SlotConfig.preprod()
 
 
 @pytest.fixture
-def builder(protocol_params, provider):
+def builder(protocol_params, slot_config):
     """Create a TxBuilder instance for testing."""
-    return TxBuilder(protocol_params, provider)
+    return TxBuilder(protocol_params, slot_config)
 
 
 class TestBuildSimpleTransactions:
     """Tests that build actual simple transactions."""
 
-    def test_build_send_lovelace_with_string_address(self, protocol_params, provider):
+    def test_build_send_lovelace_with_string_address(self, protocol_params, slot_config):
         """Build a transaction sending lovelace using string addresses."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -243,9 +148,9 @@ class TestBuildSimpleTransactions:
         assert tx.body is not None
         assert tx.body.fee > 0
 
-    def test_build_send_lovelace_with_address_object(self, protocol_params, provider):
+    def test_build_send_lovelace_with_address_object(self, protocol_params, slot_config):
         """Build a transaction sending lovelace using Address objects."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
         recipient = Address.from_string(TEST_ADDRESS_2)
         change_addr = Address.from_string(TEST_ADDRESS)
 
@@ -261,9 +166,9 @@ class TestBuildSimpleTransactions:
         assert isinstance(tx, Transaction)
         assert tx.body.fee > 0
 
-    def test_build_multiple_outputs(self, protocol_params, provider):
+    def test_build_multiple_outputs(self, protocol_params, slot_config):
         """Build a transaction with multiple outputs."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -280,9 +185,9 @@ class TestBuildSimpleTransactions:
         outputs = tx.body.outputs
         assert len(outputs) >= 3
 
-    def test_build_with_utxo_list(self, protocol_params, provider):
+    def test_build_with_utxo_list(self, protocol_params, slot_config):
         """Build a transaction using UtxoList instead of Python list."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         utxo_list = UtxoList()
         utxo_list.add(create_test_utxo(index=0, lovelace=100_000_000))
@@ -299,9 +204,9 @@ class TestBuildSimpleTransactions:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_network_id(self, protocol_params, provider):
+    def test_build_with_network_id(self, protocol_params, slot_config):
         """Build a transaction with explicit network ID."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -319,9 +224,9 @@ class TestBuildSimpleTransactions:
 class TestBuildWithValue:
     """Tests that build transactions with multi-asset values."""
 
-    def test_build_send_value_with_tokens(self, protocol_params, provider):
+    def test_build_send_value_with_tokens(self, protocol_params, slot_config):
         """Build a transaction sending a Value with native tokens."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         policy_id = bytes.fromhex("aa" * 28)
         asset_name = b"TestToken"
@@ -348,9 +253,9 @@ class TestBuildWithValue:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_send_value_string_address(self, protocol_params, provider):
+    def test_build_send_value_string_address(self, protocol_params, slot_config):
         """Build send_value with string address."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         value = Value.from_coin(5_000_000)
 
@@ -365,9 +270,9 @@ class TestBuildWithValue:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_send_value_address_object(self, protocol_params, provider):
+    def test_build_send_value_address_object(self, protocol_params, slot_config):
         """Build send_value with Address object."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         value = Value.from_coin(5_000_000)
         recipient = Address.from_string(TEST_ADDRESS_2)
@@ -387,9 +292,9 @@ class TestBuildWithValue:
 class TestBuildWithMinting:
     """Tests that build transactions with token minting."""
 
-    def test_build_mint_with_native_script(self, protocol_params, provider):
+    def test_build_mint_with_native_script(self, protocol_params, slot_config):
         """Build a minting transaction with native script."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -408,9 +313,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_mint_with_hex_string_policy(self, protocol_params, provider):
+    def test_build_mint_with_hex_string_policy(self, protocol_params, slot_config):
         """Build minting with hex string policy ID."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -429,9 +334,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_mint_with_blake2b_hash_policy(self, protocol_params, provider):
+    def test_build_mint_with_blake2b_hash_policy(self, protocol_params, slot_config):
         """Build minting with Blake2bHash policy ID."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -450,9 +355,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_mint_with_asset_name_object(self, protocol_params, provider):
+    def test_build_mint_with_asset_name_object(self, protocol_params, slot_config):
         """Build minting with AssetName object."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -472,9 +377,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_mint_and_send_to_self(self, protocol_params, provider):
+    def test_build_mint_and_send_to_self(self, protocol_params, slot_config):
         """Build a mint transaction that sends tokens to the minter."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -499,9 +404,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_burn_tokens(self, protocol_params, provider):
+    def test_build_burn_tokens(self, protocol_params, slot_config):
         """Build a transaction that burns tokens."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -526,9 +431,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_mint_with_asset_id(self, protocol_params, provider):
+    def test_build_mint_with_asset_id(self, protocol_params, slot_config):
         """Build minting using mint_token_with_id."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -549,9 +454,9 @@ class TestBuildWithMinting:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_mint_with_asset_id_hex_string(self, protocol_params, provider):
+    def test_build_mint_with_asset_id_hex_string(self, protocol_params, slot_config):
         """Build minting using mint_token_with_id with hex string."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -576,9 +481,9 @@ class TestBuildWithMinting:
 class TestBuildWithMetadata:
     """Tests that build transactions with metadata."""
 
-    def test_build_with_dict_metadata(self, protocol_params, provider):
+    def test_build_with_dict_metadata(self, protocol_params, slot_config):
         """Build a transaction with dictionary metadata."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         metadata = {
             "message": "Hello Cardano!",
@@ -597,9 +502,9 @@ class TestBuildWithMetadata:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_json_string_metadata(self, protocol_params, provider):
+    def test_build_with_json_string_metadata(self, protocol_params, slot_config):
         """Build a transaction with JSON string metadata."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         metadata_json = '{"msg": "Test message"}'
 
@@ -615,9 +520,9 @@ class TestBuildWithMetadata:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_nft_metadata(self, protocol_params, provider):
+    def test_build_with_nft_metadata(self, protocol_params, slot_config):
         """Build a minting transaction with CIP-25 NFT metadata."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -658,9 +563,9 @@ class TestBuildWithMetadata:
 class TestBuildWithValidityIntervals:
     """Tests that build transactions with various validity intervals."""
 
-    def test_build_with_expires_in(self, protocol_params, provider):
+    def test_build_with_expires_in(self, protocol_params, slot_config):
         """Build with expires_in (seconds from now)."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -674,9 +579,9 @@ class TestBuildWithValidityIntervals:
         assert isinstance(tx, Transaction)
         assert tx.body.invalid_after is not None
 
-    def test_build_with_valid_until_slot(self, protocol_params, provider):
+    def test_build_with_valid_until_slot(self, protocol_params, slot_config):
         """Build with set_valid_until using slot number."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -689,9 +594,9 @@ class TestBuildWithValidityIntervals:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_valid_from_slot(self, protocol_params, provider):
+    def test_build_with_valid_from_slot(self, protocol_params, slot_config):
         """Build with set_valid_from using slot number."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -706,9 +611,9 @@ class TestBuildWithValidityIntervals:
         assert isinstance(tx, Transaction)
         assert tx.body.invalid_before is not None
 
-    def test_build_with_valid_after(self, protocol_params, provider):
+    def test_build_with_valid_after(self, protocol_params, slot_config):
         """Build with valid_after (seconds from now for start)."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -727,9 +632,9 @@ class TestBuildWithValidityIntervals:
 class TestBuildWithSigners:
     """Tests that build transactions with required signers."""
 
-    def test_build_with_signer_hex_string(self, protocol_params, provider):
+    def test_build_with_signer_hex_string(self, protocol_params, slot_config):
         """Build with add_signer using hex string."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         pub_key_hash = "aa" * 28
 
@@ -746,9 +651,9 @@ class TestBuildWithSigners:
         assert isinstance(tx, Transaction)
         assert len(tx.body.required_signers) > 0
 
-    def test_build_with_signer_blake2b_hash(self, protocol_params, provider):
+    def test_build_with_signer_blake2b_hash(self, protocol_params, slot_config):
         """Build with add_signer using Blake2bHash object."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         pub_key_hash = Blake2bHash.from_hex("bb" * 28)
 
@@ -764,9 +669,9 @@ class TestBuildWithSigners:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_pad_signer_count(self, protocol_params, provider):
+    def test_build_with_pad_signer_count(self, protocol_params, slot_config):
         """Build with pad_signer_count for fee estimation."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -784,9 +689,9 @@ class TestBuildWithSigners:
 class TestBuildWithScripts:
     """Tests that build transactions with scripts."""
 
-    def test_build_with_native_script_directly(self, protocol_params, provider):
+    def test_build_with_native_script_directly(self, protocol_params, slot_config):
         """Build with native script passed directly to add_script."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -805,9 +710,9 @@ class TestBuildWithScripts:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_script_wrapper(self, protocol_params, provider):
+    def test_build_with_script_wrapper(self, protocol_params, slot_config):
         """Build with Script wrapper object."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -831,9 +736,9 @@ class TestBuildWithScripts:
 class TestBuildWithDonation:
     """Tests that build transactions with treasury donations."""
 
-    def test_build_with_donation(self, protocol_params, provider):
+    def test_build_with_donation(self, protocol_params, slot_config):
         """Build a transaction with treasury donation."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         tx = (
             builder
@@ -851,9 +756,9 @@ class TestBuildWithDonation:
 class TestBuildWithMinimumFee:
     """Tests that build transactions with minimum fee override."""
 
-    def test_build_with_minimum_fee(self, protocol_params, provider):
+    def test_build_with_minimum_fee(self, protocol_params, slot_config):
         """Build a transaction with minimum fee set."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         min_fee = 500_000
 
@@ -874,9 +779,9 @@ class TestBuildWithMinimumFee:
 class TestBuildWithExplicitInputs:
     """Tests that build transactions with explicit input selection."""
 
-    def test_build_with_add_input(self, protocol_params, provider):
+    def test_build_with_add_input(self, protocol_params, slot_config):
         """Build with explicit input using add_input."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         specific_utxo = create_test_utxo(
             tx_hash=TX_ID_HASH_ALT,
@@ -896,9 +801,9 @@ class TestBuildWithExplicitInputs:
 
         assert isinstance(tx, Transaction)
 
-    def test_build_with_add_reference_input(self, protocol_params, provider):
+    def test_build_with_add_reference_input(self, protocol_params, slot_config):
         """Build with reference input."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         reference_utxo = create_test_utxo(
             tx_hash=TX_ID_HASH_ALT,
@@ -923,9 +828,9 @@ class TestBuildWithExplicitInputs:
 class TestBuildWithCoinSelector:
     """Tests that build transactions with custom coin selectors."""
 
-    def test_build_with_large_first_selector(self, protocol_params, provider):
+    def test_build_with_large_first_selector(self, protocol_params, slot_config):
         """Build with LargeFirstCoinSelector."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         selector = LargeFirstCoinSelector.new()
 
@@ -949,9 +854,9 @@ class TestBuildWithCoinSelector:
 class TestBuildWithOutput:
     """Tests that build transactions with pre-built outputs."""
 
-    def test_build_with_add_output(self, protocol_params, provider):
+    def test_build_with_add_output(self, protocol_params, slot_config):
         """Build with pre-built TransactionOutput."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         address = Address.from_string(TEST_ADDRESS_2)
         output = TransactionOutput.new(address, 5_000_000)
@@ -971,9 +876,9 @@ class TestBuildWithOutput:
 class TestMethodChaining:
     """Tests that verify proper method chaining works end-to-end."""
 
-    def test_full_method_chain(self, protocol_params, provider):
+    def test_full_method_chain(self, protocol_params, slot_config):
         """Build a complex transaction using full method chain."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         native_script = ScriptAll.new([
             ScriptInvalidAfter.new(1001655683199)
@@ -1007,9 +912,9 @@ class TestMethodChaining:
 class TestErrorCases:
     """Tests for error handling in transaction building."""
 
-    def test_build_without_change_address_fails(self, protocol_params, provider):
+    def test_build_without_change_address_fails(self, protocol_params, slot_config):
         """Building without change address should fail."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         with pytest.raises(Exception):
             (
@@ -1020,9 +925,9 @@ class TestErrorCases:
                 .build()
             )
 
-    def test_build_with_insufficient_funds_fails(self, protocol_params, provider):
+    def test_build_with_insufficient_funds_fails(self, protocol_params, slot_config):
         """Building with insufficient funds should fail."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
 
         with pytest.raises(Exception):
             (
@@ -1048,15 +953,15 @@ class TestErrorCases:
 class TestBuilderLifecycle:
     """Tests for TxBuilder initialization and lifecycle."""
 
-    def test_create_builder(self, protocol_params, provider):
+    def test_create_builder(self, protocol_params, slot_config):
         """Test basic builder creation."""
-        builder = TxBuilder(protocol_params, provider)
+        builder = TxBuilder(protocol_params, slot_config)
         assert builder is not None
         assert repr(builder) == "TxBuilder()"
 
-    def test_builder_context_manager(self, protocol_params, provider):
+    def test_builder_context_manager(self, protocol_params, slot_config):
         """Test builder as context manager."""
-        with TxBuilder(protocol_params, provider) as builder:
+        with TxBuilder(protocol_params, slot_config) as builder:
             assert builder is not None
 
             tx = (

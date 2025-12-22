@@ -189,6 +189,7 @@ from .proposal_procedures import (
     UpdateCommitteeAction,
 )
 from .common.withdrawal_map import WithdrawalMap
+from .common.slot_config import SlotConfig
 from .witness_set import (
     BootstrapWitness,
     BootstrapWitnessSet,
@@ -207,7 +208,7 @@ from .witness_set import (
 from .buffer import Buffer
 from .errors import CardanoError
 from .cardano import get_lib_version, memzero
-from .time import slot_from_unix_time, unix_time_from_slot, epoch_from_unix_time
+from .time import slot_from_unix_time, unix_time_from_slot
 from .transaction_body import (
     Value,
     TransactionInput,
@@ -263,7 +264,6 @@ from .transaction_builder import (
 from .providers import Provider, ProviderProtocol, BlockfrostProvider, ProviderTxEvaluator
 from .message_signing import sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
 from .aiken import (
-    SlotConfig,
     AikenTxEvaluator,
     TxEvaluationError,
     apply_params_to_script,
@@ -290,6 +290,7 @@ __all__ = [
     "UnitInterval",
     "Utxo",
     "UtxoList",
+    "SlotConfig",
     # CBOR
     "CborReader",
     "CborMajorType",
@@ -478,7 +479,6 @@ __all__ = [
     # Time
     "slot_from_unix_time",
     "unix_time_from_slot",
-    "epoch_from_unix_time",
     # Transaction Body
     "Value",
     "TransactionInput",
@@ -535,7 +535,6 @@ __all__ = [
     "cip8_sign",
     "cip8_sign_with_key_hash",
     # Aiken
-    "SlotConfig",
     "AikenTxEvaluator",
     "TxEvaluationError",
     "apply_params_to_script",

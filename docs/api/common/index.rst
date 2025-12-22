@@ -22,6 +22,7 @@ The "Common" section of this documentation explores fundamental domain entities 
     ./network_magic
     ./protocol_version
     ./reward_address_list
+    ./slot_config
     ./unit_interval
     ./utxo
     ./utxo_list

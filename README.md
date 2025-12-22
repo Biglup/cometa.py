@@ -30,14 +30,16 @@ Cometa.py packages [libcardano-c](https://github.com/Biglup/cardano-c) using CFF
 Example:
 
 ```python
-builder = TxBuilder(protocol_params, provider)
+from cometa import TxBuilder, SlotConfig
+
+builder = TxBuilder(protocol_params, SlotConfig.mainnet())
 
 unsigned_tx = (
     builder
     .set_change_address(sender_address)
     .set_utxos(utxos)
     .send_lovelace(recipient_address, 12_000_000)
-    .set_valid_until(current_time + 3600)
+    .expires_in(3600)
     .build()
 )
 ```
@@ -83,20 +85,35 @@ print(f"Library version: {version}")
 
 The primary component for creating transactions is the `TxBuilder`. It provides a fluent (chainable) API that simplifies the complex process of assembling inputs, outputs, and calculating fees.
 
+The `TxBuilder` requires protocol parameters and a `SlotConfig` for slot/time calculations:
+
+```python
+from cometa import TxBuilder, SlotConfig, ProtocolParameters
+
+# SlotConfig provides network timing configuration
+# Use the appropriate factory method for your network:
+slot_config = SlotConfig.mainnet()   # For mainnet
+slot_config = SlotConfig.preprod()   # For preprod testnet
+slot_config = SlotConfig.preview()   # For preview testnet
+
+# Create the builder
+builder = TxBuilder(protocol_params, slot_config)
+```
+
+> **Note:** The `TxBuilder` uses `AikenTxEvaluator` by default for local Plutus script evaluation. You can override this with a custom evaluator using `builder.set_evaluator()`.
+
 First, establish a connection to the Cardano network using a Provider:
 
 ```python
 from cometa import BlockfrostProvider, NetworkMagic
 
 provider = BlockfrostProvider(
-    network=NetworkMagic.Preprod,
+    network=NetworkMagic.PREPROD,
     project_id="YOUR_BLOCKFROST_PROJECT_ID"
 )
 ```
 
 > **Tip:** You can create your own providers by implementing the `Provider` protocol.
-
-The `BlockfrostProvider` also supports remote transaction evaluation for Plutus scripts. For local evaluation, see the [Aiken Script Support](#aiken-script-support) section.
 
 Create your addresses and fetch UTxOs:
 
@@ -107,23 +124,23 @@ sender_address = Address.from_bech32("addr_test1...")
 recipient_address = Address.from_bech32("addr_test1...")
 
 # Fetch UTxOs from the provider
-utxos = provider.get_utxos(sender_address)
-protocol_params = provider.get_protocol_parameters()
+utxos = provider.get_unspent_outputs(sender_address)
+protocol_params = provider.get_parameters()
 ```
 
 Build your transaction using the fluent API:
 
 ```python
-from cometa import TxBuilder
+from cometa import TxBuilder, SlotConfig
 
-builder = TxBuilder(protocol_params, provider)
+builder = TxBuilder(protocol_params, SlotConfig.preprod())
 
 unsigned_tx = (
     builder
     .set_change_address(sender_address)
     .set_utxos(utxos)
     .send_lovelace(recipient_address, 2_000_000)  # Send 2 ADA
-    .set_valid_until(current_time + 7200)  # Set TTL
+    .expires_in(7200)  # Valid for 2 hours
     .build()
 )
 ```
@@ -139,13 +156,19 @@ print(f"Transaction submitted! TxHash: {tx_hash}")
 
 ## **Transaction Builder Examples**
 
-The `TxBuilder` supports a wide range of transaction types. Here are some common patterns:
+The `TxBuilder` supports a wide range of transaction types. Here are some common patterns.
+
+All examples below assume you have already created the builder:
+
+```python
+from cometa import TxBuilder, SlotConfig
+
+builder = TxBuilder(protocol_params, SlotConfig.preprod())
+```
 
 ### Sending Multiple Outputs
 
 ```python
-builder = TxBuilder(protocol_params, provider)
-
 tx = (
     builder
     .set_change_address(sender_address)
@@ -374,11 +397,10 @@ Cometa.py provides some utilities to parameterize scripts and local transaction 
 
 #### Applying Parameters to Scripts
 
-Many contracts are parameterized—they require configuration data to be applied before deployment. Use `apply_params_to_script` to apply parameters to compiled scripts:
+Many contracts are parameterized, they require configuration data to be applied before deployment. Use `apply_params_to_script` to apply parameters to compiled scripts:
 
 ```python
-from cometa import PlutusV2Script, Script, PlutusList, PlutusData, ConstrPlutusData
-from cometa.aiken import apply_params_to_script
+from cometa import apply_params_to_script, PlutusV2Script, Script, PlutusList, PlutusData, ConstrPlutusData
 
 # Load your compiled script
 compiled_code = "590221010000323232..."
@@ -412,11 +434,10 @@ print(f"Policy ID: {policy_id.hex()}")
 
 ```python
 from cometa import (
-    BlockfrostProvider, NetworkMagic, TxBuilder,
+    BlockfrostProvider, NetworkMagic, TxBuilder, SlotConfig,
     PlutusV2Script, Script, Value,
-    PlutusList, PlutusData, ConstrPlutusData,
+    PlutusList, PlutusData, ConstrPlutusData, apply_params_to_script
 )
-from cometa.aiken import AikenTxEvaluator, SlotConfig, apply_params_to_script
 
 # Setup provider
 provider = BlockfrostProvider(
@@ -448,20 +469,13 @@ compiled_code = "590221010000323232..."
 parameterized = apply_params_to_script(params, compiled_code)
 script = Script.from_plutus_v2(PlutusV2Script.from_hex(parameterized))
 
-# Create evaluator (This step is optiona you can also just use the default evaluator in the TX builder)
-evaluator = AikenTxEvaluator(
-    cost_models=protocol_params.cost_models,
-    slot_config=SlotConfig.preprod(),
-    max_tx_ex_units=protocol_params.max_tx_ex_units,
-)
-
 # Build mint transaction
+# Note: TxBuilder uses AikenTxEvaluator by default for local Plutus evaluation
 policy_id = script.hash
 asset_name = token_name.encode("utf-8")
 mint_redeemer = ConstrPlutusData(0)  # Mint action
 
-builder = TxBuilder(protocol_params, provider)
-builder.set_evaluator(evaluator)
+builder = TxBuilder(protocol_params, SlotConfig.preprod())
 
 tx = (
     builder
@@ -828,21 +842,20 @@ print(f"Wrong message valid: {is_valid}")  # False
 The `TxBuilder` API allows you to override its core logic for coin selection and transaction evaluation. If these custom implementations are not provided, the builder uses the following defaults:
 
 - **Coin Selection**: A "Largest First" strategy via `LargeFirstCoinSelector`
-- **Transaction Evaluation**: A remote service via the configured Provider (e.g., Blockfrost)
+- **Transaction Evaluation**: Local evaluation via `AikenTxEvaluator` (uses the Aiken UPLC evaluator)
 
 ### Implementing a Custom CoinSelector
 
 The coin selector is responsible for choosing which UTxOs to spend to cover the value required by the transaction's outputs. You can provide your own strategy by implementing the `CoinSelector` protocol:
 
 ```python
-from typing import List
-from cometa import Utxo, TransactionOutput, Value
+from typing import List, Tuple
+from cometa import Utxo, Value
 
 class MyCoinSelector:
     """Custom coin selection strategy."""
 
-    @property
-    def name(self) -> str:
+    def get_name(self) -> str:
         return "MyCustomSelector"
 
     def select(
@@ -852,6 +865,7 @@ class MyCoinSelector:
         target: Value,
     ) -> Tuple[List[Utxo], List[Utxo]]:
         # Your custom selection logic here
+        # Return: (selected_utxos, remaining_utxos)
         ...
 ```
 
@@ -864,25 +878,19 @@ builder.set_coin_selector(my_selector)
 
 ### Transaction Evaluators
 
-The transaction evaluator calculates execution units (ExUnits) for Plutus scripts. Cometa.py provides two built-in options:
+The transaction evaluator calculates execution units (ExUnits) for Plutus scripts.
 
-**Option 1: Remote Evaluation with BlockfrostProvider**
+**Default: Local Evaluation with AikenTxEvaluator**
 
-By default, when you pass a `BlockfrostProvider` to `TxBuilder`, it uses Blockfrost's remote evaluation API:
+By default, `TxBuilder` uses `AikenTxEvaluator` for local Plutus script evaluation. This is configured automatically based on the `SlotConfig` and protocol parameters you provide:
 
 ```python
-from cometa import BlockfrostProvider, NetworkMagic, TxBuilder
+from cometa import TxBuilder, SlotConfig
 
-provider = BlockfrostProvider(
-    network=NetworkMagic.PREPROD,
-    project_id="YOUR_PROJECT_ID"
-)
-protocol_params = provider.get_parameters()
+# AikenTxEvaluator is used automatically
+builder = TxBuilder(protocol_params, SlotConfig.preprod())
 
-# Provider is used for both UTxO fetching and transaction evaluation
-builder = TxBuilder(protocol_params, provider)
-
-# Build transaction with Plutus scripts - evaluation happens remotely
+# Build transaction with Plutus scripts - evaluation happens locally
 tx = (
     builder
     .set_change_address(sender_address)
@@ -893,43 +901,27 @@ tx = (
 )
 ```
 
-**Option 2: Local Evaluation with AikenTxEvaluator**
+**Custom AikenTxEvaluator Configuration**
 
-For faster, offline evaluation, use `AikenTxEvaluator`:
+If you need to customize the evaluator settings, you can create your own instance:
 
 ```python
-from cometa import BlockfrostProvider, NetworkMagic, TxBuilder
-from cometa.aiken import AikenTxEvaluator, SlotConfig
+from cometa import TxBuilder, SlotConfig
+from cometa.aiken import AikenTxEvaluator
 
-provider = BlockfrostProvider(
-    network=NetworkMagic.PREPROD,
-    project_id="YOUR_PROJECT_ID"
-)
-protocol_params = provider.get_parameters()
-
-# Create local evaluator
+# Create custom evaluator with specific settings
 evaluator = AikenTxEvaluator(
     cost_models=protocol_params.cost_models,
     slot_config=SlotConfig.preprod(),
     max_tx_ex_units=protocol_params.max_tx_ex_units,
 )
 
-# Override the default provider-based evaluation
-builder = TxBuilder(protocol_params, provider)
+# Override the default evaluator
+builder = TxBuilder(protocol_params, SlotConfig.preprod())
 builder.set_evaluator(evaluator)
-
-# Build transaction - evaluation happens locally
-tx = (
-    builder
-    .set_change_address(sender_address)
-    .set_utxos(utxos)
-    .add_input(script_utxo, redeemer=redeemer)
-    .add_script(script)
-    .build()
-)
 ```
 
-**Option 3: Custom Evaluator**
+**Custom Evaluator**
 
 You can also implement your own evaluator by following the `TxEvaluator` protocol:
 

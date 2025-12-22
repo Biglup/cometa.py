@@ -40,10 +40,8 @@ from cometa import (
     ConstrPlutusData,
     PlutusData,
     PlutusList,
-)
-from cometa.aiken import (
-    AikenTxEvaluator,
     SlotConfig,
+    AikenTxEvaluator,
     apply_params_to_script,
 )
 
