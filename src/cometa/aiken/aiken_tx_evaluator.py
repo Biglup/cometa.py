@@ -178,9 +178,6 @@ class AikenTxEvaluator:
         initial_budget.cpu = int(self._max_tx_ex_units.cpu_steps / SAFETY_MARGIN)
 
         # DEBUG
-        print("Calling Aiken eval_phase_two with:")
-        print(f"  initial_budget: mem={initial_budget.mem}, cpu={initial_budget.cpu}")
-        print(f"  slot_config: slot_length={slot_config.slot_length}, zero_time={slot_config.zero_time}, zero_slot={slot_config.zero_slot}")
         result_ptr = aiken_lib.eval_phase_two(
             tx_hex.encode("utf-8") + b'\0',
             inputs_hex.encode("utf-8") + b'\0',

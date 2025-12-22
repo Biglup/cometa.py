@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biglup-cometa"
-version = "1.2.0.post2"
+version = "1.2.0.post3"
 description = "Python bindings for libcardano-c (Cometa project)"
 authors = [
     { name = "Angel Castillo", email = "angel.castillob@prototnmail.io" },
