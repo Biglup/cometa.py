@@ -20,7 +20,7 @@ const char* eval_phase_two(
     const char* inputs,
     const char* outputs,
     const char* cost_mdls,
-    InitialBudget initial_budget,
+    InitialBudget* initial_budget,
     SlotConfig* slot_config
 );
 

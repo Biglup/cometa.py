@@ -179,7 +179,7 @@ class AikenTxEvaluator:
             inputs_hex.encode("utf-8") + b'\0',
             outputs_hex.encode("utf-8") + b'\0',
             cost_models_hex.encode("utf-8") + b'\0',
-            initial_budget[0],
+            initial_budget,
             slot_config,
         )
 

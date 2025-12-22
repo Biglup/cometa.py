@@ -75,8 +75,8 @@ def apply_params_to_script(
     params_hex = _serialize_params(param_list)
 
     result_ptr = aiken_lib.apply_params_to_plutus_script(
-        params_hex.encode("utf-8"),
-        compiled_code.encode("utf-8"),
+        params_hex.encode("utf-8") + b'\0',
+        compiled_code.encode("utf-8") + b'\0',
     )
 
     try:
