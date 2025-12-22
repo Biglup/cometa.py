@@ -46,7 +46,7 @@ from cometa import (
     cip8_sign,
     cip8_sign_with_key_hash,
     Provider,
-    Transaction, CborReader
+    Transaction, CborReader, SlotConfig
 )
 from cometa.cardano import memzero
 
@@ -439,7 +439,18 @@ class SingleAddressWallet:
         if not self._protocol_params:
             self._protocol_params = self._provider.get_parameters()
 
-        builder = TxBuilder(self._protocol_params, self._provider)
+        network_magic = self.get_network_magic()
+        slot_config = SlotConfig.mainnet()
+        match network_magic:
+            case NetworkMagic.MAINNET:
+                slot_config = SlotConfig.mainnet()
+            case NetworkMagic.PREPROD:
+                slot_config = SlotConfig.preprod()
+            case NetworkMagic.PREVIEW:
+                slot_config = SlotConfig.preview()
+            case _: raise ValueError("SingleAddressWallet: Unsupported network magic.")
+
+        builder = TxBuilder(self._protocol_params, slot_config)
         builder.set_change_address(own_address)
         builder.set_collateral_change_address(own_address)
         builder.set_collateral_utxos(own_utxos)
