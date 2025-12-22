@@ -12,6 +12,7 @@
 ![Post-Integration](https://github.com/Biglup/cometa.py/actions/workflows/ci.yml/badge.svg)
 [![Documentation Status](https://app.readthedocs.org/projects/cometapy/badge/?version=latest)](https://cometapy.readthedocs.io/en/latest/?badge=latest)
 [![Twitter Follow](https://img.shields.io/twitter/follow/BiglupLabs?style=social)](https://x.com/BiglupLabs)
+[![PyPI version](https://img.shields.io/pypi/v/biglup-cometa)](https://pypi.org/project/biglup-cometa/)
 
 </div>
 
