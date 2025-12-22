@@ -41,6 +41,9 @@ if TYPE_CHECKING:
 DEFAULT_MAX_TX_EX_UNITS_MEMORY = 14_000_000
 DEFAULT_MAX_TX_EX_UNITS_CPU = 10_000_000_000
 
+# Aiken seems to slightly underestimate the required resources,
+# so we apply a safety factor to the results.
+SAFETY_MARGIN = 1.025
 
 class TxEvaluationError(CardanoError):
     """Exception raised when transaction evaluation fails."""
@@ -171,9 +174,13 @@ class AikenTxEvaluator:
         slot_config.zero_time = self._slot_config.zero_time
 
         initial_budget = aiken_ffi.new("InitialBudget*")
-        initial_budget.mem = self._max_tx_ex_units.memory
-        initial_budget.cpu = self._max_tx_ex_units.cpu_steps
+        initial_budget.mem = int(self._max_tx_ex_units.memory / SAFETY_MARGIN)
+        initial_budget.cpu = int(self._max_tx_ex_units.cpu_steps / SAFETY_MARGIN)
 
+        # DEBUG
+        print("Calling Aiken eval_phase_two with:")
+        print(f"  initial_budget: mem={initial_budget.mem}, cpu={initial_budget.cpu}")
+        print(f"  slot_config: slot_length={slot_config.slot_length}, zero_time={slot_config.zero_time}, zero_slot={slot_config.zero_slot}")
         result_ptr = aiken_lib.eval_phase_two(
             tx_hex.encode("utf-8") + b'\0',
             inputs_hex.encode("utf-8") + b'\0',
@@ -284,4 +291,11 @@ def _parse_result(result: dict) -> List["Redeemer"]:
 
     reader = CborReader.from_hex(redeemer_cbor)
     redeemer_list = RedeemerList.from_cbor(reader)
+
+    for redeemer in redeemer_list:
+        if not redeemer.ex_units:
+            continue
+        redeemer.ex_units.memory = int(redeemer.ex_units.memory * SAFETY_MARGIN)
+        redeemer.ex_units.cpu_steps = int(redeemer.ex_units.cpu_steps * SAFETY_MARGIN)
+
     return list(redeemer_list)
