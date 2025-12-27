@@ -154,6 +154,7 @@ class DRepVotingThresholds:
 
     @motion_no_confidence.setter
     def motion_no_confidence(self, value: UnitInterval) -> None:
+        """Sets the threshold for motion of no-confidence."""
         err = lib.cardano_drep_voting_thresholds_set_motion_no_confidence(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set motion_no_confidence (error code: {err})")
@@ -169,6 +170,7 @@ class DRepVotingThresholds:
 
     @committee_normal.setter
     def committee_normal(self, value: UnitInterval) -> None:
+        """Sets the threshold for electing committee when in confidence state."""
         err = lib.cardano_drep_voting_thresholds_set_committee_normal(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set committee_normal (error code: {err})")
@@ -184,6 +186,7 @@ class DRepVotingThresholds:
 
     @committee_no_confidence.setter
     def committee_no_confidence(self, value: UnitInterval) -> None:
+        """Sets the threshold for electing committee when in no-confidence state."""
         err = lib.cardano_drep_voting_thresholds_set_committee_no_confidence(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set committee_no_confidence (error code: {err})")
@@ -199,6 +202,7 @@ class DRepVotingThresholds:
 
     @update_constitution.setter
     def update_constitution(self, value: UnitInterval) -> None:
+        """Sets the threshold for constitutional updates."""
         err = lib.cardano_drep_voting_thresholds_set_update_constitution(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set update_constitution (error code: {err})")
@@ -214,6 +218,7 @@ class DRepVotingThresholds:
 
     @hard_fork_initiation.setter
     def hard_fork_initiation(self, value: UnitInterval) -> None:
+        """Sets the threshold for hard fork initiation."""
         err = lib.cardano_drep_voting_thresholds_set_hard_fork_initiation(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set hard_fork_initiation (error code: {err})")
@@ -229,6 +234,7 @@ class DRepVotingThresholds:
 
     @pp_network_group.setter
     def pp_network_group(self, value: UnitInterval) -> None:
+        """Sets the threshold for network group parameter updates."""
         err = lib.cardano_drep_voting_thresholds_set_pp_network_group(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set pp_network_group (error code: {err})")
@@ -244,6 +250,7 @@ class DRepVotingThresholds:
 
     @pp_economic_group.setter
     def pp_economic_group(self, value: UnitInterval) -> None:
+        """Sets the threshold for economic group parameter updates."""
         err = lib.cardano_drep_voting_thresholds_set_pp_economic_group(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set pp_economic_group (error code: {err})")
@@ -259,6 +266,7 @@ class DRepVotingThresholds:
 
     @pp_technical_group.setter
     def pp_technical_group(self, value: UnitInterval) -> None:
+        """Sets the threshold for technical group parameter updates."""
         err = lib.cardano_drep_voting_thresholds_set_pp_technical_group(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set pp_technical_group (error code: {err})")
@@ -274,6 +282,7 @@ class DRepVotingThresholds:
 
     @pp_governance_group.setter
     def pp_governance_group(self, value: UnitInterval) -> None:
+        """Sets the threshold for governance group parameter updates."""
         err = lib.cardano_drep_voting_thresholds_set_pp_governance_group(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set pp_governance_group (error code: {err})")
@@ -289,6 +298,7 @@ class DRepVotingThresholds:
 
     @treasury_withdrawal.setter
     def treasury_withdrawal(self, value: UnitInterval) -> None:
+        """Sets the threshold for treasury withdrawals."""
         err = lib.cardano_drep_voting_thresholds_set_treasury_withdrawal(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set treasury_withdrawal (error code: {err})")

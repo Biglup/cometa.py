@@ -192,7 +192,7 @@ class AssetName:
         str_ptr = lib.cardano_asset_name_get_string(self._ptr)
         if str_ptr == ffi.NULL:
             return ""
-        return ffi.string(str_ptr).decode("utf-8")
+        return ffi.string(str_ptr).decode("utf-8", errors="replace")
 
     def to_cbor(self, writer: CborWriter) -> None:
         """

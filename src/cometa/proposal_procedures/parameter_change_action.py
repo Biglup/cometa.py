@@ -83,7 +83,7 @@ class ParameterChangeAction:
         )
         policy_ptr = policy_hash._ptr if policy_hash is not None else ffi.NULL
         err = lib.cardano_parameter_change_action_new(
-            gov_id_ptr, protocol_param_update._ptr, policy_ptr, out
+            protocol_param_update._ptr, gov_id_ptr, policy_ptr, out
         )
         if err != 0:
             raise CardanoError(

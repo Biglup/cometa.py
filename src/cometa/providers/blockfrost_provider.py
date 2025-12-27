@@ -110,14 +110,30 @@ class BlockfrostProvider:
             self._base_url = f"https://{prefix}.blockfrost.io/api/v0/"
 
     def _headers(self) -> Dict[str, str]:
-        """Get headers for Blockfrost API requests."""
+        """
+        Get headers for Blockfrost API requests.
+
+        Returns:
+            A dictionary containing the required HTTP headers for authentication.
+        """
         return {
             "project_id": self._project_id,
             "Content-Type": "application/json",
         }
 
     def _get(self, endpoint: str) -> Any:
-        """Make a GET request to the Blockfrost API."""
+        """
+        Make a GET request to the Blockfrost API.
+
+        Args:
+            endpoint: The API endpoint path (relative to base URL).
+
+        Returns:
+            The parsed JSON response, or None if the resource was not found (404).
+
+        Raises:
+            CardanoError: If the request fails or returns a non-404 error.
+        """
         url = f"{self._base_url}{endpoint}"
         request = Request(url, headers=self._headers())
 
@@ -133,7 +149,20 @@ class BlockfrostProvider:
             raise CardanoError(f"Network error: {url_err.reason}") from url_err
 
     def _post(self, endpoint: str, data: bytes, content_type: str = "application/json") -> Any:
-        """Make a POST request to the Blockfrost API."""
+        """
+        Make a POST request to the Blockfrost API.
+
+        Args:
+            endpoint: The API endpoint path (relative to base URL).
+            data: The request body data as bytes.
+            content_type: The Content-Type header value (default: "application/json").
+
+        Returns:
+            The parsed JSON response.
+
+        Raises:
+            CardanoError: If the request fails.
+        """
         url = f"{self._base_url}{endpoint}"
         headers = self._headers()
         headers["Content-Type"] = content_type
@@ -275,11 +304,24 @@ class BlockfrostProvider:
     # -------------------------------------------------------------------------
 
     def get_name(self) -> str:
-        """Get the provider name."""
+        """
+        Get the provider name.
+
+        Returns:
+            The string "Blockfrost".
+
+        Note:
+            This method implements the provider protocol interface.
+        """
         return "Blockfrost"
 
     def get_network_magic(self) -> int:
-        """Get the network magic number."""
+        """
+        Get the network magic number.
+
+        Returns:
+            The network magic value as an integer.
+        """
         return int(self._network)
 
     # pylint: disable=too-many-locals,too-many-branches,too-many-statements

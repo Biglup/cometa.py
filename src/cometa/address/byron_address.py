@@ -86,10 +86,10 @@ class ByronAddress:
         out = ffi.new("cardano_byron_address_t**")
         c_attrs = ffi.new("cardano_byron_address_attributes_t*")
         if attributes.derivation_path:
-            c_attrs.derivation_path = ffi.from_buffer("byte_t[]", attributes.derivation_path)
+            for i, byte in enumerate(attributes.derivation_path):
+                c_attrs.derivation_path[i] = byte
             c_attrs.derivation_path_size = len(attributes.derivation_path)
         else:
-            c_attrs.derivation_path = ffi.NULL
             c_attrs.derivation_path_size = 0
         c_attrs.magic = attributes.magic
         err = lib.cardano_byron_address_from_credentials(

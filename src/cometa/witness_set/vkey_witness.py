@@ -226,6 +226,29 @@ class VkeyWitness:
         if err != 0:
             raise CardanoError(f"Failed to set signature (error code: {err})")
 
+    def has_public_key(self, vkey: bytes) -> bool:
+        """
+        Checks if this witness contains a specific public key.
+
+        Args:
+            vkey: The 32-byte Ed25519 public key to check for.
+
+        Returns:
+            True if the witness contains this public key, False otherwise.
+
+        Raises:
+            CardanoError: If the check fails.
+        """
+        vkey_ptr = ffi.new("cardano_ed25519_public_key_t**")
+        err = lib.cardano_ed25519_public_key_from_bytes(vkey, len(vkey), vkey_ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to create public key (error code: {err})")
+
+        result = lib.cardano_vkey_witness_has_public_key(self._ptr, vkey_ptr[0])
+        lib.cardano_ed25519_public_key_unref(vkey_ptr)
+
+        return bool(result)
+
     def to_cip116_json(self, writer: "JsonWriter") -> None:
         """
         Serializes this object to CIP-116 compliant JSON.

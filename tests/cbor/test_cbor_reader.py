@@ -511,7 +511,7 @@ class TestMap:
         assert reader.peek_state() == CborReaderState.FINISHED
 
     def test_fixed_map_numbers(self):
-        reader = CborReader.from_hex('a201020304')  # {1: 2, 3: 4}
+        reader = CborReader.from_hex('a201020304')
         data = get_val(reader)
         assert data == {1: 2, 3: 4}
 
@@ -524,14 +524,12 @@ class TestMap:
 
     def test_fixed_map_mixed(self):
         reader = CborReader.from_hex('a3616161412002404101')
-        # {'a': 'A', -1: 2, b'': b'\x01'}
         data = get_val(reader)
         assert data['a'] == 'A'
         assert data[-1] == 2
         assert data[b''] == b'\x01'
 
     def test_nested_maps(self):
-        # {'a': {2: 3}, 'b': {'x': -1, 'y': {'z': 0}}}
         reader = CborReader.from_hex('a26161a102036162a26178206179a1617a00')
         data = get_val(reader)
         assert data['a'] == {2: 3}
@@ -542,3 +540,127 @@ class TestMap:
         assert reader.peek_state() == CborReaderState.START_MAP
         data = get_val(reader)
         assert data == {"a": "A", "b": "B", "c": "C", "d": "D", "e": "E"}
+
+
+class TestBigInt:
+    def test_read_bigint_positive(self):
+        reader = CborReader.from_hex('c250fff000000000000000000000000000005820')
+        assert reader.peek_state() == CborReaderState.TAG
+        bigint_val = reader.read_bigint()
+        assert bigint_val == 340199290171201906221318119490500689920
+
+    def test_read_bigint_negative(self):
+        reader = CborReader.from_hex('c350fff000000000000000000000000000005820')
+        assert reader.peek_state() == CborReaderState.TAG
+        bigint_val = reader.read_bigint()
+        assert bigint_val == -340199290171201906221318119490500689920
+
+
+class TestFactories:
+    def test_from_bytes(self):
+        cbor_data = bytes([0x81, 0x18, 0x2a])
+        reader = CborReader.from_bytes(cbor_data)
+        assert reader.peek_state() == CborReaderState.START_ARRAY
+        assert reader.read_array_len() == 1
+        assert reader.read_uint() == 42
+        reader.read_array_end()
+        assert reader.peek_state() == CborReaderState.FINISHED
+
+    def test_from_hex(self):
+        reader = CborReader.from_hex('81182a')
+        assert reader.peek_state() == CborReaderState.START_ARRAY
+        assert reader.read_array_len() == 1
+        assert reader.read_uint() == 42
+        reader.read_array_end()
+        assert reader.peek_state() == CborReaderState.FINISHED
+
+
+class TestProperties:
+    def test_refcount(self):
+        reader = CborReader.from_hex('81182a')
+        assert reader.refcount == 1
+
+    def test_remaining_bytes(self):
+        reader = CborReader.from_hex('81182a')
+        initial_remaining = reader.remaining_bytes
+        assert initial_remaining == 3
+        reader.read_array_len()
+        assert reader.remaining_bytes < initial_remaining
+
+    def test_last_error_getter_setter(self):
+        reader = CborReader.from_hex('81182a')
+        reader.last_error = "Test error message"
+        assert reader.last_error == "Test error message"
+
+
+class TestClone:
+    def test_clone_independent_cursors(self):
+        reader = CborReader.from_hex('83010203')
+        clone = reader.clone()
+        assert reader.read_array_len() == 3
+        assert reader.read_int() == 1
+        assert clone.read_array_len() == 3
+        assert clone.read_int() == 1
+        assert reader.read_int() == 2
+        assert clone.read_int() == 2
+
+
+class TestRemainder:
+    def test_read_remainder(self):
+        reader = CborReader.from_hex('83010203')
+        reader.read_array_len()
+        reader.read_int()
+        remainder = reader.read_remainder()
+        assert len(remainder) > 0
+
+
+class TestPeekTag:
+    def test_peek_tag(self):
+        reader = CborReader.from_hex('c074323031332d30332d32315432303a30343a30305a')
+        assert reader.peek_state() == CborReaderState.TAG
+        peeked_tag = reader.peek_tag()
+        assert peeked_tag == 0
+        read_tag = reader.read_tag()
+        assert read_tag == peeked_tag
+
+
+class TestContextManager:
+    def test_context_manager(self):
+        with CborReader.from_hex('81182a') as reader:
+            assert reader.peek_state() == CborReaderState.START_ARRAY
+            assert reader.read_array_len() == 1
+            assert reader.read_uint() == 42
+
+
+class TestRepr:
+    def test_repr(self):
+        reader = CborReader.from_hex('81182a')
+        repr_str = repr(reader)
+        assert 'CborReader' in repr_str
+        assert 'remaining=' in repr_str
+
+
+class TestErrorCases:
+    def test_invalid_hex(self):
+        try:
+            CborReader.from_hex('zz')
+            assert False, "Expected CardanoError"
+        except Exception as e:
+            assert 'Cardano' in str(type(e).__name__) or 'error' in str(e).lower()
+
+    def test_incomplete_data(self):
+        try:
+            reader = CborReader.from_hex('81')
+            reader.read_array_len()
+            reader.read_uint()
+            assert False, "Expected CardanoError"
+        except Exception as e:
+            assert 'Cardano' in str(type(e).__name__) or 'error' in str(e).lower()
+
+    def test_type_mismatch(self):
+        try:
+            reader = CborReader.from_hex('6161')
+            reader.read_uint()
+            assert False, "Expected CardanoError"
+        except Exception as e:
+            assert 'Cardano' in str(type(e).__name__) or 'error' in str(e).lower()

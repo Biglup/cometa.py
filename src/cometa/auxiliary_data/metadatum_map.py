@@ -63,6 +63,15 @@ class MetadatumMap(Mapping["Metadatum", "Metadatum"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a new MetadatumMap.
+
+        Args:
+            ptr: Optional FFI pointer to an existing map. If None, creates a new empty map.
+
+        Raises:
+            CardanoError: If map creation fails or if ptr is NULL.
+        """
         if ptr is None:
             out = ffi.new("cardano_metadatum_map_t**")
             err = lib.cardano_metadatum_map_new(out)
@@ -75,18 +84,21 @@ class MetadatumMap(Mapping["Metadatum", "Metadatum"]):
             self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the MetadatumMap by releasing its FFI resources."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_metadatum_map_t**", self._ptr)
             lib.cardano_metadatum_map_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> MetadatumMap:
+        """Enables use as a context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Cleans up when exiting context manager."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the MetadatumMap."""
         return f"MetadatumMap(len={len(self)})"
 
     @classmethod

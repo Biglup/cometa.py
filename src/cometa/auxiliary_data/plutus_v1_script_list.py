@@ -131,7 +131,7 @@ class PlutusV1ScriptList(Sequence["PlutusV1Script"]):
         """
         from ..cbor.cbor_reader import CborReader
 
-        reader = CborReader(cbor_hex)
+        reader = CborReader.from_hex(cbor_hex)
         out = ffi.new("cardano_plutus_v1_script_list_t**")
         err = lib.cardano_plutus_v1_script_list_from_cbor(reader._ptr, out)
         if err != 0:
@@ -161,7 +161,7 @@ class PlutusV1ScriptList(Sequence["PlutusV1Script"]):
             raise CardanoError(
                 f"Failed to encode PlutusV1ScriptList to CBOR (error code: {err})"
             )
-        return writer.encode()
+        return writer.to_hex()
 
     def add(self, script: PlutusV1Script) -> None:
         """
@@ -204,6 +204,37 @@ class PlutusV1ScriptList(Sequence["PlutusV1Script"]):
                 f"Failed to get from PlutusV1ScriptList (error code: {err})"
             )
         return PlutusV1Script(out[0])
+
+    def to_cip116_json(self, writer) -> None:
+        """
+        Serializes the PlutusV1ScriptList to CIP-116 JSON format.
+
+        Writes a JSON array where each element is a Plutus v1 script object with the shape:
+        [
+          { "language": "plutus_v1", "bytes": "<hex-bytes>" },
+          { "language": "plutus_v1", "bytes": "<hex-bytes>" }
+        ]
+
+        This method emits the surrounding array brackets ([and ]). It does not write a
+        property name; if you need this list as a field value inside another object, write the
+        property name first and then call this method.
+
+        Args:
+            writer: A JsonWriter instance where the JSON will be written.
+
+        Raises:
+            CardanoError: If serialization fails.
+
+        Example:
+            >>> from cometa import JsonWriter, JsonFormat
+            >>> writer = JsonWriter(JsonFormat.COMPACT)
+            >>> script_list.to_cip116_json(writer)
+        """
+        err = lib.cardano_plutus_v1_script_list_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to serialize PlutusV1ScriptList to CIP-116 JSON (error code: {err})"
+            )
 
     def append(self, script: PlutusV1Script) -> None:
         """

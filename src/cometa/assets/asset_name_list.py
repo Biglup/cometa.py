@@ -36,6 +36,15 @@ class AssetNameList(Sequence["AssetName"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes an AssetNameList.
+
+        Args:
+            ptr: Optional FFI pointer to existing list. If None, creates new list.
+
+        Raises:
+            CardanoError: If initialization fails.
+        """
         if ptr is None:
             out = ffi.new("cardano_asset_name_list_t**")
             err = lib.cardano_asset_name_list_new(out)

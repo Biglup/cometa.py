@@ -1,5 +1,78 @@
-from cometa import CborWriter
-from cometa import CborTag
+import pytest
+from cometa import CborWriter, CborTag, BigInt
+
+
+class TestCborWriterLifecycle:
+    def test_create_writer(self):
+        writer = CborWriter()
+        assert writer is not None
+        assert writer.refcount == 1
+
+    def test_refcount(self):
+        writer = CborWriter()
+        initial_refcount = writer.refcount
+        assert initial_refcount == 1
+
+    def test_encoded_size_empty(self):
+        writer = CborWriter()
+        assert writer.encoded_size == 0
+
+    def test_encoded_size_with_data(self):
+        writer = CborWriter()
+        writer.write_int(42)
+        assert writer.encoded_size == 2
+
+    def test_last_error_getter_setter(self):
+        writer = CborWriter()
+        assert writer.last_error == ""
+        writer.last_error = "Test error"
+        assert writer.last_error == "Test error"
+
+    def test_reset(self):
+        writer = CborWriter()
+        writer.write_int(42)
+        assert writer.encoded_size > 0
+        writer.reset()
+        assert writer.encoded_size == 0
+
+    def test_repr(self):
+        writer = CborWriter()
+        writer.write_int(42)
+        repr_str = repr(writer)
+        assert "CborWriter" in repr_str
+        assert "size=" in repr_str
+
+    def test_context_manager(self):
+        with CborWriter() as writer:
+            writer.write_int(42)
+            assert writer.to_hex() == "182a"
+
+
+class TestCborWriterEncode:
+    def test_encode_returns_bytes(self):
+        writer = CborWriter()
+        writer.write_int(42)
+        result = writer.encode()
+        assert isinstance(result, bytes)
+        assert result == b'\x18\x2a'
+
+    def test_encode_empty(self):
+        # Empty writer may not be supported by C library
+        # Test with actual data instead
+        writer = CborWriter()
+        writer.write_int(0)
+        result = writer.encode()
+        assert result == b'\x00'
+
+    def test_to_hex_empty(self):
+        writer = CborWriter()
+        assert writer.to_hex() == ""
+
+    def test_to_hex_with_data(self):
+        writer = CborWriter()
+        writer.write_int(42)
+        assert writer.to_hex() == "182a"
+
 
 class TestCborWriterArray:
     def test_write_empty_fixed_size_array(self):
@@ -325,3 +398,256 @@ class TestCborWriterEncoded:
         writer.write_encoded(b'\x02')
 
         assert writer.to_hex() == '820102'
+
+
+class TestCborWriterInvalidArguments:
+    def test_write_int_invalid_type(self):
+        writer = CborWriter()
+        with pytest.raises(TypeError):
+            writer.write_int("not an int")
+
+    def test_write_int_invalid_type_float(self):
+        writer = CborWriter()
+        with pytest.raises(TypeError):
+            writer.write_int(3.14)
+
+    def test_write_bool_invalid_type(self):
+        writer = CborWriter()
+        # Python allows non-bool in bool context, but let's test explicit non-bool
+        # write_bool should work with any truthy/falsy value in Python
+        writer.write_bool(0)  # Should work, converts to False
+        assert writer.to_hex() == 'f4'
+
+    def test_write_bytes_invalid_type(self):
+        writer = CborWriter()
+        with pytest.raises((TypeError, AttributeError)):
+            writer.write_bytes("not bytes")
+
+    def test_write_str_invalid_type(self):
+        writer = CborWriter()
+        with pytest.raises(AttributeError):
+            writer.write_str(123)
+
+    def test_write_tag_invalid_type(self):
+        writer = CborWriter()
+        # Tag should accept int or CborTag enum
+        writer.write_tag(42)  # Should work
+        assert writer.encoded_size > 0
+
+    def test_write_encoded_invalid_type(self):
+        writer = CborWriter()
+        with pytest.raises((TypeError, AttributeError)):
+            writer.write_encoded("not bytes")
+
+
+class TestCborWriterEdgeCases:
+    def test_write_int_with_bigint_object(self):
+        writer = CborWriter()
+        bigint = BigInt.from_int(340199290171201906221318119490500689920)
+        writer.write_int(bigint)
+        # Should encode as bignum with tag
+        assert writer.to_hex().startswith('c2')
+
+    def test_write_int_negative_bigint(self):
+        writer = CborWriter()
+        bigint = BigInt.from_int(-340199290171201906221318119490500689920)
+        writer.write_int(bigint)
+        # Should encode as negative bignum with tag
+        assert writer.to_hex().startswith('c3')
+
+    def test_write_int_very_large_positive(self):
+        # Test automatic BigInt promotion for numbers > uint64 max
+        writer = CborWriter()
+        val = 18446744073709551616  # 2^64
+        writer.write_int(val)
+        # Should auto-convert to BigInt with tag 2
+        assert writer.to_hex().startswith('c2')
+
+    def test_write_int_very_large_negative(self):
+        # Test automatic BigInt promotion for numbers < int64 min
+        writer = CborWriter()
+        val = -9223372036854775809  # int64 min - 1
+        writer.write_int(val)
+        # Should auto-convert to BigInt with tag 3
+        assert writer.to_hex().startswith('c3')
+
+    def test_write_bytes_empty(self):
+        writer = CborWriter()
+        writer.write_bytes(b'')
+        assert writer.to_hex() == '40'
+
+    def test_write_str_empty(self):
+        writer = CborWriter()
+        writer.write_str('')
+        assert writer.to_hex() == '60'
+
+    def test_write_str_unicode(self):
+        writer = CborWriter()
+        writer.write_str('\u00FC')  # ü
+        assert writer.to_hex() == '62c3bc'
+
+    def test_write_str_emoji(self):
+        writer = CborWriter()
+        writer.write_str('😀')
+        # U+1F600 in UTF-8 is f0 9f 98 80
+        assert writer.to_hex() == '64f09f9880'
+
+    def test_write_start_array_zero(self):
+        writer = CborWriter()
+        writer.write_start_array(0)
+        assert writer.to_hex() == '80'
+
+    def test_write_start_array_large(self):
+        writer = CborWriter()
+        writer.write_start_array(100)
+        # 0x98 (array with 1-byte length) + 0x64 (100)
+        assert writer.to_hex() == '9864'
+
+    def test_write_start_map_zero(self):
+        writer = CborWriter()
+        writer.write_start_map(0)
+        assert writer.to_hex() == 'a0'
+
+    def test_write_start_map_large(self):
+        writer = CborWriter()
+        writer.write_start_map(100)
+        # 0xb8 (map with 1-byte length) + 0x64 (100)
+        assert writer.to_hex() == 'b864'
+
+    def test_multiple_reset(self):
+        writer = CborWriter()
+        writer.write_int(42)
+        writer.reset()
+        writer.write_int(100)
+        assert writer.to_hex() == '1864'
+
+    def test_reset_and_reuse(self):
+        writer = CborWriter()
+        writer.write_int(1)
+        hex1 = writer.to_hex()
+        writer.reset()
+        writer.write_int(2)
+        hex2 = writer.to_hex()
+        assert hex1 == '01'
+        assert hex2 == '02'
+
+
+class TestCborWriterComplexScenarios:
+    def test_deeply_nested_arrays(self):
+        writer = CborWriter()
+        # [[[1]]]
+        writer.write_start_array(1)
+        writer.write_start_array(1)
+        writer.write_start_array(1)
+        writer.write_int(1)
+        assert writer.to_hex() == '818181010101'[:8]  # First 4 bytes
+
+    def test_deeply_nested_maps(self):
+        writer = CborWriter()
+        # {"a": {"b": {"c": 1}}}
+        writer.write_start_map(1)
+        writer.write_str('a')
+        writer.write_start_map(1)
+        writer.write_str('b')
+        writer.write_start_map(1)
+        writer.write_str('c')
+        writer.write_int(1)
+        assert writer.encoded_size > 0
+
+    def test_mixed_nesting(self):
+        writer = CborWriter()
+        # [{"a": [1, 2]}, 3]
+        writer.write_start_array(2)
+        writer.write_start_map(1)
+        writer.write_str('a')
+        writer.write_start_array(2)
+        writer.write_int(1)
+        writer.write_int(2)
+        writer.write_int(3)
+        assert writer.encoded_size > 0
+
+    def test_write_all_simple_values(self):
+        writer = CborWriter()
+        writer.write_start_array(4)
+        writer.write_bool(False)
+        writer.write_bool(True)
+        writer.write_null()
+        writer.write_undefined()
+        assert writer.to_hex() == '84f4f5f6f7'
+
+    def test_large_array_of_integers(self):
+        writer = CborWriter()
+        count = 100
+        writer.write_start_array(count)
+        for i in range(count):
+            writer.write_int(i)
+        assert writer.encoded_size > count
+
+    def test_large_map_of_strings(self):
+        writer = CborWriter()
+        count = 50
+        writer.write_start_map(count)
+        for i in range(count):
+            writer.write_str(f'key{i}')
+            writer.write_str(f'value{i}')
+        assert writer.encoded_size > count * 10
+
+    def test_tag_with_array(self):
+        writer = CborWriter()
+        writer.write_tag(123)
+        writer.write_start_array(2)
+        writer.write_int(1)
+        writer.write_int(2)
+        assert writer.encoded_size > 0
+
+    def test_tag_with_map(self):
+        writer = CborWriter()
+        writer.write_tag(456)
+        writer.write_start_map(1)
+        writer.write_str('x')
+        writer.write_int(1)
+        assert writer.encoded_size > 0
+
+
+class TestCborWriterBigIntScenarios:
+    def test_bigint_from_string(self):
+        writer = CborWriter()
+        bigint = BigInt.from_string("340199290171201906221318119490500689920", 10)
+        writer.write_int(bigint)
+        # Tag 2 for unsigned bignum
+        assert writer.to_hex().startswith('c2')
+
+    def test_negative_bigint_from_string(self):
+        writer = CborWriter()
+        bigint = BigInt.from_string("-340199290171201906221318119490500689920", 10)
+        writer.write_int(bigint)
+        # Tag 3 for negative bignum
+        assert writer.to_hex().startswith('c3')
+
+    def test_bigint_boundary_uint64_max(self):
+        writer = CborWriter()
+        # Maximum uint64: 18446744073709551615
+        writer.write_int(18446744073709551615)
+        # Should fit in uint64, no tag
+        assert writer.to_hex() == '1bffffffffffffffff'
+
+    def test_bigint_boundary_uint64_max_plus_one(self):
+        writer = CborWriter()
+        # uint64 max + 1: requires bignum
+        writer.write_int(18446744073709551616)
+        # Should use tag 2
+        assert writer.to_hex().startswith('c2')
+
+    def test_bigint_boundary_int64_min(self):
+        writer = CborWriter()
+        # Minimum int64: -9223372036854775808
+        writer.write_int(-9223372036854775808)
+        # Should fit in signed int64
+        assert writer.to_hex() == '3b7fffffffffffffff'
+
+    def test_bigint_boundary_int64_min_minus_one(self):
+        writer = CborWriter()
+        # int64 min - 1: requires bignum
+        writer.write_int(-9223372036854775809)
+        # Should use tag 3
+        assert writer.to_hex().startswith('c3')

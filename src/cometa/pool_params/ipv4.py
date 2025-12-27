@@ -34,34 +34,86 @@ class IPv4:
     IP_SIZE = 4  # IPv4 addresses are 4 bytes
 
     def __init__(self, ptr) -> None:
+        """
+        Initializes an IPv4 address from a C pointer.
+
+        Args:
+            ptr: A C pointer to the cardano_ipv4_t object.
+
+        Raises:
+            CardanoError: If the pointer is NULL.
+        """
         if ptr == ffi.NULL:
             raise CardanoError("IPv4: invalid handle")
         self._ptr = ptr
 
     def __del__(self) -> None:
+        """
+        Cleans up the IPv4 object by releasing the underlying C resources.
+        """
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_ipv4_t**", self._ptr)
             lib.cardano_ipv4_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> IPv4:
+        """
+        Enables context manager support for the IPv4 object.
+
+        Returns:
+            The IPv4 instance.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """
+        Exits the context manager.
+
+        Args:
+            exc_type: The exception type (if any).
+            exc_val: The exception value (if any).
+            exc_tb: The exception traceback (if any).
+        """
 
     def __repr__(self) -> str:
+        """
+        Returns a detailed string representation of the IPv4 address.
+
+        Returns:
+            A string representation in the format "IPv4(address)".
+        """
         return f"IPv4({self.to_string()})"
 
     def __str__(self) -> str:
+        """
+        Returns the IPv4 address in dotted-decimal notation.
+
+        Returns:
+            A string representation of the IPv4 address.
+        """
         return self.to_string()
 
     def __eq__(self, other: object) -> bool:
+        """
+        Compares two IPv4 addresses for equality.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the addresses are equal, False otherwise.
+        """
         if not isinstance(other, IPv4):
             return False
         return self.to_bytes() == other.to_bytes()
 
     def __hash__(self) -> int:
+        """
+        Returns a hash value for the IPv4 address.
+
+        Returns:
+            The hash value based on the IPv4 bytes.
+        """
         return hash(self.to_bytes())
 
     @classmethod

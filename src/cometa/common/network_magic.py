@@ -86,4 +86,14 @@ class NetworkMagic(IntEnum):
         return ffi.string(result).decode("utf-8")
 
     def __repr__(self) -> str:
+        """
+        Returns the official string representation of the network magic.
+
+        Returns:
+            The enum representation as a string.
+
+        Example:
+            >>> repr(NetworkMagic.MAINNET)
+            'NetworkMagic.MAINNET'
+        """
         return f"NetworkMagic.{self.name}"

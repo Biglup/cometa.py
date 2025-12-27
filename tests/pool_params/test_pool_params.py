@@ -149,6 +149,28 @@ class TestRelayType:
         """Test that RelayType is an IntEnum."""
         assert isinstance(RelayType.SINGLE_HOST_ADDRESS, int)
 
+    def test_to_string_single_host_address(self):
+        """Test to_string for SINGLE_HOST_ADDRESS."""
+        relay_type = RelayType.SINGLE_HOST_ADDRESS
+        assert relay_type.to_string() == "Relay Type: Single Host Address"
+
+    def test_to_string_single_host_name(self):
+        """Test to_string for SINGLE_HOST_NAME."""
+        relay_type = RelayType.SINGLE_HOST_NAME
+        assert relay_type.to_string() == "Relay Type: Single Host Name"
+
+    def test_to_string_multi_host_name(self):
+        """Test to_string for MULTI_HOST_NAME."""
+        relay_type = RelayType.MULTI_HOST_NAME
+        assert relay_type.to_string() == "Relay Type: Multi Host Name"
+
+    def test_to_string_unknown_value(self):
+        """Test to_string with unknown/invalid value."""
+        unknown_type = RelayType(0)
+        unknown_type._value_ = 99999
+        result = unknown_type.to_string()
+        assert result == "Relay Type: Unknown" or result.startswith("Unknown(")
+
 
 class TestSingleHostAddrRelay:
     """Tests for SingleHostAddrRelay."""
@@ -798,3 +820,290 @@ class TestPoolParams:
         assert len(params_restored.owners) == 1
         assert len(params_restored.relays) == 1
         assert params_restored.metadata is not None
+
+    def test_cbor_roundtrip_without_metadata(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test CBOR serialization/deserialization without metadata."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+            metadata=None,
+        )
+
+        writer = CborWriter()
+        params.to_cbor(writer)
+        data = writer.encode()
+
+        reader = CborReader.from_bytes(data)
+        params_restored = PoolParams.from_cbor(reader)
+
+        assert params_restored.pledge == 1000000000
+        assert params_restored.cost == 340000000
+        assert params_restored.metadata is None
+
+    def test_set_operator_key_hash(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting operator key hash."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        new_hash = Blake2bHash.from_hex("ff" * 28)
+        params.operator_key_hash = new_hash
+        assert params.operator_key_hash.to_hex() == "ff" * 28
+
+    def test_set_vrf_vk_hash(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting VRF vk hash."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        new_hash = Blake2bHash.from_hex("ff" * 32)
+        params.vrf_vk_hash = new_hash
+        assert params.vrf_vk_hash.to_hex() == "ff" * 32
+
+    def test_set_margin(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting margin."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        new_margin = UnitInterval.new(5, 100)
+        params.margin = new_margin
+        retrieved_margin = params.margin
+        assert retrieved_margin.numerator == 5
+        assert retrieved_margin.denominator == 100
+
+    def test_set_reward_account(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting reward account."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        new_hash = Blake2bHash.from_hex("dd" * 28)
+        new_credential = Credential.from_key_hash(new_hash)
+        new_account = RewardAddress.from_credentials(NetworkId.MAINNET, new_credential)
+        params.reward_account = new_account
+        retrieved_account = params.reward_account
+        assert retrieved_account is not None
+
+    def test_set_owners(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting owners."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        new_owners = PoolOwners.new()
+        new_owners.add(Blake2bHash.from_hex("ee" * 28))
+        new_owners.add(Blake2bHash.from_hex("ff" * 28))
+        params.owners = new_owners
+        retrieved_owners = params.owners
+        assert len(retrieved_owners) == 2
+
+    def test_set_relays(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting relays."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        new_relays = Relays.new()
+        new_relays.add(SingleHostNameRelay.new("relay1.example.com", port=3001))
+        new_relays.add(SingleHostNameRelay.new("relay2.example.com", port=3002))
+        params.relays = new_relays
+        retrieved_relays = params.relays
+        assert len(retrieved_relays) == 2
+
+    def test_set_metadata(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test setting metadata."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+            metadata=None,
+        )
+        assert params.metadata is None
+        new_metadata = PoolMetadata.new(
+            "https://new.example.com/pool.json",
+            Blake2bHash.from_hex("ee" * 32)
+        )
+        params.metadata = new_metadata
+        assert params.metadata is not None
+        assert params.metadata.url == "https://new.example.com/pool.json"
+
+    def test_set_metadata_to_none(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays, metadata
+    ):
+        """Test setting metadata to None."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+            metadata=metadata,
+        )
+        assert params.metadata is not None
+        params.metadata = None
+        assert params.metadata is None
+
+    def test_from_cbor_with_real_data(self):
+        """Test deserialization with real CBOR data from C tests."""
+        cbor_hex = (
+            "581cd85087c646951407198c27b1b950fd2e99f28586c000ce39f6e6ef92"
+            "58208dd154228946bd12967c12bedb1cb6038b78f8b84a1760b1a788fa72a4af3db0"
+            "1927101903e8d81e820105581de1cb0ec2692497b458e46812c8a5bfa2931d1a2d"
+            "965a99893828ec810fd9010281581ccb0ec2692497b458e46812c8a5bfa2931d1a2d"
+            "965a99893828ec810f8383011913886b6578616d706c652e636f6d8400191770447f"
+            "000001f682026b6578616d706c652e636f6d827368747470733a2f2f6578616d706c"
+            "652e636f6d58200f3abbc8fc19c2e61bab6059bf8a466e6e754833a08a62a6c56fe0"
+            "e78f19d9d5"
+        )
+        reader = CborReader.from_hex(cbor_hex)
+        params = PoolParams.from_cbor(reader)
+
+        assert params.pledge == 10000
+        assert params.cost == 1000
+
+    def test_from_cbor_with_null_metadata(self):
+        """Test deserialization with CBOR data containing null metadata."""
+        cbor_hex = (
+            "581cd85087c646951407198c27b1b950fd2e99f28586c000ce39f6e6ef92"
+            "58208dd154228946bd12967c12bedb1cb6038b78f8b84a1760b1a788fa72a4af3db0"
+            "1927101903e8d81e820105581de1cb0ec2692497b458e46812c8a5bfa2931d1a2d"
+            "965a99893828ec810fd9010281581ccb0ec2692497b458e46812c8a5bfa2931d1a2d"
+            "965a99893828ec810f8383011913886b6578616d706c652e636f6d8400191770447f"
+            "000001f682026b6578616d706c652e636f6df6"
+        )
+        reader = CborReader.from_hex(cbor_hex)
+        params = PoolParams.from_cbor(reader)
+
+        assert params.pledge == 10000
+        assert params.cost == 1000
+        assert params.metadata is None
+
+    def test_invalid_cbor_operator_hash(self):
+        """Test that invalid operator hash CBOR raises error."""
+        cbor_hex = "ef1cd85087c646951407198c27b1b950fd2e99f28586c000ce39f6e6ef92"
+        with pytest.raises(CardanoError):
+            reader = CborReader.from_hex(cbor_hex)
+            PoolParams.from_cbor(reader)
+
+    def test_context_manager(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test PoolParams as context manager."""
+        with PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        ) as params:
+            assert params.pledge == 1000000000
+            assert params.cost == 340000000
+
+    def test_to_cip116_json(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays, metadata
+    ):
+        """Test CIP-116 JSON serialization."""
+        from cometa import JsonWriter
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+            metadata=metadata,
+        )
+        writer = JsonWriter()
+        params.to_cip116_json(writer)
+        json_str = writer.encode()
+        assert len(json_str) > 0
+        assert "pledge" in json_str or "cost" in json_str
+
+    def test_to_cip116_json_invalid_writer(
+        self, operator_hash, vrf_hash, margin, reward_account, owners, relays
+    ):
+        """Test CIP-116 JSON serialization with invalid writer."""
+        params = PoolParams.new(
+            operator_key_hash=operator_hash,
+            vrf_vk_hash=vrf_hash,
+            pledge=1000000000,
+            cost=340000000,
+            margin=margin,
+            reward_account=reward_account,
+            owners=owners,
+            relays=relays,
+        )
+        with pytest.raises(TypeError):
+            params.to_cip116_json("not a writer")

@@ -33,23 +33,54 @@ class ScriptInvalidBefore:
     """
 
     def __init__(self, ptr) -> None:
+        """
+        Initializes a ScriptInvalidBefore from an FFI pointer.
+
+        Args:
+            ptr: FFI pointer to the native cardano_script_invalid_before_t object.
+
+        Raises:
+            CardanoError: If the pointer is NULL.
+        """
         if ptr == ffi.NULL:
             raise CardanoError("ScriptInvalidBefore: invalid handle")
         self._ptr = ptr
 
     def __del__(self) -> None:
+        """
+        Cleans up the ScriptInvalidBefore object by releasing native resources.
+        """
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_script_invalid_before_t**", self._ptr)
             lib.cardano_script_invalid_before_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> ScriptInvalidBefore:
+        """
+        Enters a context manager for the ScriptInvalidBefore object.
+
+        Returns:
+            Self for use in a with statement.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """
+        Exits the context manager for the ScriptInvalidBefore object.
+
+        Args:
+            exc_type: The exception type if an exception occurred.
+            exc_val: The exception value if an exception occurred.
+            exc_tb: The exception traceback if an exception occurred.
+        """
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the ScriptInvalidBefore object.
+
+        Returns:
+            A string representation showing the slot number.
+        """
         return f"ScriptInvalidBefore(slot={self.slot})"
 
     @classmethod

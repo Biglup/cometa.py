@@ -25,6 +25,18 @@ BigIntLike = Union["BigInt", int, str]
 
 
 def _ensure_bigint(other: BigIntLike) -> BigInt:
+    """
+    Converts a BigIntLike value to a BigInt instance.
+
+    Args:
+        other (BigIntLike): A value that can be converted to BigInt (BigInt, int, or str).
+
+    Returns:
+        BigInt: The converted BigInt instance.
+
+    Raises:
+        TypeError: If the type cannot be converted to BigInt.
+    """
     if isinstance(other, BigInt):
         return other
     if isinstance(other, int):
@@ -35,6 +47,12 @@ def _ensure_bigint(other: BigIntLike) -> BigInt:
 
 
 def _new_res() -> BigInt:
+    """
+    Creates a new BigInt initialized to zero for use as a result container.
+
+    Returns:
+        BigInt: A BigInt instance with value 0.
+    """
     return BigInt.from_int(0)
 
 

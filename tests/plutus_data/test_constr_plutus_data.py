@@ -83,6 +83,16 @@ class TestConstrPlutusDataCreation:
         for i, item in enumerate(constr.data):
             assert item.to_int() == i + 1
 
+    def test_create_without_alternative_raises(self):
+        """Test creating without alternative raises error."""
+        with pytest.raises(Exception):
+            ConstrPlutusData()
+
+    def test_create_with_none_alternative_raises(self):
+        """Test creating with None alternative raises error."""
+        with pytest.raises(Exception):
+            ConstrPlutusData(None)
+
 
 class TestConstrPlutusDataCbor:
     """Tests for ConstrPlutusData CBOR serialization."""
@@ -149,6 +159,22 @@ class TestConstrPlutusDataCbor:
         reader = CborReader.from_hex("01")
         with pytest.raises(Exception):
             ConstrPlutusData.from_cbor(reader)
+
+    def test_clear_cbor_cache_works(self):
+        """Test that clearing CBOR cache works correctly."""
+        reader = CborReader.from_hex(CONSTR_ALT0_CBOR)
+        constr = ConstrPlutusData.from_cbor(reader)
+        constr.clear_cbor_cache()
+        writer = CborWriter()
+        constr.to_cbor(writer)
+        assert writer.to_hex() == CONSTR_ALT0_CBOR
+
+    def test_serialize_alternative_150_high(self):
+        """Test CBOR serialization with high alternative (150)."""
+        constr = ConstrPlutusData(150, [1, 2, 3, 4, 5])
+        writer = CborWriter()
+        constr.to_cbor(writer)
+        assert writer.to_hex() == CONSTR_TAG102_CBOR
 
 
 class TestConstrPlutusDataProperties:
@@ -385,6 +411,17 @@ class TestConstrPlutusDataCip116Json:
         json_str = writer.encode()
         assert "constr" in json_str
         assert "0" in json_str
+
+    def test_to_cip116_json_with_alternative_121(self):
+        """Test CIP-116 JSON serialization with alternative 121."""
+        from cometa import JsonWriter, JsonFormat
+        constr = ConstrPlutusData(121, [99])
+        writer = JsonWriter(JsonFormat.COMPACT)
+        constr.to_cip116_json(writer)
+        json_str = writer.encode()
+        assert "constr" in json_str
+        assert "121" in json_str
+        assert "99" in json_str
 
     def test_to_cip116_json_invalid_writer_raises(self):
         """Test that invalid writer raises TypeError."""

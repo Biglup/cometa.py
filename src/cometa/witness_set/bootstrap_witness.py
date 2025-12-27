@@ -75,47 +75,41 @@ class BootstrapWitness:
         Raises:
             CardanoError: If creation fails.
         """
-        # Create ed25519_public_key
         vkey_ptr = ffi.new("cardano_ed25519_public_key_t**")
-        err = lib.cardano_ed25519_public_key_from_bytes(vkey, len(vkey), vkey_ptr)
-        if err != 0:
-            raise CardanoError(f"Failed to create public key (error code: {err})")
+        if lib.cardano_ed25519_public_key_from_bytes(vkey, len(vkey), vkey_ptr) != 0:
+            raise CardanoError("Failed to create public key")
 
-        # Create ed25519_signature
         sig_ptr = ffi.new("cardano_ed25519_signature_t**")
-        err = lib.cardano_ed25519_signature_from_bytes(signature, len(signature), sig_ptr)
-        if err != 0:
+        if lib.cardano_ed25519_signature_from_bytes(signature, len(signature), sig_ptr) != 0:
             lib.cardano_ed25519_public_key_unref(vkey_ptr)
-            raise CardanoError(f"Failed to create signature (error code: {err})")
+            raise CardanoError("Failed to create signature")
 
-        # Create chain code buffer
-        chain_code_ptr = ffi.new("cardano_buffer_t**")
-        err = lib.cardano_buffer_new_from(chain_code, len(chain_code), chain_code_ptr)
-        if err != 0:
-            lib.cardano_ed25519_public_key_unref(vkey_ptr)
-            lib.cardano_ed25519_signature_unref(sig_ptr)
-            raise CardanoError(f"Failed to create chain code buffer (error code: {err})")
-
-        # Create attributes buffer
-        attr_ptr = ffi.new("cardano_buffer_t**")
-        err = lib.cardano_buffer_new_from(attributes, len(attributes), attr_ptr)
-        if err != 0:
+        chain_code_ptr = lib.cardano_buffer_new_from(
+            ffi.from_buffer("byte_t[]", chain_code), len(chain_code)
+        )
+        if chain_code_ptr == ffi.NULL:
             lib.cardano_ed25519_public_key_unref(vkey_ptr)
             lib.cardano_ed25519_signature_unref(sig_ptr)
-            lib.cardano_buffer_unref(chain_code_ptr)
-            raise CardanoError(f"Failed to create attributes buffer (error code: {err})")
+            raise CardanoError("Failed to create chain code buffer")
 
-        # Create witness
+        attr_ptr = lib.cardano_buffer_new_from(
+            ffi.from_buffer("byte_t[]", attributes), len(attributes)
+        )
+        if attr_ptr == ffi.NULL:
+            lib.cardano_ed25519_public_key_unref(vkey_ptr)
+            lib.cardano_ed25519_signature_unref(sig_ptr)
+            lib.cardano_buffer_unref(ffi.new("cardano_buffer_t**", chain_code_ptr))
+            raise CardanoError("Failed to create attributes buffer")
+
         out = ffi.new("cardano_bootstrap_witness_t**")
         err = lib.cardano_bootstrap_witness_new(
-            vkey_ptr[0], sig_ptr[0], chain_code_ptr[0], attr_ptr[0], out
+            vkey_ptr[0], sig_ptr[0], chain_code_ptr, attr_ptr, out
         )
 
-        # Clean up intermediate objects
         lib.cardano_ed25519_public_key_unref(vkey_ptr)
         lib.cardano_ed25519_signature_unref(sig_ptr)
-        lib.cardano_buffer_unref(chain_code_ptr)
-        lib.cardano_buffer_unref(attr_ptr)
+        lib.cardano_buffer_unref(ffi.new("cardano_buffer_t**", chain_code_ptr))
+        lib.cardano_buffer_unref(ffi.new("cardano_buffer_t**", attr_ptr))
 
         if err != 0:
             raise CardanoError(f"Failed to create BootstrapWitness (error code: {err})")
@@ -280,13 +274,12 @@ class BootstrapWitness:
         Raises:
             CardanoError: If setting fails.
         """
-        buf_ptr = ffi.new("cardano_buffer_t**")
-        err = lib.cardano_buffer_new_from(value, len(value), buf_ptr)
-        if err != 0:
-            raise CardanoError(f"Failed to create buffer (error code: {err})")
+        buf_ptr = lib.cardano_buffer_new_from(ffi.from_buffer("byte_t[]", value), len(value))
+        if buf_ptr == ffi.NULL:
+            raise CardanoError("Failed to create buffer")
 
-        err = lib.cardano_bootstrap_witness_set_chain_code(self._ptr, buf_ptr[0])
-        lib.cardano_buffer_unref(buf_ptr)
+        err = lib.cardano_bootstrap_witness_set_chain_code(self._ptr, buf_ptr)
+        lib.cardano_buffer_unref(ffi.new("cardano_buffer_t**", buf_ptr))
 
         if err != 0:
             raise CardanoError(f"Failed to set chain_code (error code: {err})")
@@ -324,13 +317,12 @@ class BootstrapWitness:
         Raises:
             CardanoError: If setting fails.
         """
-        buf_ptr = ffi.new("cardano_buffer_t**")
-        err = lib.cardano_buffer_new_from(value, len(value), buf_ptr)
-        if err != 0:
-            raise CardanoError(f"Failed to create buffer (error code: {err})")
+        buf_ptr = lib.cardano_buffer_new_from(ffi.from_buffer("byte_t[]", value), len(value))
+        if buf_ptr == ffi.NULL:
+            raise CardanoError("Failed to create buffer")
 
-        err = lib.cardano_bootstrap_witness_set_attributes(self._ptr, buf_ptr[0])
-        lib.cardano_buffer_unref(buf_ptr)
+        err = lib.cardano_bootstrap_witness_set_attributes(self._ptr, buf_ptr)
+        lib.cardano_buffer_unref(ffi.new("cardano_buffer_t**", buf_ptr))
 
         if err != 0:
             raise CardanoError(f"Failed to set attributes (error code: {err})")

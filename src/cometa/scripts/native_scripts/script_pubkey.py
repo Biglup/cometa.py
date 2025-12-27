@@ -142,28 +142,6 @@ class ScriptPubkey:
 
         return result
 
-    @key_hash.setter
-    def key_hash(self, value: bytes) -> None:
-        """
-        Sets the verification key hash.
-
-        Args:
-            value: The 28-byte Blake2b hash.
-
-        Raises:
-            CardanoError: If setting fails.
-        """
-        hash_ptr = ffi.new("cardano_blake2b_hash_t**")
-        err = lib.cardano_blake2b_hash_from_bytes(value, len(value), hash_ptr)
-        if err != 0:
-            raise CardanoError(f"Failed to create key hash (error code: {err})")
-
-        err = lib.cardano_script_pubkey_set_key_hash(self._ptr, hash_ptr[0])
-        lib.cardano_blake2b_hash_unref(hash_ptr)
-
-        if err != 0:
-            raise CardanoError(f"Failed to set key hash (error code: {err})")
-
     @property
     def hash(self) -> bytes:
         """

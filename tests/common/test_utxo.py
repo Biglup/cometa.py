@@ -472,3 +472,172 @@ class TestUtxoList:
         assert len(utxo_list) == 2
         assert len(removed) == 1
         assert removed[0].input.index == 1
+
+
+class TestUtxoEdgeCases:
+    """Tests for edge cases and error handling in Utxo."""
+
+    def test_utxo_from_cbor_with_test_vector(self):
+        """Test deserializing from CBOR using test vector from C tests."""
+        cbor_hex = "82825820bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e001a200583900287a7e37219128cfb05322626daa8b19d1ad37c6779d21853f7b94177c16240714ea0e12b41a914f2945784ac494bb19573f0ca61a08afa801821af0078c21a2581c1ec85dcee27f2d90ec1f9a1e4ce74a667dc9be8b184463223f9c9601a14350584c05581c659f2917fb63f12b33667463ee575eeac1845bbc736b9c0bbc40ba82a14454534c410a"
+
+        reader = CborReader.from_hex(cbor_hex)
+        utxo = Utxo.from_cbor(reader)
+
+        assert utxo is not None
+        assert utxo.input is not None
+        assert utxo.output is not None
+
+    def test_utxo_to_cbor_with_test_vector(self):
+        """Test serializing to CBOR matches test vector from C tests."""
+        cbor_hex = "82825820bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e001a200583900287a7e37219128cfb05322626daa8b19d1ad37c6779d21853f7b94177c16240714ea0e12b41a914f2945784ac494bb19573f0ca61a08afa801821af0078c21a2581c1ec85dcee27f2d90ec1f9a1e4ce74a667dc9be8b184463223f9c9601a14350584c05581c659f2917fb63f12b33667463ee575eeac1845bbc736b9c0bbc40ba82a14454534c410a"
+
+        reader = CborReader.from_hex(cbor_hex)
+        utxo = Utxo.from_cbor(reader)
+
+        writer = CborWriter()
+        utxo.to_cbor(writer)
+        encoded_hex = writer.to_hex()
+
+        assert encoded_hex == cbor_hex
+
+    def test_utxo_from_cbor_invalid_cbor(self):
+        """Test that from_cbor fails with invalid CBOR data."""
+        reader = CborReader.from_hex("01")
+
+        with pytest.raises(Exception):
+            Utxo.from_cbor(reader)
+
+    def test_utxo_from_cbor_invalid_array(self):
+        """Test that from_cbor fails when CBOR doesn't start with array."""
+        reader = CborReader.from_hex("ef")
+
+        with pytest.raises(Exception):
+            Utxo.from_cbor(reader)
+
+    def test_utxo_from_cbor_invalid_input(self):
+        """Test that from_cbor fails with invalid input in CBOR."""
+        with pytest.raises(Exception):
+            reader = CborReader.from_hex("822ef")
+            Utxo.from_cbor(reader)
+
+    def test_utxo_from_cbor_invalid_output(self):
+        """Test that from_cbor fails with invalid output in CBOR."""
+        invalid_cbor = "82825820bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e001ef583900287a7e37219128cfb05322626daa8b19d1ad37c6779d21853f7b94177c16240714ea0e12b41a914f2945784ac494bb19573f0ca61a08afa8821af0078c21a2581c1ec85dcee27f2d90ec1f9a1e4ce74a667dc9be8b184463223f9c9601a14350584c05581c659f2917fb63f12b33667463ee575eeac1845bbc736b9c0bbc40ba82a14454534c410a"
+        reader = CborReader.from_hex(invalid_cbor)
+
+        with pytest.raises(Exception):
+            Utxo.from_cbor(reader)
+
+    def test_utxo_equality_with_same_object(self):
+        """Test that a UTXO equals itself."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output(1000000)
+        utxo = Utxo.new(tx_input, tx_output)
+
+        assert utxo == utxo
+
+    def test_utxo_equality_with_none(self):
+        """Test that UTXO comparison with None returns False."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output(1000000)
+        utxo = Utxo.new(tx_input, tx_output)
+
+        assert utxo != None
+        assert not (utxo == None)
+
+    def test_utxo_equality_with_different_type(self):
+        """Test that UTXO comparison with different type returns False."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output(1000000)
+        utxo = Utxo.new(tx_input, tx_output)
+
+        assert utxo != "not a utxo"
+        assert utxo != 42
+        assert utxo != []
+
+    def test_utxo_equality_different_outputs(self):
+        """Test UTXOs with different outputs are not equal."""
+        tx_input = create_test_input(0)
+        tx_output1 = create_test_output(1000000)
+        tx_output2 = create_test_output(2000000)
+
+        utxo1 = Utxo.new(tx_input, tx_output1)
+        utxo2 = Utxo.new(tx_input, tx_output2)
+
+        assert utxo1 != utxo2
+
+    def test_utxo_set_input_invalid(self):
+        """Test setting input with invalid value."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output()
+        utxo = Utxo.new(tx_input, tx_output)
+
+        with pytest.raises((TypeError, AttributeError)):
+            utxo.input = None
+
+    def test_utxo_set_output_invalid(self):
+        """Test setting output with invalid value."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output()
+        utxo = Utxo.new(tx_input, tx_output)
+
+        with pytest.raises((TypeError, AttributeError)):
+            utxo.output = None
+
+
+class TestUtxoJsonSerialization:
+    """Tests for CIP-116 JSON serialization of Utxo."""
+
+    def test_utxo_to_cip116_json(self):
+        """Test serializing UTXO to CIP-116 JSON format."""
+        from cometa import JsonWriter, JsonFormat
+
+        cbor_hex = "82825820bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e001a200583900287a7e37219128cfb05322626daa8b19d1ad37c6779d21853f7b94177c16240714ea0e12b41a914f2945784ac494bb19573f0ca61a08afa801821af0078c21a2581c1ec85dcee27f2d90ec1f9a1e4ce74a667dc9be8b184463223f9c9601a14350584c05581c659f2917fb63f12b33667463ee575eeac1845bbc736b9c0bbc40ba82a14454534c410a"
+
+        reader = CborReader.from_hex(cbor_hex)
+        utxo = Utxo.from_cbor(reader)
+
+        writer = JsonWriter(JsonFormat.COMPACT)
+        utxo.to_cip116_json(writer)
+        json_str = writer.encode()
+
+        assert "input" in json_str
+        assert "output" in json_str
+        assert "transaction_id" in json_str
+        assert "bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e0" in json_str
+
+    def test_utxo_to_cip116_json_with_expected_format(self):
+        """Test that CIP-116 JSON output matches expected format."""
+        from cometa import JsonWriter, JsonFormat
+
+        cbor_hex = "82825820bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e001a200583900287a7e37219128cfb05322626daa8b19d1ad37c6779d21853f7b94177c16240714ea0e12b41a914f2945784ac494bb19573f0ca61a08afa801821af0078c21a2581c1ec85dcee27f2d90ec1f9a1e4ce74a667dc9be8b184463223f9c9601a14350584c05581c659f2917fb63f12b33667463ee575eeac1845bbc736b9c0bbc40ba82a14454534c410a"
+
+        reader = CborReader.from_hex(cbor_hex)
+        utxo = Utxo.from_cbor(reader)
+
+        writer = JsonWriter(JsonFormat.COMPACT)
+        utxo.to_cip116_json(writer)
+        json_str = writer.encode()
+
+        expected = '{"input":{"transaction_id":"bb217abaca60fc0ca68c1555eca6a96d2478547818ae76ce6836133f3cc546e0","index":1},"output":{"address":"addr_test1qq585l3hyxgj3nas2v3xymd23vvartfhceme6gv98aaeg9muzcjqw982pcftgx53fu5527z2cj2tkx2h8ux2vxsg475q2g7k3g","amount":{"coin":"4027026465","assets":{"1ec85dcee27f2d90ec1f9a1e4ce74a667dc9be8b184463223f9c9601":{"50584c":"5"},"659f2917fb63f12b33667463ee575eeac1845bbc736b9c0bbc40ba82":{"54534c41":"10"}}}}}'
+
+        assert json_str == expected
+
+    def test_utxo_to_cip116_json_invalid_writer(self):
+        """Test that to_cip116_json fails with invalid writer."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output()
+        utxo = Utxo.new(tx_input, tx_output)
+
+        with pytest.raises((TypeError, AttributeError)):
+            utxo.to_cip116_json(None)
+
+    def test_utxo_to_cip116_json_wrong_writer_type(self):
+        """Test that to_cip116_json fails with wrong writer type."""
+        tx_input = create_test_input(0)
+        tx_output = create_test_output()
+        utxo = Utxo.new(tx_input, tx_output)
+
+        with pytest.raises((TypeError, AttributeError)):
+            utxo.to_cip116_json("not a writer")

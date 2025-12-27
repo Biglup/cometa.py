@@ -17,10 +17,33 @@ limitations under the License.
 from ._ffi import ffi, lib
 
 class CardanoError(Exception):
-    """Generic error raised when a libcardano-c call fails."""
+    """
+    Generic error raised when a libcardano-c call fails.
+
+    This exception is raised by the check_error function when an error code
+    indicates a failure in the underlying C library. The exception message
+    contains the human-readable error description from the C library.
+    """
 
 def check_error(err: int, get_last_error_fn, ctx_ptr) -> None:
-    """Raise CardanoError if err != 0, using the given get_last_error_fn."""
+    """
+    Raise CardanoError if err != 0, using the given get_last_error_fn.
+
+    This is a helper function used throughout the bindings to check for errors
+    from libcardano-c function calls. When an error is detected (err != 0), it
+    retrieves the error message from the context object and raises a CardanoError.
+
+    Args:
+        err: Error code from a libcardano-c function call (0 = success).
+        get_last_error_fn: Function pointer to retrieve error message from context.
+        ctx_ptr: Pointer to the C context object containing error details.
+
+    Raises:
+        CardanoError: If err is non-zero, with the error message from the context.
+
+    Example:
+        >>> check_error(result, lib.some_get_last_error, ctx)
+    """
     if err != 0:
         msg_ptr = get_last_error_fn(ctx_ptr)
         if msg_ptr:
@@ -30,7 +53,27 @@ def check_error(err: int, get_last_error_fn, ctx_ptr) -> None:
         raise CardanoError(msg)
 
 def cardano_error_to_string(err: int) -> str:
-    """Convert an error code to a string"""
+    """
+    Convert an error code to its human-readable string representation.
+
+    This function wraps the C library's cardano_error_to_string function to
+    convert numeric error codes into descriptive error messages.
+
+    Args:
+        err: A Cardano error code integer (e.g., CARDANO_SUCCESS = 0).
+
+    Returns:
+        A human-readable string describing the error. Returns "Unknown error."
+        if the error code is not recognized.
+
+    Example:
+        >>> cardano_error_to_string(0)
+        'Successful operation'
+        >>> cardano_error_to_string(1)
+        'Generic error'
+        >>> cardano_error_to_string(99999)
+        'Unknown error.'
+    """
     result = lib.cardano_error_to_string(err)
     if result == ffi.NULL:
         return "Unknown error."

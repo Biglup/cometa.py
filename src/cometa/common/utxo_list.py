@@ -40,6 +40,16 @@ class UtxoList(Sequence["Utxo"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a UtxoList.
+
+        Args:
+            ptr: Optional FFI pointer to an existing cardano_utxo_list_t.
+                 If None, creates a new empty list.
+
+        Raises:
+            CardanoError: If list creation fails or ptr is NULL.
+        """
         if ptr is None:
             out = ffi.new("cardano_utxo_list_t**")
             err = lib.cardano_utxo_list_new(out)
@@ -52,18 +62,40 @@ class UtxoList(Sequence["Utxo"]):
             self._ptr = ptr
 
     def __del__(self) -> None:
+        """
+        Cleans up the UtxoList by unreferencing the underlying C object.
+        """
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_utxo_list_t**", self._ptr)
             lib.cardano_utxo_list_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> UtxoList:
+        """
+        Enters the context manager, returning self.
+
+        Returns:
+            The UtxoList instance.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """
+        Exits the context manager.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_val: Exception value if an exception occurred.
+            exc_tb: Exception traceback if an exception occurred.
+        """
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the UtxoList.
+
+        Returns:
+            A string showing the class name and length.
+        """
         return f"UtxoList(len={len(self)})"
 
     def __len__(self) -> int:
@@ -245,10 +277,19 @@ class UtxoList(Sequence["Utxo"]):
         return UtxoList(ptr)
 
     def __add__(self, other: Union[UtxoList, list[Utxo]]) -> UtxoList:
-        """Concatenates two UtxoLists using the + operator."""
+        """
+        Concatenates two UtxoLists using the + operator.
+
+        Args:
+            other: A UtxoList or Python list of Utxo objects to concatenate.
+
+        Returns:
+            A new UtxoList containing elements from both lists.
+        """
         if isinstance(other, list):
             other = UtxoList.from_list(other)
         return self.concat(other)
+
     def index(self, value: Utxo, start: int = 0, stop: Optional[int] = None) -> int:
         """
         Returns the index of the first occurrence of value.
@@ -284,6 +325,11 @@ class UtxoList(Sequence["Utxo"]):
         return sum(1 for item in self if item == value)
 
     def __reversed__(self) -> Iterator[Utxo]:
-        """Iterates over elements in reverse order."""
+        """
+        Returns an iterator that yields elements in reverse order.
+
+        Returns:
+            An iterator over the UTxOs in reverse order.
+        """
         for i in range(len(self) - 1, -1, -1):
             yield self[i]

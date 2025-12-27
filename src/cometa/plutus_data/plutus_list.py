@@ -54,6 +54,15 @@ class PlutusList(Sequence["PlutusData"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a new PlutusList instance.
+
+        Args:
+            ptr: Optional internal pointer for initialization from C library.
+
+        Raises:
+            CardanoError: If creation fails or pointer is invalid.
+        """
         if ptr is None:
             out = ffi.new("cardano_plutus_list_t**")
             err = lib.cardano_plutus_list_new(out)
@@ -66,18 +75,21 @@ class PlutusList(Sequence["PlutusData"]):
             self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the PlutusList by releasing underlying C resources."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_plutus_list_t**", self._ptr)
             lib.cardano_plutus_list_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> PlutusList:
+        """Enables use of PlutusList as a context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Exits the context manager."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the PlutusList."""
         return f"PlutusList(len={len(self)})"
 
     def __len__(self) -> int:

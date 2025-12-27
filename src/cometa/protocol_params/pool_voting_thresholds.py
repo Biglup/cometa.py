@@ -139,6 +139,7 @@ class PoolVotingThresholds:
 
     @motion_no_confidence.setter
     def motion_no_confidence(self, value: UnitInterval) -> None:
+        """Sets the threshold for motion of no-confidence."""
         err = lib.cardano_pool_voting_thresholds_set_motion_no_confidence(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set motion_no_confidence (error code: {err})")
@@ -154,6 +155,7 @@ class PoolVotingThresholds:
 
     @committee_normal.setter
     def committee_normal(self, value: UnitInterval) -> None:
+        """Sets the threshold for electing committee when in confidence state."""
         err = lib.cardano_pool_voting_thresholds_set_committee_normal(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set committee_normal (error code: {err})")
@@ -169,6 +171,7 @@ class PoolVotingThresholds:
 
     @committee_no_confidence.setter
     def committee_no_confidence(self, value: UnitInterval) -> None:
+        """Sets the threshold for electing committee when in no-confidence state."""
         err = lib.cardano_pool_voting_thresholds_set_committee_no_confidence(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set committee_no_confidence (error code: {err})")
@@ -184,6 +187,7 @@ class PoolVotingThresholds:
 
     @hard_fork_initiation.setter
     def hard_fork_initiation(self, value: UnitInterval) -> None:
+        """Sets the threshold for hard fork initiation."""
         err = lib.cardano_pool_voting_thresholds_set_hard_fork_initiation(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set hard_fork_initiation (error code: {err})")
@@ -199,6 +203,7 @@ class PoolVotingThresholds:
 
     @security_relevant_param.setter
     def security_relevant_param(self, value: UnitInterval) -> None:
+        """Sets the threshold for security-relevant parameter changes."""
         err = lib.cardano_pool_voting_thresholds_set_security_relevant_param(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set security_relevant_param (error code: {err})")

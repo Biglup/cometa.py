@@ -41,6 +41,16 @@ class TransactionMetadata:
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a new TransactionMetadata instance.
+
+        Args:
+            ptr: Optional FFI pointer to an existing transaction metadata object.
+                If None, creates a new empty transaction metadata.
+
+        Raises:
+            CardanoError: If creation fails or ptr is NULL.
+        """
         if ptr is None:
             out = ffi.new("cardano_transaction_metadata_t**")
             err = lib.cardano_transaction_metadata_new(out)
@@ -53,18 +63,21 @@ class TransactionMetadata:
             self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the TransactionMetadata by releasing the underlying C resources."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_transaction_metadata_t**", self._ptr)
             lib.cardano_transaction_metadata_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> TransactionMetadata:
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Exits the context manager."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the TransactionMetadata."""
         return f"TransactionMetadata(len={len(self)})"
 
     @classmethod

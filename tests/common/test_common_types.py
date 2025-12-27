@@ -17,6 +17,7 @@ limitations under the License.
 import pytest
 from cometa import (
     Anchor,
+    ByteOrder,
     Credential,
     CredentialType,
     Datum,
@@ -31,6 +32,61 @@ from cometa import (
     CborReader,
     CborWriter,
 )
+
+
+class TestByteOrder:
+    """Tests for the ByteOrder enum."""
+
+    def test_byte_order_values(self):
+        """Test that ByteOrder enum values are correct."""
+        assert ByteOrder.LITTLE_ENDIAN == 0
+        assert ByteOrder.BIG_ENDIAN == 1
+
+    def test_byte_order_from_int(self):
+        """Test creating ByteOrder from integer values."""
+        assert ByteOrder(0) == ByteOrder.LITTLE_ENDIAN
+        assert ByteOrder(1) == ByteOrder.BIG_ENDIAN
+
+    def test_byte_order_comparison(self):
+        """Test comparison between ByteOrder values."""
+        assert ByteOrder.LITTLE_ENDIAN != ByteOrder.BIG_ENDIAN
+        assert ByteOrder.LITTLE_ENDIAN == ByteOrder.LITTLE_ENDIAN
+        assert ByteOrder.BIG_ENDIAN == ByteOrder.BIG_ENDIAN
+
+    def test_byte_order_names(self):
+        """Test that ByteOrder enum has correct names."""
+        assert ByteOrder.LITTLE_ENDIAN.name == "LITTLE_ENDIAN"
+        assert ByteOrder.BIG_ENDIAN.name == "BIG_ENDIAN"
+
+    def test_byte_order_invalid_value(self):
+        """Test that invalid values raise ValueError."""
+        with pytest.raises(ValueError):
+            ByteOrder(2)
+        with pytest.raises(ValueError):
+            ByteOrder(-1)
+        with pytest.raises(ValueError):
+            ByteOrder(100)
+
+    def test_byte_order_is_int_enum(self):
+        """Test that ByteOrder values can be used as integers."""
+        assert isinstance(ByteOrder.LITTLE_ENDIAN, int)
+        assert isinstance(ByteOrder.BIG_ENDIAN, int)
+        assert ByteOrder.LITTLE_ENDIAN + 1 == 1
+        assert ByteOrder.BIG_ENDIAN - 1 == 0
+
+    def test_byte_order_iteration(self):
+        """Test iteration over ByteOrder enum."""
+        values = list(ByteOrder)
+        assert len(values) == 2
+        assert ByteOrder.LITTLE_ENDIAN in values
+        assert ByteOrder.BIG_ENDIAN in values
+
+    def test_byte_order_membership(self):
+        """Test membership testing with ByteOrder."""
+        assert 0 in ByteOrder.__members__.values()
+        assert 1 in ByteOrder.__members__.values()
+        assert "LITTLE_ENDIAN" in ByteOrder.__members__
+        assert "BIG_ENDIAN" in ByteOrder.__members__
 
 
 class TestDatumType:

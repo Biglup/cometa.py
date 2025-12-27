@@ -138,7 +138,7 @@ class PlutusV2ScriptList(Sequence["PlutusV2Script"]):
         """
         from ..cbor.cbor_reader import CborReader
 
-        reader = CborReader(cbor_hex)
+        reader = CborReader.from_hex(cbor_hex)
         out = ffi.new("cardano_plutus_v2_script_list_t**")
         err = lib.cardano_plutus_v2_script_list_from_cbor(reader._ptr, out)
         if err != 0:
@@ -168,7 +168,38 @@ class PlutusV2ScriptList(Sequence["PlutusV2Script"]):
             raise CardanoError(
                 f"Failed to encode PlutusV2ScriptList to CBOR (error code: {err})"
             )
-        return writer.encode()
+        return writer.to_hex()
+
+    def to_cip116_json(self, writer) -> None:
+        """
+        Serializes the PlutusV2ScriptList to CIP-116 JSON format.
+
+        Writes a JSON array where each element is a Plutus V2 script object.
+        This function emits the surrounding array brackets. Keys in each element
+        are emitted in stable order: "language", then "bytes".
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If serialization fails.
+
+        Example:
+            >>> from cometa import JsonWriter, JsonFormat
+            >>> writer = JsonWriter(JsonFormat.COMPACT)
+            >>> script_list.to_cip116_json(writer)
+            >>> json_str = writer.encode()
+        """
+        from ..json.json_writer import JsonWriter
+
+        if not isinstance(writer, JsonWriter):
+            raise TypeError("writer must be a JsonWriter instance")
+
+        err = lib.cardano_plutus_v2_script_list_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to encode PlutusV2ScriptList to CIP-116 JSON (error code: {err})"
+            )
 
     def add(self, script: PlutusV2Script) -> None:
         """

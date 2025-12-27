@@ -35,6 +35,12 @@ class StakePointer:
     """The certificate index within the transaction."""
 
     def __post_init__(self) -> None:
+        """
+        Validates that all fields are non-negative after initialization.
+
+        Raises:
+            ValueError: If any field (slot, tx_index, cert_index) is negative.
+        """
         if self.slot < 0:
             raise ValueError("slot must be non-negative")
         if self.tx_index < 0:

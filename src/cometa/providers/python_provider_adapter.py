@@ -44,6 +44,16 @@ class ProviderHandle:
     """
 
     def __init__(self, provider: Provider):
+        """
+        Initialize a ProviderHandle to bridge Python provider with C library.
+
+        Args:
+            provider: A Python object implementing the Provider protocol with methods
+                     for blockchain operations (get_parameters, get_unspent_outputs, etc.)
+
+        Raises:
+            CardanoError: If provider creation fails in the C library.
+        """
         self._provider = provider
         self._provider_ptr = ffi.new("cardano_provider_t**")
         self._impl = ffi.new("cardano_provider_impl_t*")
@@ -419,16 +429,40 @@ class ProviderHandle:
 
     @property
     def ptr(self):
-        """Return the underlying cardano_provider_t* as a cdata pointer."""
+        """
+        Return the underlying cardano_provider_t* as a cdata pointer.
+
+        Returns:
+            A CFFI cdata pointer to cardano_provider_t that can be passed to C functions.
+        """
         return self._provider_ptr[0]
 
     def __del__(self):
+        """
+        Destructor that releases the C provider reference.
+
+        Decrements the reference count of the underlying cardano_provider_t*.
+        This is called automatically when the ProviderHandle is garbage collected.
+        """
         if self._provider_ptr is not None and self._provider_ptr[0] != ffi.NULL:
             lib.cardano_provider_unref(self._provider_ptr)
             self._provider_ptr = None
 
     def __enter__(self) -> ProviderHandle:
+        """
+        Enter context manager.
+
+        Returns:
+            Self for use in 'with' statements.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """
+        Exit context manager.
+
+        Args:
+            exc_type: Exception type if an exception occurred, None otherwise.
+            exc_val: Exception value if an exception occurred, None otherwise.
+            exc_tb: Exception traceback if an exception occurred, None otherwise.
+        """

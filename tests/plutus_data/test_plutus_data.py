@@ -540,3 +540,124 @@ class TestPlutusDataEdgeCases:
         reader = CborReader.from_bytes(cbor_bytes)
         restored = PlutusData.from_cbor(reader)
         assert restored.kind == PlutusDataKind.LIST
+
+
+class TestPlutusDataCborVectors:
+    """Tests using CBOR test vectors from C tests."""
+
+    def test_cbor_negative_integer(self):
+        """Test decoding negative integer from CBOR."""
+        reader = CborReader.from_hex("24")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.INTEGER
+        assert data.to_int() == -5
+
+    def test_cbor_big_positive_integer(self):
+        """Test decoding big positive integer from CBOR."""
+        reader = CborReader.from_hex("c249000100000000000000")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.INTEGER
+        assert data.to_int() == 72057594037927936
+
+    def test_cbor_big_negative_integer(self):
+        """Test decoding big negative integer from CBOR."""
+        reader = CborReader.from_hex("c349000100000000000000")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.INTEGER
+        assert data.to_int() == -72057594037927936
+
+    def test_cbor_bytes_vector(self):
+        """Test decoding bytes from CBOR."""
+        reader = CborReader.from_hex("450102030405")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.BYTES
+        assert data.to_bytes() == b"\x01\x02\x03\x04\x05"
+
+    def test_cbor_list_vector(self):
+        """Test decoding list from CBOR."""
+        reader = CborReader.from_hex("9f0102030405ff")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.LIST
+        plist = data.to_list()
+        assert len(plist) == 5
+        assert plist[0].to_int() == 1
+        assert plist[1].to_int() == 2
+        assert plist[2].to_int() == 3
+        assert plist[3].to_int() == 4
+        assert plist[4].to_int() == 5
+
+    def test_cbor_map_vector(self):
+        """Test decoding map from CBOR."""
+        reader = CborReader.from_hex("a3010402050306")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.MAP
+        pmap = data.to_map()
+        assert len(pmap) == 3
+
+    def test_cbor_constructor_vector(self):
+        """Test decoding constructor from CBOR."""
+        reader = CborReader.from_hex("d8799f0102ff")
+        data = PlutusData.from_cbor(reader)
+        assert data.kind == PlutusDataKind.CONSTR
+        constr = data.to_constr()
+        assert constr.alternative == 0
+        assert len(constr.data) == 2
+
+
+class TestPlutusDataInvalidInputs:
+    """Tests for invalid inputs to PlutusData functions."""
+
+    def test_from_hex_odd_length(self):
+        """Test that odd length hex string raises error."""
+        with pytest.raises(Exception):
+            PlutusData.from_hex("abc")
+
+    def test_to_string_invalid_utf8(self):
+        """Test that to_string on invalid UTF-8 raises error."""
+        data = PlutusData.from_bytes(b"\xff\xfe")
+        with pytest.raises(UnicodeDecodeError):
+            data.to_string()
+
+    def test_from_cbor_invalid_cbor(self):
+        """Test that invalid CBOR raises error."""
+        reader = CborReader.from_hex("ff")
+        with pytest.raises(Exception):
+            PlutusData.from_cbor(reader)
+
+
+class TestPlutusDataLargeIntegers:
+    """Tests for very large integers using test vectors from C tests."""
+
+    def test_very_large_positive_integer(self):
+        """Test creating PlutusData from very large positive integer."""
+        large_num_str = "1093929156918367016766069563027239416446778893307251997971794948729105062347369330146869223033199554831433128491376164494134119896793625745623928731109781036903510617119765359815723399113165600284443934720"
+        large_num = int(large_num_str)
+        data = PlutusData.from_int(large_num)
+        assert data.kind == PlutusDataKind.INTEGER
+        assert data.to_int() == large_num
+
+    def test_very_large_negative_integer(self):
+        """Test creating PlutusData from very large negative integer."""
+        large_num_str = "-1093929156918367016766069563027239416446778893307251997971794948729105062347369330146869223033199554831433128491376164494134119896793625745623928731109781036903510617119765359815723399113165600284443934720"
+        large_num = int(large_num_str)
+        data = PlutusData.from_int(large_num)
+        assert data.kind == PlutusDataKind.INTEGER
+        assert data.to_int() == large_num
+
+    def test_multiple_large_numbers_roundtrip(self):
+        """Test CBOR roundtrip with multiple large numbers."""
+        test_numbers = [
+            "2768491094397106413284351268798781278061973163918667373508176781108678876832888565950388553255499815619207549146245084281150783450096035638439655721496227482399093555200000000000000000000000000000000000000",
+            "-2768491094397106413284351268798781278061973163918667373508176781108678876832888565950388553255499815619207549146245084281150783450096035638439655721496227482399093555200000000000000000000000000000000000000",
+        ]
+
+        for num_str in test_numbers:
+            num = int(num_str)
+            original = PlutusData.from_int(num)
+            writer = CborWriter()
+            original.to_cbor(writer)
+            cbor_bytes = writer.encode()
+
+            reader = CborReader.from_bytes(cbor_bytes)
+            restored = PlutusData.from_cbor(reader)
+            assert restored.to_int() == num

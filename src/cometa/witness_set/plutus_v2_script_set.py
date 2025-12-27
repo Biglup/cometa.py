@@ -38,6 +38,15 @@ class PlutusV2ScriptSet(Set["PlutusV2Script"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a new PlutusV2ScriptSet.
+
+        Args:
+            ptr: Optional FFI pointer to an existing script set. If None, creates a new set.
+
+        Raises:
+            CardanoError: If creation fails or if ptr is NULL.
+        """
         if ptr is None:
             out = ffi.new("cardano_plutus_v2_script_set_t**")
             err = lib.cardano_plutus_v2_script_set_new(out)

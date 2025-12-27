@@ -206,6 +206,15 @@ class TestTransactionMetadata:
 class TestAuxiliaryData:
     """Tests for the AuxiliaryData class."""
 
+    AUXILIARY_DATA_CBOR = "d90103a500a11902d5a4187b1904d2636b65796576616c7565646b65793246000102030405a1190237656569676874a119029a6463616b6501848204038205098202818200581c3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e830300818200581cb5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f5402844746010000220010474601000022001147460100002200124746010000220013038447460100002200104746010000220011474601000022001247460100002200130483474601000022001047460100002200114746010000220012"
+    AUXILIARY_DATA_CBOR2 = "d90103a200a11902d5a4187b1904d2636b65796576616c7565646b65793246000102030405a1190237656569676874a119029a6463616b6501828202818200581c3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e830300818200581cb5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f54"
+    AUXILIARY_DATA_CBOR3 = "d90103a100a11902d5a4187b1904d2636b65796576616c7565646b65793246000102030405a1190237656569676874a119029a6463616b65"
+    SHELLEY_AUXILIARY_DATA_CBOR = "82a11902d5a4187b1904d2636b65796576616c7565646b65793246000102030405a1190237656569676874a119029a6463616b65828202818200581c3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e830300818200581cb5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f54"
+    JUST_METADATA_AUXILIARY_DATA_CBOR = "a11902d5a4187b1904d2636b65796576616c7565646b65793246000102030405a1190237656569676874a119029a6463616b65"
+    AUXILIARY_DATA_HASH = "d24e84d8dbf6f880b04f64ad919bb618bf66ce834b3c901b1efe2ce6b44beb7b"
+    SHELLEY_AUXILIARY_DATA_HASH = "a02cace10f1fc93061cd0dcc31ccfafb9599eba245ae3f03a2ee69928f73d3ed"
+    JUST_METADATA_AUXILIARY_DATA_HASH = "3bed6c134ce51ea7cfccec5ae44acbcb995b568c6408f2a1302f0e1c76d4ae63"
+
     def test_new_empty(self):
         aux_data = AuxiliaryData()
         assert aux_data.metadata is None
@@ -216,6 +225,15 @@ class TestAuxiliaryData:
         metadata.insert(721, Metadatum.from_string("NFT data"))
         aux_data.set_metadata(metadata)
         assert aux_data.metadata is not None
+
+    def test_set_metadata_to_none(self):
+        aux_data = AuxiliaryData()
+        metadata = TransactionMetadata()
+        metadata.insert(721, Metadatum.from_string("Test"))
+        aux_data.set_metadata(metadata)
+        assert aux_data.metadata is not None
+        aux_data.set_metadata(None)
+        assert aux_data.metadata is None
 
     def test_remove_metadata(self):
         aux_data = AuxiliaryData()
@@ -234,6 +252,22 @@ class TestAuxiliaryData:
         hash_value = aux_data.to_hash()
         assert len(hash_value.to_bytes()) == 32
 
+    def test_to_hash_with_test_vectors(self):
+        reader1 = CborReader.from_hex(self.AUXILIARY_DATA_CBOR)
+        aux_data1 = AuxiliaryData.from_cbor(reader1)
+        hash1 = aux_data1.to_hash()
+        assert hash1.to_hex() == self.AUXILIARY_DATA_HASH
+
+        reader2 = CborReader.from_hex(self.SHELLEY_AUXILIARY_DATA_CBOR)
+        aux_data2 = AuxiliaryData.from_cbor(reader2)
+        hash2 = aux_data2.to_hash()
+        assert hash2.to_hex() == self.SHELLEY_AUXILIARY_DATA_HASH
+
+        reader3 = CborReader.from_hex(self.JUST_METADATA_AUXILIARY_DATA_CBOR)
+        aux_data3 = AuxiliaryData.from_cbor(reader3)
+        hash3 = aux_data3.to_hash()
+        assert hash3.to_hex() == self.JUST_METADATA_AUXILIARY_DATA_HASH
+
     def test_cbor_roundtrip(self):
         original = AuxiliaryData()
         metadata = TransactionMetadata()
@@ -248,6 +282,108 @@ class TestAuxiliaryData:
         restored = AuxiliaryData.from_cbor(reader)
         assert restored.metadata is not None
         assert len(restored.metadata) == 1
+
+    def test_from_cbor_with_complex_data(self):
+        reader = CborReader.from_hex(self.AUXILIARY_DATA_CBOR)
+        aux_data = AuxiliaryData.from_cbor(reader)
+        assert aux_data.metadata is not None
+        aux_data.clear_cbor_cache()
+
+        writer = CborWriter()
+        aux_data.to_cbor(writer)
+        cbor_hex = writer.to_hex()
+        assert cbor_hex == self.AUXILIARY_DATA_CBOR
+
+    def test_from_cbor_shelley_era(self):
+        reader = CborReader.from_hex(self.SHELLEY_AUXILIARY_DATA_CBOR)
+        aux_data = AuxiliaryData.from_cbor(reader)
+        assert aux_data.metadata is not None
+        aux_data.clear_cbor_cache()
+
+        writer = CborWriter()
+        aux_data.to_cbor(writer)
+        cbor_hex = writer.to_hex()
+        assert cbor_hex == self.AUXILIARY_DATA_CBOR2
+
+    def test_from_cbor_just_metadata(self):
+        reader = CborReader.from_hex(self.JUST_METADATA_AUXILIARY_DATA_CBOR)
+        aux_data = AuxiliaryData.from_cbor(reader)
+        assert aux_data.metadata is not None
+        aux_data.clear_cbor_cache()
+
+        writer = CborWriter()
+        aux_data.to_cbor(writer)
+        cbor_hex = writer.to_hex()
+        assert cbor_hex == self.AUXILIARY_DATA_CBOR3
+
+    def test_from_cbor_preserves_original(self):
+        reader = CborReader.from_hex(self.SHELLEY_AUXILIARY_DATA_CBOR)
+        aux_data = AuxiliaryData.from_cbor(reader)
+
+        writer = CborWriter()
+        aux_data.to_cbor(writer)
+        cbor_hex = writer.to_hex()
+        assert cbor_hex == self.SHELLEY_AUXILIARY_DATA_CBOR
+
+    def test_clear_cbor_cache(self):
+        reader = CborReader.from_hex(self.SHELLEY_AUXILIARY_DATA_CBOR)
+        aux_data = AuxiliaryData.from_cbor(reader)
+
+        writer1 = CborWriter()
+        aux_data.to_cbor(writer1)
+        cbor_hex1 = writer1.to_hex()
+        assert cbor_hex1 == self.SHELLEY_AUXILIARY_DATA_CBOR
+
+        aux_data.clear_cbor_cache()
+
+        writer2 = CborWriter()
+        aux_data.to_cbor(writer2)
+        cbor_hex2 = writer2.to_hex()
+        assert cbor_hex2 == self.AUXILIARY_DATA_CBOR2
+
+    def test_to_cip116_json(self):
+        reader = CborReader.from_hex(self.AUXILIARY_DATA_CBOR)
+        aux_data = AuxiliaryData.from_cbor(reader)
+
+        writer = JsonWriter()
+        aux_data.to_cip116_json(writer)
+        json_str = writer.encode()
+
+        assert "metadata" in json_str
+        assert "native_scripts" in json_str
+        assert "plutus_scripts" in json_str
+
+    def test_to_cip116_json_with_invalid_writer_type(self):
+        aux_data = AuxiliaryData()
+        with pytest.raises(TypeError):
+            aux_data.to_cip116_json("not a JsonWriter")
+
+    def test_from_cbor_invalid_cbor(self):
+        reader = CborReader.from_hex("01")
+        with pytest.raises(Exception):
+            AuxiliaryData.from_cbor(reader)
+
+    def test_from_cbor_invalid_metadata(self):
+        reader = CborReader.from_hex("a100ef")
+        with pytest.raises(Exception):
+            AuxiliaryData.from_cbor(reader)
+
+    def test_from_cbor_invalid_tag(self):
+        cbor = "d90113a500a11902d5a4187b1904d2636b65796576616c7565646b65793246000102030405a1190237656569676874a119029a6463616b6501848204038205098202818200581c3542acb3a64d80c29302260d62c3b87a742ad14abf855ebc6733081e830300818200581cb5ae663aaea8e500157bdf4baafd6f5ba0ce5759f7cd4101fc132f5402844746010000220010474601000022001147460100002200124746010000220013038447460100002200104746010000220011474601000022001247460100002200130483474601000022001047460100002200114746010000220012"
+        reader = CborReader.from_hex(cbor)
+        with pytest.raises(Exception):
+            AuxiliaryData.from_cbor(reader)
+
+    def test_context_manager(self):
+        with AuxiliaryData() as aux_data:
+            metadata = TransactionMetadata()
+            metadata.insert(721, Metadatum.from_string("NFT"))
+            aux_data.set_metadata(metadata)
+            assert aux_data.metadata is not None
+
+    def test_repr(self):
+        aux_data = AuxiliaryData()
+        assert repr(aux_data) == "AuxiliaryData()"
 
 
 class TestMetadatumList:

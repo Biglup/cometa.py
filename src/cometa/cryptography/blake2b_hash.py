@@ -36,23 +36,38 @@ class Blake2bHash:
     """
 
     def __init__(self, ptr) -> None:
+        """
+        Internal constructor.
+        Use class methods like `compute`, `from_bytes`, `from_hex`, or `from_cbor` instead.
+        """
         if ptr == ffi.NULL:
             raise CardanoError("Blake2bHash: invalid handle")
         self._ptr = ptr
 
     def __del__(self) -> None:
+        """
+        Destructor to release the underlying C object.
+        """
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_blake2b_hash_t**", self._ptr)
             lib.cardano_blake2b_hash_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> Blake2bHash:
+        """
+        Context manager entry (no-op).
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """
+        Context manager exit (no-op).
+        """
 
     def __repr__(self) -> str:
+        """
+        Returns a developer-friendly string representation.
+        """
         return f"Blake2bHash({self.to_hex()})"
 
     @classmethod

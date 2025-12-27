@@ -138,7 +138,7 @@ class PlutusV3ScriptList(Sequence["PlutusV3Script"]):
         """
         from ..cbor.cbor_reader import CborReader
 
-        reader = CborReader(cbor_hex)
+        reader = CborReader.from_hex(cbor_hex)
         out = ffi.new("cardano_plutus_v3_script_list_t**")
         err = lib.cardano_plutus_v3_script_list_from_cbor(reader._ptr, out)
         if err != 0:
@@ -168,7 +168,7 @@ class PlutusV3ScriptList(Sequence["PlutusV3Script"]):
             raise CardanoError(
                 f"Failed to encode PlutusV3ScriptList to CBOR (error code: {err})"
             )
-        return writer.encode()
+        return writer.to_hex()
 
     def add(self, script: PlutusV3Script) -> None:
         """

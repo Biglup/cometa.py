@@ -35,6 +35,16 @@ class CredentialSet(Set["Credential"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a new CredentialSet.
+
+        Args:
+            ptr: Optional internal pointer to an existing credential set.
+                If None, creates a new empty set.
+
+        Raises:
+            CardanoError: If initialization fails or ptr is invalid.
+        """
         if ptr is None:
             out = ffi.new("cardano_credential_set_t**")
             err = lib.cardano_credential_set_new(out)
@@ -49,18 +59,21 @@ class CredentialSet(Set["Credential"]):
             self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the credential set by releasing its resources."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_credential_set_t**", self._ptr)
             lib.cardano_credential_set_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> CredentialSet:
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Exits the context manager."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the credential set."""
         return f"CredentialSet(len={len(self)})"
 
     @classmethod

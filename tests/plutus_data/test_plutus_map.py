@@ -22,6 +22,7 @@ from cometa import (
     PlutusList,
     CborWriter,
     CborReader,
+    JsonWriter,
 )
 
 
@@ -511,3 +512,112 @@ class TestPlutusMapEdgeCases:
         assert pmap["key1"].to_int() == 1
         assert pmap["key2"].to_int() == 2
         assert pmap["key3"].to_int() == 3
+
+
+class TestPlutusMapCip116Json:
+    """Tests for PlutusMap CIP-116 JSON serialization."""
+
+    def test_to_cip116_json_empty_map(self):
+        """Test CIP-116 JSON serialization of empty map."""
+        pmap = PlutusMap()
+        writer = JsonWriter()
+        pmap.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"map"' in result
+        assert '"contents":[]' in result
+
+    def test_to_cip116_json_with_integer_key_and_bytes_value(self):
+        """Test CIP-116 JSON serialization with integer key and bytes value."""
+        pmap = PlutusMap()
+        pmap[1] = b"\xaa"
+        writer = JsonWriter()
+        pmap.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"map"' in result
+        assert '"key"' in result
+        assert '"value"' in result
+        assert '"tag":"integer"' in result
+        assert '"value":"1"' in result
+        assert '"tag":"bytes"' in result
+        assert '"value":"aa"' in result
+
+    def test_to_cip116_json_with_bytes_key_and_integer_value(self):
+        """Test CIP-116 JSON serialization with bytes key and integer value."""
+        pmap = PlutusMap()
+        pmap[b"\xbb"] = 2
+        writer = JsonWriter()
+        pmap.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"map"' in result
+        assert '"key"' in result
+        assert '"value"' in result
+        assert '"tag":"bytes"' in result
+        assert '"value":"bb"' in result
+        assert '"tag":"integer"' in result
+        assert '"value":"2"' in result
+
+    def test_to_cip116_json_with_multiple_entries(self):
+        """Test CIP-116 JSON serialization with multiple entries."""
+        pmap = PlutusMap()
+        pmap[1] = b"\xaa"
+        pmap[b"\xbb"] = 2
+        writer = JsonWriter()
+        pmap.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"map"' in result
+        assert '"contents"' in result
+        assert result.count('"key"') == 2
+        assert result.count('"value"') >= 2
+
+    def test_to_cip116_json_with_string_keys(self):
+        """Test CIP-116 JSON serialization with string keys."""
+        pmap = PlutusMap()
+        pmap["key1"] = 1
+        pmap["key2"] = 2
+        writer = JsonWriter()
+        pmap.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"map"' in result
+        assert '"tag":"bytes"' in result
+
+    def test_to_cip116_json_with_invalid_writer_raises(self):
+        """Test that to_cip116_json with invalid writer raises error."""
+        pmap = PlutusMap()
+        with pytest.raises(TypeError):
+            pmap.to_cip116_json("not a writer")
+
+    def test_to_cip116_json_with_none_writer_raises(self):
+        """Test that to_cip116_json with None writer raises error."""
+        pmap = PlutusMap()
+        with pytest.raises((TypeError, AttributeError)):
+            pmap.to_cip116_json(None)
+
+
+class TestPlutusMapCborCache:
+    """Tests for PlutusMap CBOR cache functionality."""
+
+    def test_clear_cbor_cache(self):
+        """Test clearing CBOR cache."""
+        reader = CborReader.from_hex(SIMPLE_MAP_CBOR)
+        pmap = PlutusMap.from_cbor(reader)
+        pmap.clear_cbor_cache()
+        writer = CborWriter()
+        pmap.to_cbor(writer)
+        assert writer.to_hex() == SIMPLE_MAP_CBOR
+
+    def test_cbor_cache_preserved_after_deserialization(self):
+        """Test that CBOR cache is preserved after deserialization."""
+        reader = CborReader.from_hex(INDEFINITE_MAP_CBOR)
+        pmap = PlutusMap.from_cbor(reader)
+        writer = CborWriter()
+        pmap.to_cbor(writer)
+        assert writer.to_hex() == INDEFINITE_MAP_CBOR
+
+    def test_cbor_cache_cleared_after_clear_cbor_cache(self):
+        """Test that CBOR cache is cleared after calling clear_cbor_cache."""
+        reader = CborReader.from_hex(INDEFINITE_MAP_CBOR)
+        pmap = PlutusMap.from_cbor(reader)
+        pmap.clear_cbor_cache()
+        writer = CborWriter()
+        pmap.to_cbor(writer)
+        assert writer.to_hex() == INDEFINITE_MAP_CBOR

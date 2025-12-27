@@ -21,6 +21,8 @@ from cometa import (
     PlutusList,
     CborWriter,
     CborReader,
+    JsonWriter,
+    CardanoError,
 )
 
 
@@ -569,3 +571,150 @@ class TestPlutusListEdgeCases:
         plist.append(large_num)
         assert len(plist) == 1
         assert plist[0].to_int() == large_num
+
+
+class TestPlutusListErrorCases:
+    """Tests for PlutusList error handling."""
+
+    def test_from_cbor_with_none_reader_raises(self):
+        """Test that from_cbor with None reader raises error."""
+        with pytest.raises((TypeError, AttributeError)):
+            PlutusList.from_cbor(None)
+
+    def test_to_cbor_with_none_writer_raises(self):
+        """Test that to_cbor with None writer raises error."""
+        plist = PlutusList()
+        with pytest.raises((TypeError, AttributeError)):
+            plist.to_cbor(None)
+
+    def test_get_with_invalid_index_raises(self):
+        """Test that get with out of bounds index raises error."""
+        plist = PlutusList()
+        with pytest.raises(IndexError):
+            plist.get(0)
+
+    def test_add_with_none_raises(self):
+        """Test that add with None raises error."""
+        plist = PlutusList()
+        with pytest.raises((TypeError, AttributeError)):
+            plist.add(None)
+
+
+class TestPlutusListJson:
+    """Tests for PlutusList CIP-116 JSON serialization."""
+
+    def test_to_cip116_json_empty_list(self):
+        """Test CIP-116 JSON serialization of empty list."""
+        plist = PlutusList()
+        writer = JsonWriter()
+        plist.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"list"' in result
+        assert '"contents":[]' in result
+
+    def test_to_cip116_json_with_integer(self):
+        """Test CIP-116 JSON serialization with integer."""
+        plist = PlutusList()
+        plist.append(1)
+        writer = JsonWriter()
+        plist.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"list"' in result
+        assert '"tag":"integer"' in result
+        assert '"value":"1"' in result
+
+    def test_to_cip116_json_with_bytes(self):
+        """Test CIP-116 JSON serialization with bytes."""
+        plist = PlutusList()
+        plist.append(b"\xaa")
+        writer = JsonWriter()
+        plist.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"list"' in result
+        assert '"tag":"bytes"' in result
+        assert '"value":"aa"' in result
+
+    def test_to_cip116_json_with_mixed_types(self):
+        """Test CIP-116 JSON serialization with mixed types."""
+        plist = PlutusList()
+        plist.append(1)
+        plist.append(b"\xaa")
+        writer = JsonWriter()
+        plist.to_cip116_json(writer)
+        result = writer.encode()
+        assert '"tag":"list"' in result
+        assert '"tag":"integer"' in result
+        assert '"tag":"bytes"' in result
+
+    def test_to_cip116_json_with_invalid_writer_raises(self):
+        """Test that to_cip116_json with invalid writer raises error."""
+        plist = PlutusList()
+        with pytest.raises(TypeError):
+            plist.to_cip116_json("not a writer")
+
+    def test_to_cip116_json_with_none_writer_raises(self):
+        """Test that to_cip116_json with None writer raises error."""
+        plist = PlutusList()
+        with pytest.raises((TypeError, AttributeError)):
+            plist.to_cip116_json(None)
+
+
+class TestPlutusListCborCache:
+    """Tests for PlutusList CBOR cache functionality."""
+
+    def test_clear_cbor_cache(self):
+        """Test clearing CBOR cache."""
+        reader = CborReader.from_hex(SIMPLE_LIST_CBOR)
+        plist = PlutusList.from_cbor(reader)
+        plist.clear_cbor_cache()
+        writer = CborWriter()
+        plist.to_cbor(writer)
+        assert writer.to_hex() == SIMPLE_LIST_CBOR
+
+    def test_cbor_cache_preserves_original_encoding(self):
+        """Test that CBOR cache preserves the original encoding."""
+        reader = CborReader.from_hex(SIMPLE_LIST_CBOR)
+        plist = PlutusList.from_cbor(reader)
+        writer = CborWriter()
+        plist.to_cbor(writer)
+        assert writer.to_hex() == SIMPLE_LIST_CBOR
+
+
+class TestPlutusListGetMethod:
+    """Tests for PlutusList get method."""
+
+    def test_get_returns_element(self):
+        """Test that get returns correct element."""
+        plist = PlutusList()
+        plist.append(42)
+        element = plist.get(0)
+        assert element.to_int() == 42
+
+    def test_get_negative_index(self):
+        """Test get with negative index."""
+        plist = PlutusList()
+        plist.extend([1, 2, 3])
+        element = plist.get(-1)
+        assert element.to_int() == 3
+
+    def test_get_out_of_bounds_raises(self):
+        """Test get with out of bounds index raises IndexError."""
+        plist = PlutusList()
+        with pytest.raises(IndexError):
+            plist.get(10)
+
+
+class TestPlutusListInvalidTypes:
+    """Tests for PlutusList with invalid types."""
+
+    def test_append_unsupported_type_raises(self):
+        """Test that appending unsupported type raises error."""
+        plist = PlutusList()
+        with pytest.raises((TypeError, ValueError)):
+            plist.append({"dict": "value"})
+
+    def test_extend_with_unsupported_types_raises(self):
+        """Test that extending with unsupported types raises error."""
+        plist = PlutusList()
+        with pytest.raises((TypeError, ValueError)):
+            plist.extend([{"dict": "value"}])

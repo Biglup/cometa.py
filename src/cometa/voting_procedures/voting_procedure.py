@@ -21,6 +21,7 @@ from .._ffi import ffi, lib
 from ..errors import CardanoError
 from ..cbor.cbor_reader import CborReader
 from ..cbor.cbor_writer import CborWriter
+from ..json.json_writer import JsonWriter
 from ..common.anchor import Anchor
 from .vote import Vote
 
@@ -116,6 +117,32 @@ class VotingProcedure:
         err = lib.cardano_voting_procedure_to_cbor(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize VotingProcedure to CBOR (error code: {err})")
+
+    def to_cip116_json(self, writer: JsonWriter) -> None:
+        """
+        Serializes the voting procedure to CIP-116 JSON format.
+
+        The function writes the full JSON object, including the surrounding braces.
+        Keys are written in the order: "vote", then "anchor" (if present).
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If serialization fails.
+
+        Example:
+            >>> from cometa.voting_procedures import VotingProcedure, Vote
+            >>> from cometa.json import JsonWriter
+            >>> procedure = VotingProcedure.new(Vote.YES)
+            >>> writer = JsonWriter()
+            >>> procedure.to_cip116_json(writer)
+            >>> print(writer.encode())
+            {"vote":"yes"}
+        """
+        err = lib.cardano_voting_procedure_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to serialize VotingProcedure to CIP-116 JSON (error code: {err})")
 
     @property
     def vote(self) -> Vote:

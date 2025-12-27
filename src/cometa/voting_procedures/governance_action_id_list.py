@@ -82,7 +82,12 @@ class GovernanceActionIdList(Sequence["GovernanceActionId"]):
         return self.get(index)
 
     def __bool__(self) -> bool:
-        """Returns True if the list is not empty."""
+        """
+        Returns True if the list is not empty.
+
+        Returns:
+            True if the list contains at least one element, False otherwise.
+        """
         return len(self) > 0
 
     @classmethod
@@ -154,6 +159,7 @@ class GovernanceActionIdList(Sequence["GovernanceActionId"]):
             CardanoError: If appending fails.
         """
         self.add(action_id)
+
     def index(self, value: GovernanceActionId, start: int = 0, stop: Optional[int] = None) -> int:
         """
         Returns the index of the first occurrence of value.

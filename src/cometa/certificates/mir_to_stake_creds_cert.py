@@ -35,23 +35,35 @@ class MirToStakeCredsCert:
     """
 
     def __init__(self, ptr) -> None:
+        """
+        Initializes a MirToStakeCredsCert from a C pointer.
+
+        Args:
+            ptr: The C pointer to the certificate object.
+
+        Raises:
+            CardanoError: If the pointer is NULL.
+        """
         if ptr == ffi.NULL:
             raise CardanoError("MirToStakeCredsCert: invalid handle")
         self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the certificate when the object is destroyed."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_mir_to_stake_creds_cert_t**", self._ptr)
             lib.cardano_mir_to_stake_creds_cert_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> MirToStakeCredsCert:
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Exits the context manager."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the certificate."""
         return f"MirToStakeCredsCert(pot={self.pot.name}, size={len(self)})"
 
     def __len__(self) -> int:

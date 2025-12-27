@@ -20,6 +20,7 @@ from ..._ffi import ffi, lib
 from ...errors import CardanoError
 from ...cbor.cbor_reader import CborReader
 from ...cbor.cbor_writer import CborWriter
+from ...json.json_writer import JsonWriter
 
 
 class PlutusV3Script:
@@ -39,23 +40,35 @@ class PlutusV3Script:
     """
 
     def __init__(self, ptr) -> None:
+        """
+        Initializes a PlutusV3Script from a C pointer.
+
+        Args:
+            ptr: A C pointer to a cardano_plutus_v3_script_t structure.
+
+        Raises:
+            CardanoError: If the pointer is NULL.
+        """
         if ptr == ffi.NULL:
             raise CardanoError("PlutusV3Script: invalid handle")
         self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the underlying C resources when the object is garbage collected."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_plutus_v3_script_t**", self._ptr)
             lib.cardano_plutus_v3_script_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> PlutusV3Script:
+        """Context manager entry point."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Context manager exit point."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the PlutusV3Script."""
         return f"PlutusV3Script(hash={self.hash.hex()})"
 
     @classmethod
@@ -184,6 +197,26 @@ class PlutusV3Script:
         lib.cardano_buffer_unref(buf_ptr)
 
         return result
+
+    def to_cip116_json(self, writer: JsonWriter) -> None:
+        """
+        Serializes the script to CIP-116 JSON format.
+
+        The output is a JSON object with two fields:
+        - "language": Always "plutus_v3" for this script type
+        - "bytes": The raw script bytes encoded as lowercase hexadecimal
+
+        Args:
+            writer: A JsonWriter to write the serialized data to.
+
+        Raises:
+            CardanoError: If serialization fails.
+        """
+        err = lib.cardano_plutus_v3_script_to_cip116_json(self._ptr, writer._ptr)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to serialize PlutusV3Script to CIP-116 JSON (error code: {err})"
+            )
 
     def __eq__(self, other: object) -> bool:
         """Checks equality with another PlutusV3Script."""

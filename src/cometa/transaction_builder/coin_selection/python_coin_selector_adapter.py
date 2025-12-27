@@ -45,6 +45,16 @@ class CoinSelectorHandle:
     """
 
     def __init__(self, selector: "CoinSelectorProtocol"):
+        """
+        Initialize a CoinSelectorHandle with a Python coin selector implementation.
+
+        Args:
+            selector: A Python object implementing the CoinSelectorProtocol
+                      (must have get_name() and select() methods).
+
+        Raises:
+            CardanoError: If the C coin selector creation fails.
+        """
         self._selector = selector
         self._selector_ptr = ffi.new("cardano_coin_selector_t**")
         self._impl = ffi.new("cardano_coin_selector_impl_t*")
@@ -166,12 +176,26 @@ class CoinSelectorHandle:
         return self._selector_ptr[0]
 
     def __del__(self):
+        """Clean up the underlying C coin selector when the handle is destroyed."""
         if self._selector_ptr is not None and self._selector_ptr[0] != ffi.NULL:
             lib.cardano_coin_selector_unref(self._selector_ptr)
             self._selector_ptr = None
 
     def __enter__(self) -> CoinSelectorHandle:
+        """
+        Enter the context manager.
+
+        Returns:
+            The CoinSelectorHandle instance.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """
+        Exit the context manager.
+
+        Args:
+            exc_type: The exception type if an exception was raised, None otherwise.
+            exc_val: The exception value if an exception was raised, None otherwise.
+            exc_tb: The exception traceback if an exception was raised, None otherwise.
+        """

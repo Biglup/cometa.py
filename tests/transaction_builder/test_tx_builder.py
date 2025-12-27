@@ -1016,3 +1016,752 @@ class TestHelperFunctions:
         data = ConstrPlutusData(0)
         result = _to_plutus_data_ptr(data)
         assert result is not None
+
+
+class TestBuildWithScriptLocking:
+    """Tests for locking funds at script addresses with datums."""
+
+    def test_build_lock_lovelace_string_address(self, protocol_params, slot_config):
+        """Build lock_lovelace with string script address."""
+        from cometa import Datum, PlutusV3Script, EnterpriseAddress, Credential, PlutusData
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        script = PlutusV3Script.from_hex(ALWAYS_SUCCEEDS_SCRIPT_V3)
+        script_cred = Credential.from_script_hash(script.hash)
+        script_addr = EnterpriseAddress.from_credentials(NetworkId.TESTNET, script_cred)
+        plutus_data = PlutusData.from_constr(ConstrPlutusData(0))
+        datum = Datum.from_inline_data(plutus_data)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .lock_lovelace(script_addr.to_bech32(), 10_000_000, datum)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+        assert len(tx.body.outputs) >= 1
+
+    def test_build_lock_lovelace_address_object(self, protocol_params, slot_config):
+        """Build lock_lovelace with Address object."""
+        from cometa import Datum, PlutusV3Script, EnterpriseAddress, Credential, PlutusData
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        script = PlutusV3Script.from_hex(ALWAYS_SUCCEEDS_SCRIPT_V3)
+        script_cred = Credential.from_script_hash(script.hash)
+        script_addr = EnterpriseAddress.from_credentials(NetworkId.TESTNET, script_cred)
+        plutus_data = PlutusData.from_constr(ConstrPlutusData(0))
+        datum = Datum.from_inline_data(plutus_data)
+
+        script_addr_obj = Address.from_string(script_addr.to_bech32())
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .lock_lovelace(script_addr_obj, 10_000_000, datum)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_lock_value_with_tokens(self, protocol_params, slot_config):
+        """Build lock_value with multi-asset value."""
+        from cometa import Datum, PlutusV3Script, EnterpriseAddress, Credential, PlutusData
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        script = PlutusV3Script.from_hex(ALWAYS_SUCCEEDS_SCRIPT_V3)
+        script_cred = Credential.from_script_hash(script.hash)
+        script_addr = EnterpriseAddress.from_credentials(NetworkId.TESTNET, script_cred)
+
+        native_script = ScriptAll.new([
+            ScriptInvalidAfter.new(1001655683199)
+        ])
+        policy_id = native_script.hash
+
+        value = Value.from_dict([
+            10_000_000,
+            {policy_id: {b"LockedToken": 50}}
+        ])
+
+        plutus_data = PlutusData.from_constr(ConstrPlutusData(42))
+        datum = Datum.from_inline_data(plutus_data)
+
+        utxo_value = Value.from_dict([
+            100_000_000,
+            {policy_id: {b"LockedToken": 100}}
+        ])
+        utxo = create_test_utxo_with_value(index=0, value=utxo_value)
+
+        script_addr_obj = Address.from_string(script_addr.to_bech32())
+
+        tx = (
+            builder
+            .set_utxos([utxo])
+            .set_change_address(TEST_ADDRESS)
+            .lock_value(script_addr_obj, value, datum)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+
+
+class TestBuildWithStakingOperations:
+    """Tests for staking-related operations."""
+
+    def test_build_withdraw_rewards_string_address(self, protocol_params, slot_config):
+        """Build withdraw_rewards with string stake address."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .withdraw_rewards(STAKE_ADDRESS, 1_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_withdraw_rewards_address_object(self, protocol_params, slot_config):
+        """Build withdraw_rewards with RewardAddress object."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .withdraw_rewards(reward_addr, 1_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_register_reward_address_string(self, protocol_params, slot_config):
+        """Build register_reward_address with string address."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .register_reward_address(STAKE_ADDRESS)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_register_reward_address_object(self, protocol_params, slot_config):
+        """Build register_reward_address with RewardAddress object."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .register_reward_address(reward_addr)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_deregister_reward_address_string(self, protocol_params, slot_config):
+        """Build deregister_reward_address with string address."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .deregister_reward_address(STAKE_ADDRESS)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_deregister_reward_address_object(self, protocol_params, slot_config):
+        """Build deregister_reward_address with RewardAddress object."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .deregister_reward_address(reward_addr)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_delegate_stake_strings(self, protocol_params, slot_config):
+        """Build delegate_stake with string addresses."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .delegate_stake(STAKE_ADDRESS, POOL_ID)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_delegate_stake_reward_object(self, protocol_params, slot_config):
+        """Build delegate_stake with RewardAddress object."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .delegate_stake(reward_addr, POOL_ID)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+class TestBuildWithGovernance:
+    """Tests for Conway-era governance operations."""
+
+    def test_build_delegate_voting_power_strings(self, protocol_params, slot_config):
+        """Build delegate_voting_power with string parameters."""
+        from cometa import DRep
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        drep_cred = Credential.from_key_hash(Blake2bHash.from_hex("aa" * 28))
+        drep = DRep.new(DRepType.KEY_HASH, drep_cred)
+        drep_str = drep.to_cip129_string()
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .delegate_voting_power(STAKE_ADDRESS, drep_str)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_delegate_voting_power_objects(self, protocol_params, slot_config):
+        """Build delegate_voting_power with object parameters."""
+        from cometa import DRep
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+        drep_cred = Credential.from_key_hash(Blake2bHash.from_hex("aa" * 28))
+        drep = DRep.new(DRepType.KEY_HASH, drep_cred)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .delegate_voting_power(reward_addr, drep)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_delegate_voting_power_abstain(self, protocol_params, slot_config):
+        """Build delegate_voting_power with abstain option."""
+        from cometa import DRep
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+        drep = DRep.abstain()
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .delegate_voting_power(reward_addr, drep)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_register_drep(self, protocol_params, slot_config):
+        """Build register_drep transaction."""
+        from cometa import DRep, Anchor
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        drep_cred = Credential.from_key_hash(Blake2bHash.from_hex("bb" * 28))
+        drep = DRep.new(DRepType.KEY_HASH, drep_cred)
+
+        anchor = Anchor.new(
+            url="https://example.com/drep.json",
+            hash_value=Blake2bHash.from_hex("cc" * 32)
+        )
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .register_drep(drep, anchor=anchor)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_register_drep_no_anchor(self, protocol_params, slot_config):
+        """Build register_drep without anchor."""
+        from cometa import DRep
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        drep_cred = Credential.from_key_hash(Blake2bHash.from_hex("bb" * 28))
+        drep = DRep.new(DRepType.KEY_HASH, drep_cred)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .register_drep(drep)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_update_drep(self, protocol_params, slot_config):
+        """Build update_drep transaction."""
+        from cometa import DRep, Anchor
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        drep_cred = Credential.from_key_hash(Blake2bHash.from_hex("bb" * 28))
+        drep = DRep.new(DRepType.KEY_HASH, drep_cred)
+
+        new_anchor = Anchor.new(
+            url="https://example.com/drep-updated.json",
+            hash_value=Blake2bHash.from_hex("dd" * 32)
+        )
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .update_drep(drep, anchor=new_anchor)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_deregister_drep(self, protocol_params, slot_config):
+        """Build deregister_drep transaction."""
+        from cometa import DRep
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        drep_cred = Credential.from_key_hash(Blake2bHash.from_hex("bb" * 28))
+        drep = DRep.new(DRepType.KEY_HASH, drep_cred)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .deregister_drep(drep)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+
+class TestBuildWithGovernanceProposals:
+    """Tests for governance proposal submission."""
+
+    def test_build_propose_info(self, protocol_params, slot_config):
+        """Build propose_info transaction."""
+        from cometa import Anchor
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+        anchor = Anchor.new(
+            url="https://example.com/info-proposal.json",
+            hash_value=Blake2bHash.from_hex("ff" * 32)
+        )
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=200_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .propose_info(reward_addr, anchor)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_propose_new_constitution(self, protocol_params, slot_config):
+        """Build propose_new_constitution transaction."""
+        from cometa import Anchor, Constitution
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        proposal_anchor = Anchor.new(
+            url="https://example.com/constitution-proposal.json",
+            hash_value=Blake2bHash.from_hex("11" * 32)
+        )
+
+        const_anchor = Anchor.new(
+            url="https://example.com/constitution.json",
+            hash_value=Blake2bHash.from_hex("22" * 32)
+        )
+
+        constitution = Constitution.new(const_anchor)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=200_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .propose_new_constitution(reward_addr, proposal_anchor, constitution)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_propose_update_committee(self, protocol_params, slot_config):
+        """Build propose_update_committee transaction."""
+        from cometa import (
+            Anchor,
+            CredentialSet,
+            CommitteeMembersMap,
+            UnitInterval,
+        )
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        anchor = Anchor.new(
+            url="https://example.com/committee-update.json",
+            hash_value=Blake2bHash.from_hex("33" * 32)
+        )
+
+        members_to_remove = CredentialSet()
+        old_member = Credential.from_key_hash(Blake2bHash.from_hex("44" * 28))
+        members_to_remove.add(old_member)
+
+        members_to_add = CommitteeMembersMap()
+        new_member = Credential.from_key_hash(Blake2bHash.from_hex("55" * 28))
+        members_to_add.insert(new_member, 500)
+
+        quorum = UnitInterval.new(2, 3)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=200_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .propose_update_committee(
+                reward_addr,
+                anchor,
+                members_to_remove,
+                members_to_add,
+                quorum
+            )
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_propose_no_confidence(self, protocol_params, slot_config):
+        """Build propose_no_confidence transaction."""
+        from cometa import Anchor
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        anchor = Anchor.new(
+            url="https://example.com/no-confidence.json",
+            hash_value=Blake2bHash.from_hex("66" * 32)
+        )
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=200_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .propose_no_confidence(reward_addr, anchor)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+    def test_build_propose_hardfork(self, protocol_params, slot_config):
+        """Build propose_hardfork transaction."""
+        from cometa import Anchor, ProtocolVersion
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        reward_addr = RewardAddress.from_bech32(STAKE_ADDRESS)
+
+        anchor = Anchor.new(
+            url="https://example.com/hardfork-proposal.json",
+            hash_value=Blake2bHash.from_hex("88" * 32)
+        )
+
+        protocol_version = ProtocolVersion.new(10, 0)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=200_000_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .propose_hardfork(reward_addr, anchor, protocol_version)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+
+class TestBuildWithCollateral:
+    """Tests for collateral-related configuration."""
+
+    def test_build_set_collateral_change_address_string(self, protocol_params, slot_config):
+        """Build with set_collateral_change_address using string."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .set_collateral_change_address(TEST_ADDRESS_2)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_set_collateral_change_address_object(self, protocol_params, slot_config):
+        """Build with set_collateral_change_address using Address object."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        collateral_addr = Address.from_string(TEST_ADDRESS_2)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .set_collateral_change_address(collateral_addr)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_set_collateral_utxos_list(self, protocol_params, slot_config):
+        """Build with set_collateral_utxos using Python list."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        collateral_utxos = [
+            create_test_utxo(tx_hash=TX_ID_HASH_ALT, index=0, lovelace=5_000_000),
+            create_test_utxo(tx_hash=TX_ID_HASH_ALT, index=1, lovelace=5_000_000),
+        ]
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_collateral_utxos(collateral_utxos)
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+    def test_build_set_collateral_utxos_utxo_list(self, protocol_params, slot_config):
+        """Build with set_collateral_utxos using UtxoList."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        collateral_list = UtxoList()
+        collateral_list.add(create_test_utxo(tx_hash=TX_ID_HASH_ALT, index=0, lovelace=5_000_000))
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_collateral_utxos(collateral_list)
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+class TestBuildWithDatetimeValidityIntervals:
+    """Tests for validity intervals using datetime objects."""
+
+    def test_build_expires_after_datetime(self, protocol_params, slot_config):
+        """Build with expires_after using datetime."""
+        from datetime import datetime, timezone, timedelta
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        expiry_date = datetime.now(timezone.utc) + timedelta(hours=2)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_after(expiry_date)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+        assert tx.body.invalid_after is not None
+
+    def test_build_valid_from_date(self, protocol_params, slot_config):
+        """Build with valid_from_date using datetime."""
+        from datetime import datetime, timezone, timedelta
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        start_date = datetime.now(timezone.utc) + timedelta(minutes=30)
+        end_date = datetime.now(timezone.utc) + timedelta(hours=2)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .valid_from_date(start_date)
+            .expires_after(end_date)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+        assert tx.body.invalid_before is not None
+        assert tx.body.invalid_after is not None
+
+    def test_build_set_invalid_before(self, protocol_params, slot_config):
+        """Build with set_invalid_before using slot number."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .set_invalid_before(100)
+            .set_valid_until(slot=999999999)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+        assert tx.body.invalid_before is not None
+
+
+class TestBuildWithCustomEvaluator:
+    """Tests for custom transaction evaluator configuration."""
+
+    def test_build_with_custom_evaluator(self, protocol_params, slot_config):
+        """Build with set_evaluator using custom evaluator."""
+        from cometa import AikenTxEvaluator
+
+        builder = TxBuilder(protocol_params, slot_config)
+
+        custom_evaluator = AikenTxEvaluator(
+            cost_models=protocol_params.cost_models,
+            slot_config=slot_config,
+            max_tx_ex_units=protocol_params.max_tx_ex_units
+        )
+
+        tx = (
+            builder
+            .set_evaluator(custom_evaluator)
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+
+
+class TestBuilderErrorMessages:
+    """Tests for get_last_error functionality."""
+
+    def test_get_last_error_on_success(self, protocol_params, slot_config):
+        """Test get_last_error returns empty string on success."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        tx = (
+            builder
+            .set_utxos([create_test_utxo(index=0, lovelace=100_000_000)])
+            .set_change_address(TEST_ADDRESS)
+            .send_lovelace(TEST_ADDRESS_2, 5_000_000)
+            .expires_in(3600)
+            .build()
+        )
+
+        assert isinstance(tx, Transaction)
+        error = builder.get_last_error()
+        assert error == ""
+
+    def test_get_last_error_on_failure(self, protocol_params, slot_config):
+        """Test get_last_error returns error message on build failure."""
+        builder = TxBuilder(protocol_params, slot_config)
+
+        try:
+            (
+                builder
+                .set_utxos([create_test_utxo(index=0, lovelace=1_000_000)])
+                .set_change_address(TEST_ADDRESS)
+                .send_lovelace(TEST_ADDRESS_2, 500_000_000)
+                .expires_in(3600)
+                .build()
+            )
+        except Exception:
+            error = builder.get_last_error()
+            assert isinstance(error, str)

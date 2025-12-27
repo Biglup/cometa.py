@@ -40,6 +40,15 @@ class Blake2bHashSet(Set["Blake2bHash"]):
     """
 
     def __init__(self, ptr=None) -> None:
+        """
+        Initializes a new Blake2bHashSet.
+
+        Args:
+            ptr: Optional FFI pointer to an existing hash set. If None, creates a new empty set.
+
+        Raises:
+            CardanoError: If creation fails or if ptr is an invalid handle.
+        """
         if ptr is None:
             out = ffi.new("cardano_blake2b_hash_set_t**")
             err = lib.cardano_blake2b_hash_set_new(out)
@@ -52,18 +61,21 @@ class Blake2bHashSet(Set["Blake2bHash"]):
             self._ptr = ptr
 
     def __del__(self) -> None:
+        """Cleans up the hash set when the object is destroyed."""
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_blake2b_hash_set_t**", self._ptr)
             lib.cardano_blake2b_hash_set_unref(ptr_ptr)
             self._ptr = ffi.NULL
 
     def __enter__(self) -> Blake2bHashSet:
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+        """Exits the context manager."""
 
     def __repr__(self) -> str:
+        """Returns a string representation of the hash set."""
         return f"Blake2bHashSet(len={len(self)})"
 
     @classmethod

@@ -196,6 +196,168 @@ class TestAddress:
         with pytest.raises(CardanoError):
             Address.from_string("invalid")
 
+    def test_from_string_empty_raises_error(self):
+        """Empty string raises error."""
+        with pytest.raises(CardanoError):
+            Address.from_string("")
+
+    def test_from_string_too_short_raises_error(self):
+        """String too short raises error."""
+        with pytest.raises(CardanoError):
+            Address.from_string("a")
+
+    def test_from_string_invalid_hrp_raises_error(self):
+        """Invalid HRP raises error."""
+        with pytest.raises(CardanoError):
+            Address.from_string("addrqx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x")
+
+    def test_from_string_no_data_raises_error(self):
+        """Address with no data raises error."""
+        with pytest.raises(CardanoError):
+            Address.from_string("addr_test1")
+
+    def test_from_string_invalid_encoding_raises_error(self):
+        """Invalid encoding raises error."""
+        with pytest.raises(CardanoError):
+            Address.from_string("addr_test12222222222222222222222")
+
+    def test_from_bytes_empty_raises_error(self):
+        """Empty bytes raises error."""
+        with pytest.raises(CardanoError):
+            Address.from_bytes(b"")
+
+    def test_from_bytes_invalid_base_address_raises_error(self):
+        """Invalid base address bytes raises error."""
+        invalid_bytes = BASE_PAYMENT_KEY_STAKE_KEY_BYTES[:-1]
+        with pytest.raises(CardanoError):
+            Address.from_bytes(invalid_bytes)
+
+    def test_from_bytes_invalid_enterprise_address_raises_error(self):
+        """Invalid enterprise address bytes raises error."""
+        invalid_bytes = ENTERPRISE_KEY_BYTES[:-1]
+        with pytest.raises(CardanoError):
+            Address.from_bytes(invalid_bytes)
+
+    def test_from_bytes_invalid_pointer_address_raises_error(self):
+        """Invalid pointer address bytes raises error."""
+        invalid_bytes = POINTER_KEY_BYTES[:29]
+        with pytest.raises(CardanoError):
+            Address.from_bytes(invalid_bytes)
+
+    def test_from_bytes_invalid_reward_address_raises_error(self):
+        """Invalid reward address bytes raises error."""
+        invalid_bytes = REWARD_KEY_BYTES[:-1]
+        with pytest.raises(CardanoError):
+            Address.from_bytes(invalid_bytes)
+
+    def test_from_bytes_invalid_byron_address_raises_error(self):
+        """Invalid Byron address bytes raises error."""
+        invalid_byron = bytes.fromhex("82d818582183581cba97")
+        with pytest.raises(CardanoError):
+            Address.from_bytes(invalid_byron)
+
+    def test_from_bytes_invalid_address_type_raises_error(self):
+        """Invalid address type byte raises error."""
+        invalid_type = bytes.fromhex("90d818582183581cba97")
+        with pytest.raises(CardanoError):
+            Address.from_bytes(invalid_type)
+
+    def test_len_magic_method(self):
+        """Test __len__ magic method."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert len(addr) == len(BASE_PAYMENT_KEY_STAKE_KEY_BYTES)
+
+    def test_bytes_magic_method(self):
+        """Test __bytes__ magic method."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert bytes(addr) == BASE_PAYMENT_KEY_STAKE_KEY_BYTES
+
+    def test_repr(self):
+        """Test __repr__ method."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        repr_str = repr(addr)
+        assert "Address(" in repr_str
+        assert BASE_PAYMENT_KEY_STAKE_KEY in repr_str
+
+    def test_to_base_address_returns_none_for_non_base(self):
+        """to_base_address returns None for non-base address."""
+        addr = Address.from_string(ENTERPRISE_KEY)
+        assert addr.to_base_address() is None
+
+    def test_to_enterprise_address_returns_none_for_non_enterprise(self):
+        """to_enterprise_address returns None for non-enterprise address."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert addr.to_enterprise_address() is None
+
+    def test_to_reward_address_returns_none_for_non_reward(self):
+        """to_reward_address returns None for non-reward address."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert addr.to_reward_address() is None
+
+    def test_to_pointer_address_returns_none_for_non_pointer(self):
+        """to_pointer_address returns None for non-pointer address."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert addr.to_pointer_address() is None
+
+    def test_to_byron_address_returns_none_for_non_byron(self):
+        """to_byron_address returns None for non-Byron address."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert addr.to_byron_address() is None
+
+    def test_is_valid_with_empty_string(self):
+        """is_valid returns False for empty string."""
+        assert not Address.is_valid("")
+
+    def test_is_valid_bech32_with_invalid_string(self):
+        """is_valid_bech32 returns False for invalid string."""
+        assert not Address.is_valid_bech32("invalid_address")
+        assert not Address.is_valid_bech32("")
+        assert not Address.is_valid_bech32("addr_test1")
+        assert not Address.is_valid_bech32("addrqx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x")
+
+    def test_is_valid_byron_with_invalid_string(self):
+        """is_valid_byron returns False for invalid string."""
+        assert not Address.is_valid_byron("invalid_address")
+        assert not Address.is_valid_byron("")
+        assert not Address.is_valid_byron("ilwwww2222222222222222222222")
+
+    def test_context_manager(self):
+        """Test address as context manager."""
+        with Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY) as addr:
+            assert str(addr) == BASE_PAYMENT_KEY_STAKE_KEY
+
+    def test_equality_with_different_types(self):
+        """Test equality comparison with non-Address type."""
+        addr = Address.from_string(BASE_PAYMENT_KEY_STAKE_KEY)
+        assert addr != "not an address"
+        assert addr != 123
+        assert addr != None
+
+    def test_multiple_address_types_roundtrip(self):
+        """Test roundtrip for various address types."""
+        test_addresses = [
+            BASE_PAYMENT_KEY_STAKE_KEY,
+            BASE_PAYMENT_SCRIPT_STAKE_KEY,
+            BASE_PAYMENT_KEY_STAKE_SCRIPT,
+            BASE_PAYMENT_SCRIPT_STAKE_SCRIPT,
+            ENTERPRISE_KEY,
+            ENTERPRISE_SCRIPT,
+            REWARD_KEY,
+            REWARD_SCRIPT,
+            POINTER_KEY,
+            POINTER_SCRIPT,
+            BYRON_MAINNET_YOROI,
+            TESTNET_BASE_PAYMENT_KEY_STAKE_KEY,
+            TESTNET_ENTERPRISE_KEY,
+            TESTNET_REWARD_KEY,
+            TESTNET_POINTER_KEY,
+        ]
+        for addr_str in test_addresses:
+            addr = Address.from_string(addr_str)
+            assert str(addr) == addr_str
+            roundtrip = Address.from_bytes(addr.to_bytes())
+            assert str(roundtrip) == addr_str
+
 
 class TestBaseAddress:
     """Tests for BaseAddress class."""

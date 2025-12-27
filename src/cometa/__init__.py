@@ -75,6 +75,9 @@ from .auxiliary_data import (
     MetadatumLabelList,
     MetadatumList,
     MetadatumMap,
+    PlutusV1ScriptList,
+    PlutusV2ScriptList,
+    PlutusV3ScriptList,
     TransactionMetadata,
 )
 from .address import (
@@ -108,7 +111,9 @@ from .voting_procedures import (
     Vote,
     Voter,
     VoterType,
+    VoterList,
     VotingProcedure,
+    VotingProcedureList,
     VotingProcedures,
     GovernanceActionIdList,
 )
@@ -189,6 +194,7 @@ from .proposal_procedures import (
     UpdateCommitteeAction,
 )
 from .common.withdrawal_map import WithdrawalMap
+from .common.reward_address_list import RewardAddressList
 from .common.slot_config import SlotConfig
 from .witness_set import (
     BootstrapWitness,
@@ -287,6 +293,7 @@ __all__ = [
     "NetworkId",
     "NetworkMagic",
     "ProtocolVersion",
+    "RewardAddressList",
     "UnitInterval",
     "Utxo",
     "UtxoList",
@@ -351,6 +358,9 @@ __all__ = [
     "MetadatumLabelList",
     "MetadatumList",
     "MetadatumMap",
+    "PlutusV1ScriptList",
+    "PlutusV2ScriptList",
+    "PlutusV3ScriptList",
     "TransactionMetadata",
     # Address
     "Address",
@@ -381,7 +391,9 @@ __all__ = [
     "Vote",
     "Voter",
     "VoterType",
+    "VoterList",
     "VotingProcedure",
+    "VotingProcedureList",
     "VotingProcedures",
     "GovernanceActionIdList",
     # Scripts
