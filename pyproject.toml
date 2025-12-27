@@ -81,5 +81,4 @@ disable = [
     "C0415", # Import outside toplevel (needed for circular import avoidance)
     "R0913", # Too many arguments,
     "R0917", # Too many positional arguments
-    "R0201", # Method could be a function
 ]
