@@ -1,4 +1,4 @@
-.PHONY: install lint test check clean docs
+.PHONY: install lint test check clean docs publish publish-test build-wheels
 
 # Install dependencies and the package in editable mode
 install:
@@ -26,13 +26,20 @@ docs:
 	python tools/generate_docs.py
 	cd docs && make html
 
-publish:
+# Build platform-specific wheels
+build-wheels:
 	cp README.md README.md.bak
 	sed -i 's|src="assets/|src="https://raw.githubusercontent.com/Biglup/cometa.py/main/assets/|g' README.md
-	rm -rf dist/*
-	python -m build
-	python -m twine upload dist/*
+	python scripts/build_wheels.py build --clean
 	mv README.md.bak README.md
+
+# Publish to PyPI
+publish: build-wheels
+	python -m twine upload dist/*
+
+# Publish to TestPyPI
+publish-test: build-wheels
+	python -m twine upload --repository testpypi dist/*
 
 # Cleanup build artifacts
 clean:
