@@ -44,6 +44,10 @@ def _normalize_arch(machine: str) -> str:
         return "x86_64"
     if machine_lower in ("aarch64", "arm64"):
         return "arm64"
+    if machine_lower.startswith("armv7"):
+        return "armv7"
+    if machine_lower.startswith("armv6"):
+        return "armv6"
     return machine_lower
 
 def _detect_platform_dir() -> str:
