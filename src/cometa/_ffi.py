@@ -30,21 +30,21 @@ def _get_ffi():
     Get the CFFI FFI instance, trying pre-compiled first, then falling back to runtime parsing.
     """
     try:
-        from cometa._cardano_cffi import ffi
-        return ffi
+        from cometa._cardano_cffi import ffi as precompiled_ffi
+        return precompiled_ffi
     except ImportError:
         pass
 
     from cffi import FFI
-    ffi = FFI()
+    runtime_ffi = FFI()
 
     def _load_all_cdef() -> str:
         """Load the generated cardano-c.cdef file from the package."""
         cdef_path = importlib_resources.files("cometa") / "_cdef" / "cardano-c.cdef"
         return cdef_path.read_text(encoding="utf-8")
 
-    ffi.cdef(_load_all_cdef())
-    return ffi
+    runtime_ffi.cdef(_load_all_cdef())
+    return runtime_ffi
 
 
 ffi = _get_ffi()

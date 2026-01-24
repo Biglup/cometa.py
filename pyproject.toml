@@ -66,6 +66,8 @@ ignore = [
     "__pycache__",
     "migrations",
     "tests",
+    "_cardano_cffi.py",
+    "_aiken_cffi.py",
 ]
 
 [tool.pylint.format]
