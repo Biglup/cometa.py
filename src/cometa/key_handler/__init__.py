@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,19 +15,44 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .secure_key_handler import (
-    harden,
-    CoinType,
-    KeyDerivationPurpose,
-    KeyDerivationRole,
-    AccountDerivationPath,
-    DerivationPath,
-    Bip32SecureKeyHandler,
-    Ed25519SecureKeyHandler,
-    SecureKeyHandler,
-)
-from .software_bip32_secure_key_handler import SoftwareBip32SecureKeyHandler
-from .software_ed25519_secure_key_handler import SoftwareEd25519SecureKeyHandler
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "harden": (".secure_key_handler", "harden"),
+    "CoinType": (".secure_key_handler", "CoinType"),
+    "KeyDerivationPurpose": (".secure_key_handler", "KeyDerivationPurpose"),
+    "KeyDerivationRole": (".secure_key_handler", "KeyDerivationRole"),
+    "AccountDerivationPath": (".secure_key_handler", "AccountDerivationPath"),
+    "DerivationPath": (".secure_key_handler", "DerivationPath"),
+    "Bip32SecureKeyHandler": (".secure_key_handler", "Bip32SecureKeyHandler"),
+    "Ed25519SecureKeyHandler": (".secure_key_handler", "Ed25519SecureKeyHandler"),
+    "SecureKeyHandler": (".secure_key_handler", "SecureKeyHandler"),
+    "SoftwareBip32SecureKeyHandler": (".software_bip32_secure_key_handler", "SoftwareBip32SecureKeyHandler"),
+    "SoftwareEd25519SecureKeyHandler": (".software_ed25519_secure_key_handler", "SoftwareEd25519SecureKeyHandler"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "harden",

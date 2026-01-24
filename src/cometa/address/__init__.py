@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,16 +15,43 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .address import Address
-from .address_type import AddressType
-from .base_address import BaseAddress
-from .byron_address import ByronAddress
-from .byron_address_attributes import ByronAddressAttributes
-from .byron_address_type import ByronAddressType
-from .enterprise_address import EnterpriseAddress
-from .pointer_address import PointerAddress
-from .reward_address import RewardAddress
-from .stake_pointer import StakePointer
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "Address": (".address", "Address"),
+    "AddressType": (".address_type", "AddressType"),
+    "BaseAddress": (".base_address", "BaseAddress"),
+    "ByronAddress": (".byron_address", "ByronAddress"),
+    "ByronAddressAttributes": (".byron_address_attributes", "ByronAddressAttributes"),
+    "ByronAddressType": (".byron_address_type", "ByronAddressType"),
+    "EnterpriseAddress": (".enterprise_address", "EnterpriseAddress"),
+    "PointerAddress": (".pointer_address", "PointerAddress"),
+    "RewardAddress": (".reward_address", "RewardAddress"),
+    "StakePointer": (".stake_pointer", "StakePointer"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "Address",

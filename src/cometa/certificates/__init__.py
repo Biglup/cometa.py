@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,32 +15,59 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .certificate_type import CertificateType
-from .mir_cert_pot_type import MirCertPotType
-from .mir_cert_type import MirCertType
-from .stake_registration_cert import StakeRegistrationCert
-from .stake_deregistration_cert import StakeDeregistrationCert
-from .stake_delegation_cert import StakeDelegationCert
-from .pool_registration_cert import PoolRegistrationCert
-from .pool_retirement_cert import PoolRetirementCert
-from .genesis_key_delegation_cert import GenesisKeyDelegationCert
-from .mir_to_pot_cert import MirToPotCert
-from .mir_to_stake_creds_cert import MirToStakeCredsCert
-from .mir_cert import MirCert
-from .registration_cert import RegistrationCert
-from .unregistration_cert import UnregistrationCert
-from .vote_delegation_cert import VoteDelegationCert
-from .stake_vote_delegation_cert import StakeVoteDelegationCert
-from .stake_registration_delegation_cert import StakeRegistrationDelegationCert
-from .vote_registration_delegation_cert import VoteRegistrationDelegationCert
-from .stake_vote_registration_delegation_cert import StakeVoteRegistrationDelegationCert
-from .auth_committee_hot_cert import AuthCommitteeHotCert
-from .resign_committee_cold_cert import ResignCommitteeColdCert
-from .register_drep_cert import RegisterDRepCert
-from .unregister_drep_cert import UnregisterDRepCert
-from .update_drep_cert import UpdateDRepCert
-from .certificate import Certificate
-from .certificate_set import CertificateSet
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "CertificateType": (".certificate_type", "CertificateType"),
+    "MirCertPotType": (".mir_cert_pot_type", "MirCertPotType"),
+    "MirCertType": (".mir_cert_type", "MirCertType"),
+    "StakeRegistrationCert": (".stake_registration_cert", "StakeRegistrationCert"),
+    "StakeDeregistrationCert": (".stake_deregistration_cert", "StakeDeregistrationCert"),
+    "StakeDelegationCert": (".stake_delegation_cert", "StakeDelegationCert"),
+    "PoolRegistrationCert": (".pool_registration_cert", "PoolRegistrationCert"),
+    "PoolRetirementCert": (".pool_retirement_cert", "PoolRetirementCert"),
+    "GenesisKeyDelegationCert": (".genesis_key_delegation_cert", "GenesisKeyDelegationCert"),
+    "MirToPotCert": (".mir_to_pot_cert", "MirToPotCert"),
+    "MirToStakeCredsCert": (".mir_to_stake_creds_cert", "MirToStakeCredsCert"),
+    "MirCert": (".mir_cert", "MirCert"),
+    "RegistrationCert": (".registration_cert", "RegistrationCert"),
+    "UnregistrationCert": (".unregistration_cert", "UnregistrationCert"),
+    "VoteDelegationCert": (".vote_delegation_cert", "VoteDelegationCert"),
+    "StakeVoteDelegationCert": (".stake_vote_delegation_cert", "StakeVoteDelegationCert"),
+    "StakeRegistrationDelegationCert": (".stake_registration_delegation_cert", "StakeRegistrationDelegationCert"),
+    "VoteRegistrationDelegationCert": (".vote_registration_delegation_cert", "VoteRegistrationDelegationCert"),
+    "StakeVoteRegistrationDelegationCert": (".stake_vote_registration_delegation_cert", "StakeVoteRegistrationDelegationCert"),
+    "AuthCommitteeHotCert": (".auth_committee_hot_cert", "AuthCommitteeHotCert"),
+    "ResignCommitteeColdCert": (".resign_committee_cold_cert", "ResignCommitteeColdCert"),
+    "RegisterDRepCert": (".register_drep_cert", "RegisterDRepCert"),
+    "UnregisterDRepCert": (".unregister_drep_cert", "UnregisterDRepCert"),
+    "UpdateDRepCert": (".update_drep_cert", "UpdateDRepCert"),
+    "Certificate": (".certificate", "Certificate"),
+    "CertificateSet": (".certificate_set", "CertificateSet"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "AuthCommitteeHotCert",

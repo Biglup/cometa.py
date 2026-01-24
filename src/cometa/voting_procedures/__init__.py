@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,14 +15,41 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .vote import Vote
-from .voter_type import VoterType
-from .voter import Voter
-from .voting_procedure import VotingProcedure
-from .voting_procedures import VotingProcedures
-from .governance_action_id_list import GovernanceActionIdList
-from .voter_list import VoterList
-from .voting_procedure_list import VotingProcedureList
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "Vote": (".vote", "Vote"),
+    "VoterType": (".voter_type", "VoterType"),
+    "Voter": (".voter", "Voter"),
+    "VotingProcedure": (".voting_procedure", "VotingProcedure"),
+    "VotingProcedures": (".voting_procedures", "VotingProcedures"),
+    "GovernanceActionIdList": (".governance_action_id_list", "GovernanceActionIdList"),
+    "VoterList": (".voter_list", "VoterList"),
+    "VotingProcedureList": (".voting_procedure_list", "VotingProcedureList"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "Vote",

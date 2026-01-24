@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,9 +15,38 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .input_to_redeemer_map import InputToRedeemerMap
-from .transaction_balancing import balance_transaction, is_transaction_balanced
-from .implicit_coin import ImplicitCoin, compute_implicit_coin
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "InputToRedeemerMap": (".input_to_redeemer_map", "InputToRedeemerMap"),
+    "balance_transaction": (".transaction_balancing", "balance_transaction"),
+    "is_transaction_balanced": (".transaction_balancing", "is_transaction_balanced"),
+    "ImplicitCoin": (".implicit_coin", "ImplicitCoin"),
+    "compute_implicit_coin": (".implicit_coin", "compute_implicit_coin"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "InputToRedeemerMap",

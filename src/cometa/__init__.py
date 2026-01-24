@@ -1,280 +1,311 @@
+# pylint: disable=undefined-all-variable
 """
 Cometa is a lightweight and high performance library designed to streamline transaction building and smart contract
 interactions on the Cardano blockchain.
+
+This module implements lazy imports to improve startup time on low-power devices.
+Imports are deferred until the name is actually accessed.
 """
 
-from .common.protocol_version import ProtocolVersion
-from .common.bigint import BigInt
-from .common.byte_order import ByteOrder
-from .common.network_id import NetworkId
-from .common.network_magic import NetworkMagic
-from .common.utxo import Utxo
-from .common.utxo_list import UtxoList
-from .common.credential_type import CredentialType
-from .common.credential import Credential
-from .common.datum_type import DatumType
-from .common.drep_type import DRepType
-from .common.governance_key_type import GovernanceKeyType
-from .common.unit_interval import UnitInterval
-from .common.ex_units import ExUnits
-from .common.anchor import Anchor
-from .common.drep import DRep
-from .common.governance_action_id import GovernanceActionId
-from .common.datum import Datum
-from .cbor.cbor_reader import CborReader
-from .cbor.cbor_major_type import CborMajorType
-from .cbor.cbor_reader_state import CborReaderState
-from .cbor.cbor_simple_value import CborSimpleValue
-from .cbor.cbor_tag import CborTag
-from .cbor.cbor_writer import CborWriter
-from .json.json_format import JsonFormat
-from .json.json_object import JsonObject
-from .json.json_context import JsonContext
-from .json.json_writer import JsonWriter
-from .json.json_object_type import JsonObjectType
-from .bip39.bip39 import (
-    entropy_to_mnemonic,
-    mnemonic_to_entropy,
-)
-from .cryptography.blake2b_hash import Blake2bHash
-from .cryptography.blake2b_hash_size import Blake2bHashSize
-from .cryptography.blake2b_hash_set import Blake2bHashSet
-from .cryptography.ed25519_signature import Ed25519Signature
-from .cryptography.ed25519_public_key import Ed25519PublicKey
-from .cryptography.ed25519_private_key import Ed25519PrivateKey
-from .cryptography.bip32_public_key import Bip32PublicKey
-from .cryptography.bip32_private_key import Bip32PrivateKey, harden
-from .cryptography.crc32 import crc32
-from .cryptography.pbkdf2 import pbkdf2_hmac_sha512
-from .cryptography.emip3 import emip3_encrypt, emip3_decrypt
-from .encoding.base58 import Base58
-from .encoding.bech32 import Bech32
-from .message_signing.cip8 import CIP8SignResult, sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
-from .plutus_data import (
-    PlutusDataKind,
-    PlutusData,
-    PlutusDataLike,
-    PlutusList,
-    PlutusMap,
-    ConstrPlutusData,
-)
-from .assets import (
-    AssetId,
-    AssetIdList,
-    AssetIdMap,
-    AssetName,
-    AssetNameList,
-    AssetNameMap,
-    MultiAsset,
-    PolicyIdList,
-)
-from .auxiliary_data import (
-    AuxiliaryData,
-    Metadatum,
-    MetadatumKind,
-    MetadatumLabelList,
-    MetadatumList,
-    MetadatumMap,
-    PlutusV1ScriptList,
-    PlutusV2ScriptList,
-    PlutusV3ScriptList,
-    TransactionMetadata,
-)
-from .address import (
-    Address,
-    AddressType,
-    BaseAddress,
-    ByronAddress,
-    ByronAddressAttributes,
-    ByronAddressType,
-    EnterpriseAddress,
-    PointerAddress,
-    RewardAddress,
-    StakePointer,
-)
-from .pool_params import (
-    IPv4,
-    IPv6,
-    MultiHostNameRelay,
-    PoolMetadata,
-    PoolOwners,
-    PoolParams,
-    Relay,
-    RelayLike,
-    Relays,
-    RelayType,
-    SingleHostAddrRelay,
-    SingleHostNameRelay,
-    to_relay,
-)
-from .voting_procedures import (
-    Vote,
-    Voter,
-    VoterType,
-    VoterList,
-    VotingProcedure,
-    VotingProcedureList,
-    VotingProcedures,
-    GovernanceActionIdList,
-)
-from .scripts import (
-    PlutusLanguageVersion,
-    Script,
-    ScriptLike,
-    ScriptLanguage,
-    NativeScriptType,
-    NativeScriptList,
-    NativeScript,
-    NativeScriptLike,
-    ScriptPubkey,
-    ScriptAll,
-    ScriptAny,
-    ScriptNOfK,
-    ScriptInvalidBefore,
-    ScriptInvalidAfter,
-    PlutusV1Script,
-    PlutusV2Script,
-    PlutusV3Script,
-    PlutusScriptLike,
-)
-from .protocol_params import (
-    ExUnitPrices,
-    CostModel,
-    Costmdls,
-    PoolVotingThresholds,
-    DRepVotingThresholds,
-    ProtocolParameters,
-    ProtocolParamUpdate,
-    ProposedParamUpdates,
-    Update,
-)
-from .certificates import (
-    AuthCommitteeHotCert,
-    Certificate,
-    CertificateSet,
-    CertificateType,
-    GenesisKeyDelegationCert,
-    MirCert,
-    MirCertPotType,
-    MirCertType,
-    MirToPotCert,
-    MirToStakeCredsCert,
-    PoolRegistrationCert,
-    PoolRetirementCert,
-    RegisterDRepCert,
-    RegistrationCert,
-    ResignCommitteeColdCert,
-    StakeDeregistrationCert,
-    StakeDelegationCert,
-    StakeRegistrationCert,
-    StakeRegistrationDelegationCert,
-    StakeVoteDelegationCert,
-    StakeVoteRegistrationDelegationCert,
-    UnregisterDRepCert,
-    UnregistrationCert,
-    UpdateDRepCert,
-    VoteDelegationCert,
-    VoteRegistrationDelegationCert,
-)
-from .proposal_procedures import (
-    Committee,
-    CommitteeMembersMap,
-    Constitution,
-    CredentialSet,
-    GovernanceAction,
-    GovernanceActionType,
-    HardForkInitiationAction,
-    InfoAction,
-    NewConstitutionAction,
-    NoConfidenceAction,
-    ParameterChangeAction,
-    ProposalProcedure,
-    ProposalProcedureSet,
-    TreasuryWithdrawalsAction,
-    UpdateCommitteeAction,
-)
-from .common.withdrawal_map import WithdrawalMap
-from .common.reward_address_list import RewardAddressList
-from .common.slot_config import SlotConfig
-from .witness_set import (
-    BootstrapWitness,
-    BootstrapWitnessSet,
-    NativeScriptSet,
-    PlutusDataSet,
-    PlutusV1ScriptSet,
-    PlutusV2ScriptSet,
-    PlutusV3ScriptSet,
-    Redeemer,
-    RedeemerList,
-    RedeemerTag,
-    VkeyWitness,
-    VkeyWitnessSet,
-    WitnessSet,
-)
-from .buffer import Buffer
-from .errors import CardanoError
-from .cardano import get_lib_version, memzero
-from .time import slot_from_unix_time, unix_time_from_slot
-from .transaction_body import (
-    Value,
-    TransactionInput,
-    TransactionInputSet,
-    TransactionOutput,
-    TransactionOutputList,
-    TransactionBody,
-)
-from .transaction import Transaction
-from .key_handler import (
-    harden as key_harden,
-    CoinType,
-    KeyDerivationPurpose,
-    KeyDerivationRole,
-    AccountDerivationPath,
-    DerivationPath,
-    Bip32SecureKeyHandler,
-    Ed25519SecureKeyHandler,
-    SecureKeyHandler,
-    SoftwareBip32SecureKeyHandler,
-    SoftwareEd25519SecureKeyHandler,
-)
+from typing import Any
 
-from .transaction_builder import (
-    CoinSelectorProtocol,
-    CoinSelector,
-    CoinSelectorHandle,
-    CCoinSelectorWrapper,
-    LargeFirstCoinSelector,
-    TxEvaluatorProtocol,
-    TxEvaluator,
-    TxEvaluatorHandle,
-    CTxEvaluatorWrapper,
-    InputToRedeemerMap,
-    balance_transaction,
-    is_transaction_balanced,
-    ImplicitCoin,
-    compute_implicit_coin,
-    compute_script_data_hash,
-    compute_transaction_fee,
-    compute_min_ada_required,
-    compute_min_script_fee,
-    compute_min_fee_without_scripts,
-    compute_script_ref_fee,
-    get_total_ex_units_in_redeemers,
-    get_serialized_coin_size,
-    get_serialized_output_size,
-    get_serialized_script_size,
-    get_serialized_transaction_size,
-    TxBuilder,
-)
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    # Common
+    "ProtocolVersion": (".common.protocol_version", "ProtocolVersion"),
+    "BigInt": (".common.bigint", "BigInt"),
+    "ByteOrder": (".common.byte_order", "ByteOrder"),
+    "NetworkId": (".common.network_id", "NetworkId"),
+    "NetworkMagic": (".common.network_magic", "NetworkMagic"),
+    "Utxo": (".common.utxo", "Utxo"),
+    "UtxoList": (".common.utxo_list", "UtxoList"),
+    "CredentialType": (".common.credential_type", "CredentialType"),
+    "Credential": (".common.credential", "Credential"),
+    "DatumType": (".common.datum_type", "DatumType"),
+    "DRepType": (".common.drep_type", "DRepType"),
+    "GovernanceKeyType": (".common.governance_key_type", "GovernanceKeyType"),
+    "UnitInterval": (".common.unit_interval", "UnitInterval"),
+    "ExUnits": (".common.ex_units", "ExUnits"),
+    "Anchor": (".common.anchor", "Anchor"),
+    "DRep": (".common.drep", "DRep"),
+    "GovernanceActionId": (".common.governance_action_id", "GovernanceActionId"),
+    "Datum": (".common.datum", "Datum"),
+    "WithdrawalMap": (".common.withdrawal_map", "WithdrawalMap"),
+    "RewardAddressList": (".common.reward_address_list", "RewardAddressList"),
+    "SlotConfig": (".common.slot_config", "SlotConfig"),
+    # CBOR
+    "CborReader": (".cbor.cbor_reader", "CborReader"),
+    "CborMajorType": (".cbor.cbor_major_type", "CborMajorType"),
+    "CborReaderState": (".cbor.cbor_reader_state", "CborReaderState"),
+    "CborSimpleValue": (".cbor.cbor_simple_value", "CborSimpleValue"),
+    "CborTag": (".cbor.cbor_tag", "CborTag"),
+    "CborWriter": (".cbor.cbor_writer", "CborWriter"),
+    # JSON
+    "JsonFormat": (".json.json_format", "JsonFormat"),
+    "JsonObject": (".json.json_object", "JsonObject"),
+    "JsonContext": (".json.json_context", "JsonContext"),
+    "JsonWriter": (".json.json_writer", "JsonWriter"),
+    "JsonObjectType": (".json.json_object_type", "JsonObjectType"),
+    # BIP39
+    "entropy_to_mnemonic": (".bip39.bip39", "entropy_to_mnemonic"),
+    "mnemonic_to_entropy": (".bip39.bip39", "mnemonic_to_entropy"),
+    # Cryptography
+    "Blake2bHash": (".cryptography.blake2b_hash", "Blake2bHash"),
+    "Blake2bHashSize": (".cryptography.blake2b_hash_size", "Blake2bHashSize"),
+    "Blake2bHashSet": (".cryptography.blake2b_hash_set", "Blake2bHashSet"),
+    "Ed25519Signature": (".cryptography.ed25519_signature", "Ed25519Signature"),
+    "Ed25519PublicKey": (".cryptography.ed25519_public_key", "Ed25519PublicKey"),
+    "Ed25519PrivateKey": (".cryptography.ed25519_private_key", "Ed25519PrivateKey"),
+    "Bip32PublicKey": (".cryptography.bip32_public_key", "Bip32PublicKey"),
+    "Bip32PrivateKey": (".cryptography.bip32_private_key", "Bip32PrivateKey"),
+    "harden": (".cryptography.bip32_private_key", "harden"),
+    "crc32": (".cryptography.crc32", "crc32"),
+    "pbkdf2_hmac_sha512": (".cryptography.pbkdf2", "pbkdf2_hmac_sha512"),
+    "emip3_encrypt": (".cryptography.emip3", "emip3_encrypt"),
+    "emip3_decrypt": (".cryptography.emip3", "emip3_decrypt"),
+    # Encoding
+    "Base58": (".encoding.base58", "Base58"),
+    "Bech32": (".encoding.bech32", "Bech32"),
+    # Message Signing
+    "CIP8SignResult": (".message_signing.cip8", "CIP8SignResult"),
+    "cip8_sign": (".message_signing.cip8", "sign"),
+    "cip8_sign_with_key_hash": (".message_signing.cip8", "sign_with_key_hash"),
+    # Plutus Data
+    "PlutusDataKind": (".plutus_data", "PlutusDataKind"),
+    "PlutusData": (".plutus_data", "PlutusData"),
+    "PlutusDataLike": (".plutus_data", "PlutusDataLike"),
+    "PlutusList": (".plutus_data", "PlutusList"),
+    "PlutusMap": (".plutus_data", "PlutusMap"),
+    "ConstrPlutusData": (".plutus_data", "ConstrPlutusData"),
+    # Assets
+    "AssetId": (".assets", "AssetId"),
+    "AssetIdList": (".assets", "AssetIdList"),
+    "AssetIdMap": (".assets", "AssetIdMap"),
+    "AssetName": (".assets", "AssetName"),
+    "AssetNameList": (".assets", "AssetNameList"),
+    "AssetNameMap": (".assets", "AssetNameMap"),
+    "MultiAsset": (".assets", "MultiAsset"),
+    "PolicyIdList": (".assets", "PolicyIdList"),
+    # Auxiliary Data
+    "AuxiliaryData": (".auxiliary_data", "AuxiliaryData"),
+    "Metadatum": (".auxiliary_data", "Metadatum"),
+    "MetadatumKind": (".auxiliary_data", "MetadatumKind"),
+    "MetadatumLabelList": (".auxiliary_data", "MetadatumLabelList"),
+    "MetadatumList": (".auxiliary_data", "MetadatumList"),
+    "MetadatumMap": (".auxiliary_data", "MetadatumMap"),
+    "PlutusV1ScriptList": (".auxiliary_data", "PlutusV1ScriptList"),
+    "PlutusV2ScriptList": (".auxiliary_data", "PlutusV2ScriptList"),
+    "PlutusV3ScriptList": (".auxiliary_data", "PlutusV3ScriptList"),
+    "TransactionMetadata": (".auxiliary_data", "TransactionMetadata"),
+    # Address
+    "Address": (".address", "Address"),
+    "AddressType": (".address", "AddressType"),
+    "BaseAddress": (".address", "BaseAddress"),
+    "ByronAddress": (".address", "ByronAddress"),
+    "ByronAddressAttributes": (".address", "ByronAddressAttributes"),
+    "ByronAddressType": (".address", "ByronAddressType"),
+    "EnterpriseAddress": (".address", "EnterpriseAddress"),
+    "PointerAddress": (".address", "PointerAddress"),
+    "RewardAddress": (".address", "RewardAddress"),
+    "StakePointer": (".address", "StakePointer"),
+    # Pool Params
+    "IPv4": (".pool_params", "IPv4"),
+    "IPv6": (".pool_params", "IPv6"),
+    "MultiHostNameRelay": (".pool_params", "MultiHostNameRelay"),
+    "PoolMetadata": (".pool_params", "PoolMetadata"),
+    "PoolOwners": (".pool_params", "PoolOwners"),
+    "PoolParams": (".pool_params", "PoolParams"),
+    "Relay": (".pool_params", "Relay"),
+    "RelayLike": (".pool_params", "RelayLike"),
+    "Relays": (".pool_params", "Relays"),
+    "RelayType": (".pool_params", "RelayType"),
+    "SingleHostAddrRelay": (".pool_params", "SingleHostAddrRelay"),
+    "SingleHostNameRelay": (".pool_params", "SingleHostNameRelay"),
+    "to_relay": (".pool_params", "to_relay"),
+    # Voting Procedures
+    "Vote": (".voting_procedures", "Vote"),
+    "Voter": (".voting_procedures", "Voter"),
+    "VoterType": (".voting_procedures", "VoterType"),
+    "VoterList": (".voting_procedures", "VoterList"),
+    "VotingProcedure": (".voting_procedures", "VotingProcedure"),
+    "VotingProcedureList": (".voting_procedures", "VotingProcedureList"),
+    "VotingProcedures": (".voting_procedures", "VotingProcedures"),
+    "GovernanceActionIdList": (".voting_procedures", "GovernanceActionIdList"),
+    # Scripts
+    "PlutusLanguageVersion": (".scripts", "PlutusLanguageVersion"),
+    "Script": (".scripts", "Script"),
+    "ScriptLike": (".scripts", "ScriptLike"),
+    "ScriptLanguage": (".scripts", "ScriptLanguage"),
+    "NativeScriptType": (".scripts", "NativeScriptType"),
+    "NativeScriptList": (".scripts", "NativeScriptList"),
+    "NativeScript": (".scripts", "NativeScript"),
+    "NativeScriptLike": (".scripts", "NativeScriptLike"),
+    "ScriptPubkey": (".scripts", "ScriptPubkey"),
+    "ScriptAll": (".scripts", "ScriptAll"),
+    "ScriptAny": (".scripts", "ScriptAny"),
+    "ScriptNOfK": (".scripts", "ScriptNOfK"),
+    "ScriptInvalidBefore": (".scripts", "ScriptInvalidBefore"),
+    "ScriptInvalidAfter": (".scripts", "ScriptInvalidAfter"),
+    "PlutusV1Script": (".scripts", "PlutusV1Script"),
+    "PlutusV2Script": (".scripts", "PlutusV2Script"),
+    "PlutusV3Script": (".scripts", "PlutusV3Script"),
+    "PlutusScriptLike": (".scripts", "PlutusScriptLike"),
+    # Protocol Params
+    "ExUnitPrices": (".protocol_params", "ExUnitPrices"),
+    "CostModel": (".protocol_params", "CostModel"),
+    "Costmdls": (".protocol_params", "Costmdls"),
+    "PoolVotingThresholds": (".protocol_params", "PoolVotingThresholds"),
+    "DRepVotingThresholds": (".protocol_params", "DRepVotingThresholds"),
+    "ProtocolParameters": (".protocol_params", "ProtocolParameters"),
+    "ProtocolParamUpdate": (".protocol_params", "ProtocolParamUpdate"),
+    "ProposedParamUpdates": (".protocol_params", "ProposedParamUpdates"),
+    "Update": (".protocol_params", "Update"),
+    # Certificates
+    "AuthCommitteeHotCert": (".certificates", "AuthCommitteeHotCert"),
+    "Certificate": (".certificates", "Certificate"),
+    "CertificateSet": (".certificates", "CertificateSet"),
+    "CertificateType": (".certificates", "CertificateType"),
+    "GenesisKeyDelegationCert": (".certificates", "GenesisKeyDelegationCert"),
+    "MirCert": (".certificates", "MirCert"),
+    "MirCertPotType": (".certificates", "MirCertPotType"),
+    "MirCertType": (".certificates", "MirCertType"),
+    "MirToPotCert": (".certificates", "MirToPotCert"),
+    "MirToStakeCredsCert": (".certificates", "MirToStakeCredsCert"),
+    "PoolRegistrationCert": (".certificates", "PoolRegistrationCert"),
+    "PoolRetirementCert": (".certificates", "PoolRetirementCert"),
+    "RegisterDRepCert": (".certificates", "RegisterDRepCert"),
+    "RegistrationCert": (".certificates", "RegistrationCert"),
+    "ResignCommitteeColdCert": (".certificates", "ResignCommitteeColdCert"),
+    "StakeDeregistrationCert": (".certificates", "StakeDeregistrationCert"),
+    "StakeDelegationCert": (".certificates", "StakeDelegationCert"),
+    "StakeRegistrationCert": (".certificates", "StakeRegistrationCert"),
+    "StakeRegistrationDelegationCert": (".certificates", "StakeRegistrationDelegationCert"),
+    "StakeVoteDelegationCert": (".certificates", "StakeVoteDelegationCert"),
+    "StakeVoteRegistrationDelegationCert": (".certificates", "StakeVoteRegistrationDelegationCert"),
+    "UnregisterDRepCert": (".certificates", "UnregisterDRepCert"),
+    "UnregistrationCert": (".certificates", "UnregistrationCert"),
+    "UpdateDRepCert": (".certificates", "UpdateDRepCert"),
+    "VoteDelegationCert": (".certificates", "VoteDelegationCert"),
+    "VoteRegistrationDelegationCert": (".certificates", "VoteRegistrationDelegationCert"),
+    # Proposal Procedures
+    "Committee": (".proposal_procedures", "Committee"),
+    "CommitteeMembersMap": (".proposal_procedures", "CommitteeMembersMap"),
+    "Constitution": (".proposal_procedures", "Constitution"),
+    "CredentialSet": (".proposal_procedures", "CredentialSet"),
+    "GovernanceAction": (".proposal_procedures", "GovernanceAction"),
+    "GovernanceActionType": (".proposal_procedures", "GovernanceActionType"),
+    "HardForkInitiationAction": (".proposal_procedures", "HardForkInitiationAction"),
+    "InfoAction": (".proposal_procedures", "InfoAction"),
+    "NewConstitutionAction": (".proposal_procedures", "NewConstitutionAction"),
+    "NoConfidenceAction": (".proposal_procedures", "NoConfidenceAction"),
+    "ParameterChangeAction": (".proposal_procedures", "ParameterChangeAction"),
+    "ProposalProcedure": (".proposal_procedures", "ProposalProcedure"),
+    "ProposalProcedureSet": (".proposal_procedures", "ProposalProcedureSet"),
+    "TreasuryWithdrawalsAction": (".proposal_procedures", "TreasuryWithdrawalsAction"),
+    "UpdateCommitteeAction": (".proposal_procedures", "UpdateCommitteeAction"),
+    # Witness Set
+    "BootstrapWitness": (".witness_set", "BootstrapWitness"),
+    "BootstrapWitnessSet": (".witness_set", "BootstrapWitnessSet"),
+    "NativeScriptSet": (".witness_set", "NativeScriptSet"),
+    "PlutusDataSet": (".witness_set", "PlutusDataSet"),
+    "PlutusV1ScriptSet": (".witness_set", "PlutusV1ScriptSet"),
+    "PlutusV2ScriptSet": (".witness_set", "PlutusV2ScriptSet"),
+    "PlutusV3ScriptSet": (".witness_set", "PlutusV3ScriptSet"),
+    "Redeemer": (".witness_set", "Redeemer"),
+    "RedeemerList": (".witness_set", "RedeemerList"),
+    "RedeemerTag": (".witness_set", "RedeemerTag"),
+    "VkeyWitness": (".witness_set", "VkeyWitness"),
+    "VkeyWitnessSet": (".witness_set", "VkeyWitnessSet"),
+    "WitnessSet": (".witness_set", "WitnessSet"),
+    # Core
+    "Buffer": (".buffer", "Buffer"),
+    "CardanoError": (".errors", "CardanoError"),
+    "get_lib_version": (".cardano", "get_lib_version"),
+    "memzero": (".cardano", "memzero"),
+    # Time
+    "slot_from_unix_time": (".time", "slot_from_unix_time"),
+    "unix_time_from_slot": (".time", "unix_time_from_slot"),
+    # Transaction Body
+    "Value": (".transaction_body", "Value"),
+    "TransactionInput": (".transaction_body", "TransactionInput"),
+    "TransactionInputSet": (".transaction_body", "TransactionInputSet"),
+    "TransactionOutput": (".transaction_body", "TransactionOutput"),
+    "TransactionOutputList": (".transaction_body", "TransactionOutputList"),
+    "TransactionBody": (".transaction_body", "TransactionBody"),
+    # Transaction
+    "Transaction": (".transaction", "Transaction"),
+    # Key Handler
+    "key_harden": (".key_handler", "harden"),
+    "CoinType": (".key_handler", "CoinType"),
+    "KeyDerivationPurpose": (".key_handler", "KeyDerivationPurpose"),
+    "KeyDerivationRole": (".key_handler", "KeyDerivationRole"),
+    "AccountDerivationPath": (".key_handler", "AccountDerivationPath"),
+    "DerivationPath": (".key_handler", "DerivationPath"),
+    "Bip32SecureKeyHandler": (".key_handler", "Bip32SecureKeyHandler"),
+    "Ed25519SecureKeyHandler": (".key_handler", "Ed25519SecureKeyHandler"),
+    "SecureKeyHandler": (".key_handler", "SecureKeyHandler"),
+    "SoftwareBip32SecureKeyHandler": (".key_handler", "SoftwareBip32SecureKeyHandler"),
+    "SoftwareEd25519SecureKeyHandler": (".key_handler", "SoftwareEd25519SecureKeyHandler"),
+    # Transaction Builder
+    "CoinSelectorProtocol": (".transaction_builder", "CoinSelectorProtocol"),
+    "CoinSelector": (".transaction_builder", "CoinSelector"),
+    "CoinSelectorHandle": (".transaction_builder", "CoinSelectorHandle"),
+    "CCoinSelectorWrapper": (".transaction_builder", "CCoinSelectorWrapper"),
+    "LargeFirstCoinSelector": (".transaction_builder", "LargeFirstCoinSelector"),
+    "TxEvaluatorProtocol": (".transaction_builder", "TxEvaluatorProtocol"),
+    "TxEvaluator": (".transaction_builder", "TxEvaluator"),
+    "TxEvaluatorHandle": (".transaction_builder", "TxEvaluatorHandle"),
+    "CTxEvaluatorWrapper": (".transaction_builder", "CTxEvaluatorWrapper"),
+    "InputToRedeemerMap": (".transaction_builder", "InputToRedeemerMap"),
+    "balance_transaction": (".transaction_builder", "balance_transaction"),
+    "is_transaction_balanced": (".transaction_builder", "is_transaction_balanced"),
+    "ImplicitCoin": (".transaction_builder", "ImplicitCoin"),
+    "compute_implicit_coin": (".transaction_builder", "compute_implicit_coin"),
+    "compute_script_data_hash": (".transaction_builder", "compute_script_data_hash"),
+    "compute_transaction_fee": (".transaction_builder", "compute_transaction_fee"),
+    "compute_min_ada_required": (".transaction_builder", "compute_min_ada_required"),
+    "compute_min_script_fee": (".transaction_builder", "compute_min_script_fee"),
+    "compute_min_fee_without_scripts": (".transaction_builder", "compute_min_fee_without_scripts"),
+    "compute_script_ref_fee": (".transaction_builder", "compute_script_ref_fee"),
+    "get_total_ex_units_in_redeemers": (".transaction_builder", "get_total_ex_units_in_redeemers"),
+    "get_serialized_coin_size": (".transaction_builder", "get_serialized_coin_size"),
+    "get_serialized_output_size": (".transaction_builder", "get_serialized_output_size"),
+    "get_serialized_script_size": (".transaction_builder", "get_serialized_script_size"),
+    "get_serialized_transaction_size": (".transaction_builder", "get_serialized_transaction_size"),
+    "TxBuilder": (".transaction_builder", "TxBuilder"),
+    # Providers
+    "Provider": (".providers", "Provider"),
+    "ProviderProtocol": (".providers", "ProviderProtocol"),
+    "BlockfrostProvider": (".providers", "BlockfrostProvider"),
+    "ProviderTxEvaluator": (".providers", "ProviderTxEvaluator"),
+    # Aiken
+    "AikenTxEvaluator": (".aiken", "AikenTxEvaluator"),
+    "TxEvaluationError": (".aiken", "TxEvaluationError"),
+    "apply_params_to_script": (".aiken", "apply_params_to_script"),
+    "ApplyParamsError": (".aiken", "ApplyParamsError"),
+}
 
-from .providers import Provider, ProviderProtocol, BlockfrostProvider, ProviderTxEvaluator
-from .message_signing import sign as cip8_sign, sign_with_key_hash as cip8_sign_with_key_hash
-from .aiken import (
-    AikenTxEvaluator,
-    TxEvaluationError,
-    apply_params_to_script,
-    ApplyParamsError,
-)
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     # Common

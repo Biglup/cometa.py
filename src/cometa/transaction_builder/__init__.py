@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,51 +15,65 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-# Fee computation functions
-from .fee import (
-    compute_transaction_fee,
-    compute_min_ada_required,
-    compute_min_script_fee,
-    compute_min_fee_without_scripts,
-    compute_script_ref_fee,
-    get_total_ex_units_in_redeemers,
-    get_serialized_coin_size,
-    get_serialized_output_size,
-    get_serialized_script_size,
-    get_serialized_transaction_size,
-)
+from typing import Any
 
-# Script data hash computation
-from .script_data_hash import compute_script_data_hash
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    # Fee computation functions
+    "compute_transaction_fee": (".fee", "compute_transaction_fee"),
+    "compute_min_ada_required": (".fee", "compute_min_ada_required"),
+    "compute_min_script_fee": (".fee", "compute_min_script_fee"),
+    "compute_min_fee_without_scripts": (".fee", "compute_min_fee_without_scripts"),
+    "compute_script_ref_fee": (".fee", "compute_script_ref_fee"),
+    "get_total_ex_units_in_redeemers": (".fee", "get_total_ex_units_in_redeemers"),
+    "get_serialized_coin_size": (".fee", "get_serialized_coin_size"),
+    "get_serialized_output_size": (".fee", "get_serialized_output_size"),
+    "get_serialized_script_size": (".fee", "get_serialized_script_size"),
+    "get_serialized_transaction_size": (".fee", "get_serialized_transaction_size"),
+    # Script data hash computation
+    "compute_script_data_hash": (".script_data_hash", "compute_script_data_hash"),
+    # Balancing
+    "InputToRedeemerMap": (".balancing", "InputToRedeemerMap"),
+    "balance_transaction": (".balancing", "balance_transaction"),
+    "is_transaction_balanced": (".balancing", "is_transaction_balanced"),
+    "ImplicitCoin": (".balancing", "ImplicitCoin"),
+    "compute_implicit_coin": (".balancing", "compute_implicit_coin"),
+    # Coin selection
+    "CoinSelectorProtocol": (".coin_selection", "CoinSelectorProtocol"),
+    "CoinSelector": (".coin_selection", "CoinSelector"),
+    "CoinSelectorHandle": (".coin_selection", "CoinSelectorHandle"),
+    "CCoinSelectorWrapper": (".coin_selection", "CCoinSelectorWrapper"),
+    "LargeFirstCoinSelector": (".coin_selection", "LargeFirstCoinSelector"),
+    # Evaluation
+    "TxEvaluatorProtocol": (".evaluation", "TxEvaluatorProtocol"),
+    "TxEvaluator": (".evaluation", "TxEvaluator"),
+    "TxEvaluatorHandle": (".evaluation", "TxEvaluatorHandle"),
+    "CTxEvaluatorWrapper": (".evaluation", "CTxEvaluatorWrapper"),
+    # Transaction Builder
+    "TxBuilder": (".tx_builder", "TxBuilder"),
+}
 
-# Balancing
-from .balancing import (
-    InputToRedeemerMap,
-    balance_transaction,
-    is_transaction_balanced,
-    ImplicitCoin,
-    compute_implicit_coin,
-)
+_cache: dict[str, Any] = {}
 
-# Coin selection
-from .coin_selection import (
-    CoinSelectorProtocol,
-    CoinSelector,
-    CoinSelectorHandle,
-    CCoinSelectorWrapper,
-    LargeFirstCoinSelector,
-)
 
-# Evaluation
-from .evaluation import (
-    TxEvaluatorProtocol,
-    TxEvaluator,
-    TxEvaluatorHandle,
-    CTxEvaluatorWrapper,
-)
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
 
-# Transaction Builder
-from .tx_builder import TxBuilder
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     # Fee functions

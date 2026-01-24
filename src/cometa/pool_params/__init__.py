@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,17 +15,46 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .relay_type import RelayType
-from .ipv4 import IPv4
-from .ipv6 import IPv6
-from .single_host_addr_relay import SingleHostAddrRelay
-from .single_host_name_relay import SingleHostNameRelay
-from .multi_host_name_relay import MultiHostNameRelay
-from .relay import Relay, RelayLike, to_relay
-from .relays import Relays
-from .pool_owners import PoolOwners
-from .pool_metadata import PoolMetadata
-from .pool_params import PoolParams
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "RelayType": (".relay_type", "RelayType"),
+    "IPv4": (".ipv4", "IPv4"),
+    "IPv6": (".ipv6", "IPv6"),
+    "SingleHostAddrRelay": (".single_host_addr_relay", "SingleHostAddrRelay"),
+    "SingleHostNameRelay": (".single_host_name_relay", "SingleHostNameRelay"),
+    "MultiHostNameRelay": (".multi_host_name_relay", "MultiHostNameRelay"),
+    "Relay": (".relay", "Relay"),
+    "RelayLike": (".relay", "RelayLike"),
+    "to_relay": (".relay", "to_relay"),
+    "Relays": (".relays", "Relays"),
+    "PoolOwners": (".pool_owners", "PoolOwners"),
+    "PoolMetadata": (".pool_metadata", "PoolMetadata"),
+    "PoolParams": (".pool_params", "PoolParams"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "RelayType",

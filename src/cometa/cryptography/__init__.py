@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,17 +15,46 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .blake2b_hash import Blake2bHash
-from .blake2b_hash_size import Blake2bHashSize
-from .blake2b_hash_set import Blake2bHashSet
-from .ed25519_signature import Ed25519Signature
-from .ed25519_public_key import Ed25519PublicKey
-from .ed25519_private_key import Ed25519PrivateKey
-from .bip32_public_key import Bip32PublicKey
-from .bip32_private_key import Bip32PrivateKey, harden
-from .crc32 import crc32
-from .pbkdf2 import pbkdf2_hmac_sha512
-from .emip3 import emip3_encrypt, emip3_decrypt
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "Blake2bHash": (".blake2b_hash", "Blake2bHash"),
+    "Blake2bHashSize": (".blake2b_hash_size", "Blake2bHashSize"),
+    "Blake2bHashSet": (".blake2b_hash_set", "Blake2bHashSet"),
+    "Ed25519Signature": (".ed25519_signature", "Ed25519Signature"),
+    "Ed25519PublicKey": (".ed25519_public_key", "Ed25519PublicKey"),
+    "Ed25519PrivateKey": (".ed25519_private_key", "Ed25519PrivateKey"),
+    "Bip32PublicKey": (".bip32_public_key", "Bip32PublicKey"),
+    "Bip32PrivateKey": (".bip32_private_key", "Bip32PrivateKey"),
+    "harden": (".bip32_private_key", "harden"),
+    "crc32": (".crc32", "crc32"),
+    "pbkdf2_hmac_sha512": (".pbkdf2", "pbkdf2_hmac_sha512"),
+    "emip3_encrypt": (".emip3", "emip3_encrypt"),
+    "emip3_decrypt": (".emip3", "emip3_decrypt"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "Bip32PrivateKey",

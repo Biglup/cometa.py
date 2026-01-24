@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,12 +15,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .value import Value
-from .transaction_input import TransactionInput
-from .transaction_input_set import TransactionInputSet
-from .transaction_output import TransactionOutput
-from .transaction_output_list import TransactionOutputList
-from .transaction_body import TransactionBody
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "Value": (".value", "Value"),
+    "TransactionInput": (".transaction_input", "TransactionInput"),
+    "TransactionInputSet": (".transaction_input_set", "TransactionInputSet"),
+    "TransactionOutput": (".transaction_output", "TransactionOutput"),
+    "TransactionOutputList": (".transaction_output_list", "TransactionOutputList"),
+    "TransactionBody": (".transaction_body", "TransactionBody"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "Value",

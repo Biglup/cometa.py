@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,24 +15,51 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .protocol_version import ProtocolVersion
-from .bigint import BigInt
-from .byte_order import ByteOrder
-from .network_id import NetworkId
-from .credential_type import CredentialType
-from .credential import Credential
-from .datum_type import DatumType
-from .drep_type import DRepType
-from .governance_key_type import GovernanceKeyType
-from .unit_interval import UnitInterval
-from .ex_units import ExUnits
-from .anchor import Anchor
-from .drep import DRep
-from .governance_action_id import GovernanceActionId
-from .datum import Datum
-from .withdrawal_map import WithdrawalMap
-from .reward_address_list import RewardAddressList
-from .slot_config import SlotConfig
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "ProtocolVersion": (".protocol_version", "ProtocolVersion"),
+    "BigInt": (".bigint", "BigInt"),
+    "ByteOrder": (".byte_order", "ByteOrder"),
+    "NetworkId": (".network_id", "NetworkId"),
+    "CredentialType": (".credential_type", "CredentialType"),
+    "Credential": (".credential", "Credential"),
+    "DatumType": (".datum_type", "DatumType"),
+    "DRepType": (".drep_type", "DRepType"),
+    "GovernanceKeyType": (".governance_key_type", "GovernanceKeyType"),
+    "UnitInterval": (".unit_interval", "UnitInterval"),
+    "ExUnits": (".ex_units", "ExUnits"),
+    "Anchor": (".anchor", "Anchor"),
+    "DRep": (".drep", "DRep"),
+    "GovernanceActionId": (".governance_action_id", "GovernanceActionId"),
+    "Datum": (".datum", "Datum"),
+    "WithdrawalMap": (".withdrawal_map", "WithdrawalMap"),
+    "RewardAddressList": (".reward_address_list", "RewardAddressList"),
+    "SlotConfig": (".slot_config", "SlotConfig"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "Anchor",

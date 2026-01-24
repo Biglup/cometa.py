@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,11 +15,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .plutus_data_kind import PlutusDataKind
-from .plutus_data import PlutusData, PlutusDataLike
-from .plutus_list import PlutusList
-from .plutus_map import PlutusMap
-from .constr_plutus_data import ConstrPlutusData
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "PlutusDataKind": (".plutus_data_kind", "PlutusDataKind"),
+    "PlutusData": (".plutus_data", "PlutusData"),
+    "PlutusDataLike": (".plutus_data", "PlutusDataLike"),
+    "PlutusList": (".plutus_list", "PlutusList"),
+    "PlutusMap": (".plutus_map", "PlutusMap"),
+    "ConstrPlutusData": (".constr_plutus_data", "ConstrPlutusData"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "PlutusDataKind",

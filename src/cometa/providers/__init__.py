@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,11 +15,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .provider import Provider, ProviderProtocol
-from .python_provider_adapter import ProviderHandle
-from .c_provider_wrapper import CProviderWrapper
-from .blockfrost_provider import BlockfrostProvider
-from .provider_tx_evaluator import ProviderTxEvaluator
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "Provider": (".provider", "Provider"),
+    "ProviderProtocol": (".provider", "ProviderProtocol"),
+    "ProviderHandle": (".python_provider_adapter", "ProviderHandle"),
+    "CProviderWrapper": (".c_provider_wrapper", "CProviderWrapper"),
+    "BlockfrostProvider": (".blockfrost_provider", "BlockfrostProvider"),
+    "ProviderTxEvaluator": (".provider_tx_evaluator", "ProviderTxEvaluator"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = [
     "Provider",

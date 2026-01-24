@@ -1,3 +1,4 @@
+# pylint: disable=undefined-all-variable
 """
 Copyright 2025 Biglup Labs.
 
@@ -14,10 +15,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from .json_format import JsonFormat
-from .json_object import JsonObject
-from .json_context import JsonContext
-from .json_writer import JsonWriter
-from .json_object_type import JsonObjectType
+from typing import Any
+
+_LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "JsonFormat": (".json_format", "JsonFormat"),
+    "JsonObject": (".json_object", "JsonObject"),
+    "JsonContext": (".json_context", "JsonContext"),
+    "JsonWriter": (".json_writer", "JsonWriter"),
+    "JsonObjectType": (".json_object_type", "JsonObjectType"),
+}
+
+_cache: dict[str, Any] = {}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _cache:
+        return _cache[name]
+
+    if name in _LAZY_IMPORTS:
+        module_path, attr_name = _LAZY_IMPORTS[name]
+        from importlib import import_module
+        module = import_module(module_path, __name__)
+        value = getattr(module, attr_name)
+        _cache[name] = value
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return list(__all__)
+
 
 __all__ = ["JsonFormat", "JsonObject", "JsonContext", "JsonObjectType", "JsonWriter"]

@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biglup-cometa"
-version = "1.2.1.post2"
+version = "1.2.1.post3"
 description = "Python bindings for libcardano-c (Cometa project)"
 authors = [
     { name = "Angel Castillo", email = "angel.castillob@prototnmail.io" },
@@ -85,4 +85,5 @@ disable = [
     "C0415", # Import outside toplevel (needed for circular import avoidance)
     "R0913", # Too many arguments,
     "R0917", # Too many positional arguments
+    "E0611", # No name in module (false positive with lazy imports using __getattr__)
 ]
