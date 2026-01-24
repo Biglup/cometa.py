@@ -75,6 +75,24 @@ def get_current_platform() -> str:
         raise RuntimeError(f"Unsupported platform: {system}")
 
 
+def compile_cffi(src_dir: Path, output_dir: Path) -> None:
+    """
+    Compile CFFI modules to the output directory.
+    """
+    print("  Compiling CFFI modules...")
+
+    # Import and run the build script
+    import importlib.util
+    build_script = src_dir / "src" / "cometa" / "_ffi_build.py"
+
+    spec = importlib.util.spec_from_file_location("_ffi_build", build_script)
+    ffi_build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ffi_build)
+
+    # Compile to output directory
+    ffi_build.compile_all(str(output_dir))
+
+
 def build_wheel(src_dir: Path, platform_name: str, wheel_tag: str, output_dir: Path) -> Path:
     native_dir = src_dir / "src" / "cometa" / "_native" / platform_name
 
@@ -97,6 +115,9 @@ def build_wheel(src_dir: Path, platform_name: str, wheel_tag: str, output_dir: P
         # Copy Python files
         for py_file in (src_dir / "src" / "cometa").glob("*.py"):
             shutil.copy(py_file, build_src / py_file.name)
+
+        # Compile CFFI modules (generates _cardano_cffi.py and _aiken_cffi.py)
+        compile_cffi(src_dir, build_src)
 
         # Copy subpackages
         for subdir in (src_dir / "src" / "cometa").iterdir():

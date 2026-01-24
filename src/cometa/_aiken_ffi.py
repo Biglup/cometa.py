@@ -24,18 +24,31 @@ from importlib import resources as importlib_resources
 import sys
 import platform
 
-from cffi import FFI
 
-aiken_ffi = FFI()
-
-def _load_aiken_cdef() -> str:
+def _get_aiken_ffi():
     """
-    Load the generated aiken-c.cdef file from the package.
+    Get the CFFI FFI instance for Aiken, trying pre-compiled first, then falling back to runtime parsing.
     """
-    cdef_path = importlib_resources.files("cometa") / "_cdef" / "aiken-c.cdef"
-    return cdef_path.read_text(encoding="utf-8")
+    try:
+        from cometa._aiken_cffi import ffi
+        return ffi
+    except ImportError:
+        pass
 
-aiken_ffi.cdef(_load_aiken_cdef())
+    from cffi import FFI
+    ffi = FFI()
+
+    def _load_aiken_cdef() -> str:
+        """Load the generated aiken-c.cdef file from the package."""
+        cdef_path = importlib_resources.files("cometa") / "_cdef" / "aiken-c.cdef"
+        return cdef_path.read_text(encoding="utf-8")
+
+    ffi.cdef(_load_aiken_cdef())
+    return ffi
+
+
+aiken_ffi = _get_aiken_ffi()
+
 
 def _normalize_arch(machine: str) -> str:
     machine_lower = machine.lower()

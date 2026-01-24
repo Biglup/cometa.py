@@ -24,19 +24,31 @@ from importlib import resources as importlib_resources
 import sys
 import platform
 
-from cffi import FFI
 
-ffi = FFI()
-
-def _load_all_cdef() -> str:
+def _get_ffi():
     """
-    Load the generated cardano-c.cdef file from the package.
+    Get the CFFI FFI instance, trying pre-compiled first, then falling back to runtime parsing.
     """
-    # cometa/_cdef/all.cdef
-    cdef_path = importlib_resources.files("cometa") / "_cdef" / "cardano-c.cdef"
-    return cdef_path.read_text(encoding="utf-8")
+    try:
+        from cometa._cardano_cffi import ffi
+        return ffi
+    except ImportError:
+        pass
 
-ffi.cdef(_load_all_cdef())
+    from cffi import FFI
+    ffi = FFI()
+
+    def _load_all_cdef() -> str:
+        """Load the generated cardano-c.cdef file from the package."""
+        cdef_path = importlib_resources.files("cometa") / "_cdef" / "cardano-c.cdef"
+        return cdef_path.read_text(encoding="utf-8")
+
+    ffi.cdef(_load_all_cdef())
+    return ffi
+
+
+ffi = _get_ffi()
+
 
 def _normalize_arch(machine: str) -> str:
     machine_lower = machine.lower()
