@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biglup-cometa"
-version = "1.2.1.post4"
+version = "1.2.1.post5"
 description = "Python bindings for libcardano-c (Cometa project)"
 authors = [
     { name = "Angel Castillo", email = "angel.castillob@prototnmail.io" },
@@ -45,12 +45,15 @@ where = ["src"]
 [tool.setuptools.package-data]
 cometa = [
     "_cdef/*.cdef",
-    "_native/**/*.so",
-    "_native/**/*.dylib",
-    "_native/**/*.dll",
     "_cardano_cffi.py",
     "_aiken_cffi.py",
 ]
+
+# Note: Native binaries are only included in wheel builds, not sdist.
+# For source installs (pip install --no-binary), users must provide:
+#   - libcardano-c: https://github.com/Biglup/cardano-c
+#   - libaiken_c: https://github.com/Biglup/aiken-c-ffi
+# Install to /usr/lib or set LD_LIBRARY_PATH before importing cometa.
 
 [project.urls]
 Homepage = "https://cometa.dev"

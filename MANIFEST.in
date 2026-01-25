@@ -1,0 +1,27 @@
+# Include essential files
+include LICENSE
+include README.md
+include pyproject.toml
+include setup.py
+
+# Include source code
+recursive-include src *.py
+recursive-include src/cometa/_cdef *.cdef
+
+# EXCLUDE pre-built native binaries from source distribution
+# These are only included in wheel builds for pip convenience.
+# For source installs, users must provide libcardano-c and libaiken_c:
+#   - Build from source: https://github.com/Biglup/cardano-c
+#   - Build from source: https://github.com/Biglup/aiken-c-ffi
+#   - Install to /usr/lib or set LD_LIBRARY_PATH
+recursive-exclude src/cometa/_native *.so
+recursive-exclude src/cometa/_native *.dylib
+recursive-exclude src/cometa/_native *.dll
+
+# Exclude build artifacts and vendor (not needed for source installs)
+recursive-exclude build *
+recursive-exclude dist *
+recursive-exclude *.egg-info *
+recursive-exclude __pycache__ *
+recursive-exclude .git *
+recursive-exclude vendor *

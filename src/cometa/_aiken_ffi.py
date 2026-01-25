@@ -19,6 +19,15 @@ import os
 import sys
 import platform
 
+# System library search paths (for distro/Buildroot packages)
+_SYSTEM_LIB_PATHS = [
+    "/usr/lib",
+    "/usr/local/lib",
+    "/lib",
+    "/usr/lib64",
+    "/usr/local/lib64",
+]
+
 
 def _find_package_dir() -> str:
     """Find the cometa package directory, works with .pyc-only installations."""
@@ -90,28 +99,90 @@ def _detect_platform_dir() -> str:
     raise RuntimeError(f"Unsupported platform: {plat!r} arch: {arch!r}")
 
 
-def _find_aiken_lib() -> str:
-    plat_dir = _detect_platform_dir()
-    pkg_dir = _find_package_dir()
-    base = os.path.join(pkg_dir, "_native", plat_dir)
-
+def _get_lib_name() -> str:
+    """Get the library filename for the current platform."""
     if sys.platform.startswith("linux"):
-        candidates = ["libaiken_c.so"]
-    elif sys.platform == "darwin":
-        candidates = ["libaiken_c.dylib"]
-    elif sys.platform in ("win32", "cygwin", "msys"):
-        candidates = ["aiken_c.dll"]
-    else:
-        raise RuntimeError(f"Unsupported platform: {sys.platform!r}")
+        return "libaiken_c.so"
+    if sys.platform == "darwin":
+        return "libaiken_c.dylib"
+    if sys.platform in ("win32", "cygwin", "msys"):
+        return "aiken_c.dll"
+    raise RuntimeError(f"Unsupported platform: {sys.platform!r}")
 
-    for name in candidates:
-        lib_path = os.path.join(base, name)
+
+def _find_system_lib() -> str | None:
+    """
+    Search for system-installed libaiken_c.
+
+    This allows distro packages (Buildroot, Debian, etc.) to install
+    libaiken_c separately and have cometa link against it.
+    """
+    lib_name = _get_lib_name()
+
+    # Check standard system library paths
+    for lib_dir in _SYSTEM_LIB_PATHS:
+        lib_path = os.path.join(lib_dir, lib_name)
         if os.path.isfile(lib_path):
             return lib_path
 
+    # Check LD_LIBRARY_PATH (Linux) or DYLD_LIBRARY_PATH (macOS)
+    env_var = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
+    extra_paths = os.environ.get(env_var, "").split(os.pathsep)
+    for lib_dir in extra_paths:
+        if lib_dir:
+            lib_path = os.path.join(lib_dir, lib_name)
+            if os.path.isfile(lib_path):
+                return lib_path
+
+    return None
+
+
+def _find_bundled_lib() -> str | None:
+    """Search for bundled library in the package's _native directory."""
+    try:
+        plat_dir = _detect_platform_dir()
+        pkg_dir = _find_package_dir()
+        lib_path = os.path.join(pkg_dir, "_native", plat_dir, _get_lib_name())
+        if os.path.isfile(lib_path):
+            return lib_path
+    except (RuntimeError, ImportError):
+        pass
+    return None
+
+
+def _find_aiken_lib() -> str:
+    """
+    Find the native libaiken_c library.
+
+    Search order:
+    1. System-installed library (for distro/Buildroot packages)
+    2. Bundled library in package (for pip wheel installs)
+
+    This allows verifiable builds where libaiken_c is compiled from source,
+    while still supporting convenient pip installs with pre-built binaries.
+    """
+    # First, check for system-installed library
+    system_lib = _find_system_lib()
+    if system_lib:
+        return system_lib
+
+    # Fall back to bundled library
+    bundled_lib = _find_bundled_lib()
+    if bundled_lib:
+        return bundled_lib
+
+    # Neither found - provide helpful error message
+    lib_name = _get_lib_name()
+    plat_dir = _detect_platform_dir()
     raise FileNotFoundError(
-        f"Could not find native libaiken_c in {base} "
-        f"(platform dir: {plat_dir}, candidates: {candidates})"
+        f"Could not find {lib_name}. Searched:\n"
+        f"  - System paths: {_SYSTEM_LIB_PATHS}\n"
+        f"  - Bundled path: _native/{plat_dir}/{lib_name}\n"
+        f"\n"
+        f"To fix this:\n"
+        f"  1. Install pre-built wheel: pip install biglup-cometa\n"
+        f"  2. Or build libaiken_c from source (https://github.com/Biglup/aiken-c-ffi)\n"
+        f"     and install to /usr/lib or set LD_LIBRARY_PATH"
     )
 
 
