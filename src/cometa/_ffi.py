@@ -14,15 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-try:
-    from importlib.resources.abc import Traversable
-except ImportError:
-    from importlib.abc import Traversable
-
-from importlib import resources as importlib_resources
-
+import importlib.util
+import os
 import sys
 import platform
+
+
+def _find_package_dir() -> str:
+    """Find the cometa package directory, works with .pyc-only installations."""
+    spec = importlib.util.find_spec("cometa")
+    if spec is None:
+        raise ImportError("Cannot find cometa package")
+
+    if spec.origin and spec.origin != "namespace":
+        return os.path.dirname(spec.origin)
+
+    if spec.submodule_search_locations:
+        return spec.submodule_search_locations[0]
+
+    raise ImportError("Cannot determine cometa package location")
 
 
 def _get_ffi():
@@ -40,8 +50,9 @@ def _get_ffi():
 
     def _load_all_cdef() -> str:
         """Load the generated cardano-c.cdef file from the package."""
-        cdef_path = importlib_resources.files("cometa") / "_cdef" / "cardano-c.cdef"
-        return cdef_path.read_text(encoding="utf-8")
+        cdef_path = os.path.join(_find_package_dir(), "_cdef", "cardano-c.cdef")
+        with open(cdef_path, encoding="utf-8") as cdef_file:
+            return cdef_file.read()
 
     runtime_ffi.cdef(_load_all_cdef())
     return runtime_ffi
@@ -62,6 +73,7 @@ def _normalize_arch(machine: str) -> str:
         return "armv6"
     return machine_lower
 
+
 def _detect_platform_dir() -> str:
     plat = sys.platform
     arch = _normalize_arch(platform.machine())
@@ -77,10 +89,11 @@ def _detect_platform_dir() -> str:
 
     raise RuntimeError(f"Unsupported platform: {plat!r} arch: {arch!r}")
 
-def _find_native_lib() -> Traversable:
-    plat_dir = _detect_platform_dir()
 
-    base = importlib_resources.files("cometa") / "_native" / plat_dir
+def _find_native_lib() -> str:
+    plat_dir = _detect_platform_dir()
+    pkg_dir = _find_package_dir()
+    base = os.path.join(pkg_dir, "_native", plat_dir)
 
     if sys.platform.startswith("linux"):
         candidates = ["libcardano-c.so"]
@@ -92,8 +105,8 @@ def _find_native_lib() -> Traversable:
         raise RuntimeError(f"Unsupported platform: {sys.platform!r}")
 
     for name in candidates:
-        lib_path = base / name
-        if lib_path.is_file():
+        lib_path = os.path.join(base, name)
+        if os.path.isfile(lib_path):
             return lib_path
 
     raise FileNotFoundError(
@@ -101,5 +114,6 @@ def _find_native_lib() -> Traversable:
         f"(platform dir: {plat_dir}, candidates: {candidates})"
     )
 
+
 _lib_path = _find_native_lib()
-lib = ffi.dlopen(str(_lib_path))
+lib = ffi.dlopen(_lib_path)
