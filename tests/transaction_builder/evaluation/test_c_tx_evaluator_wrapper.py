@@ -540,3 +540,18 @@ class TestCTxEvaluatorWrapperInvalidArguments:
 
         with pytest.raises((AttributeError, TypeError)):
             evaluator.evaluate(transaction, additional_utxos="not a list")
+
+
+def test_from_provider_keeps_python_callbacks_alive():
+    import gc
+    import weakref
+    handle = ProviderHandle(MockProvider())
+    reference = weakref.ref(handle)
+    evaluator = CTxEvaluatorWrapper.from_provider(handle)
+    del handle
+    gc.collect()
+    assert reference() is not None
+    assert len(evaluator.evaluate(create_simple_transaction(), [])) == 0
+    del evaluator
+    gc.collect()
+    assert reference() is None

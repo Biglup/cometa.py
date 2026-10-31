@@ -28,6 +28,7 @@ from pathlib import Path
 from setuptools import setup
 from setuptools.command.build_py import build_py
 from setuptools.command.develop import develop
+from wheel.bdist_wheel import bdist_wheel
 
 
 def compile_cffi_modules():
@@ -68,12 +69,31 @@ class DevelopWithCFFI(develop):
         super().run()
 
 
+class PlatformWheel(bdist_wheel):
+    """Tag wheels containing the ABI-mode native library for their target OS."""
+
+    def finalize_options(self):
+        super().finalize_options()
+        native = Path(__file__).parent / "src" / "cometa" / "_native"
+        if os.environ.get("COMETA_WHEEL_PLATFORM") or any(native.rglob("*.so")) or any(native.rglob("*.dylib")) or any(native.rglob("*.dll")):
+            self.root_is_pure = False
+
+    def get_tag(self):
+        target = os.environ.get("COMETA_WHEEL_PLATFORM")
+        if target:
+            return "py3", "none", target
+        if not self.root_is_pure:
+            return "py3", "none", super().get_tag()[2]
+        return super().get_tag()
+
+
 # Only run setup() if this file is executed directly
 # (pyproject.toml is the primary config, this is just for CFFI hooks)
 if __name__ == "__main__":
     setup(
         cmdclass={
             "build_py": BuildPyWithCFFI,
+            "bdist_wheel": PlatformWheel,
             "develop": DevelopWithCFFI,
         },
     )

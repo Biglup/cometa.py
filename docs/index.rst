@@ -9,7 +9,7 @@ biglup-cometa 0.1.35
    :caption: API Reference
 
    api/address/index
-   api/aiken/index
+   api/evaluation/index
    api/assets/index
    api/auxiliary_data/index
    api/bip39/index

@@ -6,6 +6,8 @@ including get_lib_version() and memzero() with various valid and invalid argumen
 Test vectors adapted from vendor/cardano-c/lib/tests/cardano.cpp.
 """
 
+import re
+
 import pytest
 from cometa import get_lib_version, memzero
 
@@ -20,10 +22,7 @@ def test_get_lib_version_returns_valid_version():
 def test_get_lib_version_follows_semver_format():
     """Test that the version string follows Semantic Versioning format."""
     version = get_lib_version()
-    parts = version.split('.')
-    assert len(parts) == 3
-    for part in parts:
-        assert part.isdigit() or part[0].isdigit()
+    assert re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?", version)
 
 
 def test_memzero_zeroes_buffer():
@@ -124,3 +123,17 @@ def test_get_lib_version_returns_string_not_bytes():
     version = get_lib_version()
     assert isinstance(version, str)
     assert not isinstance(version, bytes)
+
+
+def test_loader_rejects_incompatible_system_library(monkeypatch):
+    """Reject 1.x before any ABI-dependent wrapper can use the library."""
+    import runpy
+    import sys
+    from types import SimpleNamespace
+    import cometa._ffi as runtime
+
+    native = SimpleNamespace(cardano_get_lib_version=lambda: b"1.2.0")
+    fake_ffi = SimpleNamespace(dlopen=lambda _path: native, string=lambda value: value)
+    monkeypatch.setitem(sys.modules, "cometa._cardano_cffi", SimpleNamespace(ffi=fake_ffi))
+    with pytest.raises(ImportError, match="requires cardano-c 2.x; found 1.2.0"):
+        runpy.run_path(runtime.__file__)

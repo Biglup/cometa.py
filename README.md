@@ -28,6 +28,9 @@ Cometa.py is a lightweight, high-performance Python library binding for the [lib
 
 Cometa.py packages [libcardano-c](https://github.com/Biglup/cardano-c) using CFFI bindings, providing a fully documented, developer-friendly Pythonic API with type hints for excellent IDE support.
 
+The 2.0 release candidate uses [cardano-c v2.0.0-rc.4](https://github.com/Biglup/cardano-c/releases/tag/v2.0.0-rc.4).
+The [stable 1.2 series](https://pypi.org/project/biglup-cometa/1.2.1.post6/) remains available for applications using cardano-c 1.2.
+
 Example:
 
 ```python
@@ -46,6 +49,51 @@ unsigned_tx = (
 ```
 
 <hr>
+
+## Native evaluation and Dijkstra
+
+`TxBuilder` evaluates scripts locally with cardano-c's virtual machine. Aiken's
+runtime library is no longer bundled or required. `apply_params_to_script` remains
+available from `cometa` and uses the same native library.
+
+The candidate adds `PlutusV4Script`, V4 witness sets and script lists. V4 execution
+requires Dijkstra protocol parameters (major version 12); use the target network's
+parameters when building transactions. The Python API does not yet expose
+Dijkstra's sub-transaction builders, guards or account-balance intervals.
+
+### Deferred redeemers
+
+Pass a callback to `add_input`, `mint_token`, `withdraw_rewards`, `vote` or
+`add_certificate` when the redeemer depends on the balanced transaction:
+
+```python
+from cometa import PlutusData
+
+# Locate this input after the builder has selected and ordered all inputs.
+def spend_redeemer(draft_tx, resolved_inputs):
+    for index, tx_input in enumerate(draft_tx.body.inputs):
+        if tx_input == script_utxo.input:
+            return PlutusData.from_int(index)
+    raise ValueError("Script input is missing")
+
+builder.add_input(script_utxo, redeemer=spend_redeemer)
+tx = builder.build()
+```
+
+Callbacks receive a `Transaction` and a list of `Utxo` objects. Treat the draft as
+read-only and keep the callback deterministic: balancing may call it several times.
+Callback exceptions are reported by `build()` with the original exception as their cause.
+
+### Migrating from 1.2
+
+- Remove imports from `cometa.aiken`. Import `apply_params_to_script` from `cometa`.
+- Remove explicit `AikenTxEvaluator` configuration to use the builder's native default.
+  Use `NativeTxEvaluator.from_parameters(protocol_params, slot_config)` for standalone evaluation.
+- Direct native coin selection now requires `change_address` and `protocol_params`
+  keyword arguments. `select_with_context(CoinSelectionRequest(...))` also returns change outputs.
+  Existing Python selectors implementing `select(pre_selected, available, target)` still work.
+- System installations must supply cardano-c 2.x. The bundled Linux x86-64/ARM64
+  wheels require glibc 2.33 or newer; bundled macOS wheels require macOS 26 or newer.
 
 ## **Conway Era Support**
 
@@ -101,7 +149,7 @@ slot_config = SlotConfig.preview()   # For preview testnet
 builder = TxBuilder(protocol_params, slot_config)
 ```
 
-> **Note:** The `TxBuilder` uses `AikenTxEvaluator` by default for local Plutus script evaluation. You can override this with a custom evaluator using `builder.set_evaluator()`.
+> **Note:** The `TxBuilder` uses `NativeTxEvaluator` by default for local Plutus script evaluation. You can override this with a custom evaluator using `builder.set_evaluator()`.
 
 First, establish a connection to the Cardano network using a Provider:
 
@@ -394,7 +442,7 @@ plutus_map[b"key2"] = 200
 
 ### Working with Scripts
 
-Cometa.py provides some utilities to parameterize scripts and local transaction evaluation using the Aiken UPLC evaluator.
+Cometa.py provides some utilities to parameterize scripts and local transaction evaluation using cardano-c's native Plutus virtual machine.
 
 #### Applying Parameters to Scripts
 
@@ -471,7 +519,7 @@ parameterized = apply_params_to_script(params, compiled_code)
 script = Script.from_plutus_v2(PlutusV2Script.from_hex(parameterized))
 
 # Build mint transaction
-# Note: TxBuilder uses AikenTxEvaluator by default for local Plutus evaluation
+# Note: TxBuilder uses NativeTxEvaluator by default for local Plutus evaluation
 policy_id = script.hash
 asset_name = token_name.encode("utf-8")
 mint_redeemer = ConstrPlutusData(0)  # Mint action
@@ -843,7 +891,7 @@ print(f"Wrong message valid: {is_valid}")  # False
 The `TxBuilder` API allows you to override its core logic for coin selection and transaction evaluation. If these custom implementations are not provided, the builder uses the following defaults:
 
 - **Coin Selection**: A "Largest First" strategy via `LargeFirstCoinSelector`
-- **Transaction Evaluation**: Local evaluation via `AikenTxEvaluator` (uses the Aiken UPLC evaluator)
+- **Transaction Evaluation**: Local evaluation via `NativeTxEvaluator` (uses cardano-c's Plutus virtual machine)
 
 ### Implementing a Custom CoinSelector
 
@@ -881,14 +929,14 @@ builder.set_coin_selector(my_selector)
 
 The transaction evaluator calculates execution units (ExUnits) for Plutus scripts.
 
-**Default: Local Evaluation with AikenTxEvaluator**
+**Default: Local Evaluation with NativeTxEvaluator**
 
-By default, `TxBuilder` uses `AikenTxEvaluator` for local Plutus script evaluation. This is configured automatically based on the `SlotConfig` and protocol parameters you provide:
+By default, `TxBuilder` uses `NativeTxEvaluator` for local Plutus script evaluation. This is configured automatically based on the `SlotConfig` and protocol parameters you provide:
 
 ```python
 from cometa import TxBuilder, SlotConfig
 
-# AikenTxEvaluator is used automatically
+# NativeTxEvaluator is used automatically
 builder = TxBuilder(protocol_params, SlotConfig.preprod())
 
 # Build transaction with Plutus scripts - evaluation happens locally
@@ -902,20 +950,16 @@ tx = (
 )
 ```
 
-**Custom AikenTxEvaluator Configuration**
+**Custom NativeTxEvaluator Configuration**
 
 If you need to customize the evaluator settings, you can create your own instance:
 
 ```python
 from cometa import TxBuilder, SlotConfig
-from cometa.aiken import AikenTxEvaluator
+from cometa import NativeTxEvaluator
 
 # Create custom evaluator with specific settings
-evaluator = AikenTxEvaluator(
-    cost_models=protocol_params.cost_models,
-    slot_config=SlotConfig.preprod(),
-    max_tx_ex_units=protocol_params.max_tx_ex_units,
-)
+evaluator = NativeTxEvaluator.from_parameters(protocol_params, SlotConfig.preprod())
 
 # Override the default evaluator
 builder = TxBuilder(protocol_params, SlotConfig.preprod())

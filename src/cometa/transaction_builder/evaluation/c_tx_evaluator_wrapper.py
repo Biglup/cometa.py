@@ -55,6 +55,7 @@ class CTxEvaluatorWrapper:
             raise CardanoError("CTxEvaluatorWrapper: invalid handle")
         self._ptr = ptr
         self._owns_ref = owns_ref
+        self._provider = None
         if owns_ref:
             lib.cardano_tx_evaluator_ref(ptr)
 
@@ -110,6 +111,7 @@ class CTxEvaluatorWrapper:
         instance = cls.__new__(cls)
         instance._ptr = out[0]
         instance._owns_ref = True
+        instance._provider = provider
         return instance
 
     @property
@@ -180,6 +182,7 @@ class CTxEvaluatorWrapper:
             self._ptr, transaction._ptr, additional_ptr, redeemers_out
         )
         if err != 0:
+            lib.cardano_redeemer_list_unref(redeemers_out)
             raise CardanoError(
                 f"Transaction evaluation failed (error code: {err}): "
                 f"{self.get_last_error()}"

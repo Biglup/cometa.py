@@ -34,3 +34,6 @@ class PlutusLanguageVersion(IntEnum):
 
     V3 = 2
     """V3 was introduced in the Conway hard fork with governance features."""
+
+    V4 = 3
+    """Plutus V4 was introduced for Dijkstra."""

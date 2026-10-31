@@ -51,7 +51,7 @@ class TestPlutusLanguageVersion:
     def test_plutus_language_version_invalid_value(self):
         """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError):
-            PlutusLanguageVersion(3)
+            PlutusLanguageVersion(4)
         with pytest.raises(ValueError):
             PlutusLanguageVersion(-1)
         with pytest.raises(ValueError):
@@ -69,7 +69,7 @@ class TestPlutusLanguageVersion:
     def test_plutus_language_version_iteration(self):
         """Test iteration over PlutusLanguageVersion enum."""
         values = list(PlutusLanguageVersion)
-        assert len(values) == 3
+        assert len(values) == 4
         assert PlutusLanguageVersion.V1 in values
         assert PlutusLanguageVersion.V2 in values
         assert PlutusLanguageVersion.V3 in values
@@ -153,7 +153,7 @@ class TestPlutusLanguageVersion:
 
     def test_plutus_language_version_exhaustive_coverage(self):
         """Test all expected language versions are present."""
-        expected_versions = {"V1", "V2", "V3"}
+        expected_versions = {"V1", "V2", "V3", "V4"}
         actual_versions = set(PlutusLanguageVersion.__members__.keys())
         assert expected_versions == actual_versions
 
@@ -171,7 +171,7 @@ class TestPlutusLanguageVersion:
 
     def test_plutus_language_version_count(self):
         """Test total number of language versions."""
-        assert len(PlutusLanguageVersion) == 3
+        assert len(PlutusLanguageVersion) == 4
 
     def test_plutus_language_version_sequential(self):
         """Test that version values are sequential starting from 0."""
@@ -212,7 +212,7 @@ class TestPlutusLanguageVersion:
         """Test min and max values of PlutusLanguageVersion."""
         all_versions = list(PlutusLanguageVersion)
         assert min(all_versions) == PlutusLanguageVersion.V1
-        assert max(all_versions) == PlutusLanguageVersion.V3
+        assert max(all_versions) == PlutusLanguageVersion.V4
 
     def test_plutus_language_version_in_condition(self):
         """Test using PlutusLanguageVersion in conditional statements."""

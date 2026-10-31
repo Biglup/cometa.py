@@ -20,11 +20,10 @@ from __future__ import annotations
 
 import datetime
 import time
-from typing import Optional, Union, List, TYPE_CHECKING, Dict, Any
+from typing import Optional, Union, List, TYPE_CHECKING, Dict, Any, Callable
 
 from ..common.slot_config import SlotConfig
-from ..aiken import AikenTxEvaluator
-from ..scripts import Script, PlutusV2Script, PlutusV3Script, NativeScriptLike, PlutusV1Script
+from ..scripts import Script, PlutusV2Script, PlutusV3Script, PlutusV4Script, NativeScriptLike, PlutusV1Script
 from ..common.network_id import NetworkId
 from .._ffi import ffi, lib
 from ..errors import CardanoError, cardano_error_to_string
@@ -161,15 +160,9 @@ class TxBuilder:
             raise CardanoError("Failed to create transaction builder")
 
         self._coin_selector_handle: Optional[CoinSelectorHandle] = None
-        self._evaluator_handle: Optional[TxEvaluatorHandle] = None
-
-        evaluator = AikenTxEvaluator(
-            cost_models=protocol_params.cost_models,
-            slot_config=slot_config,
-            max_tx_ex_units=protocol_params.max_tx_ex_units
-        )
-
-        self.set_evaluator(evaluator)
+        self._evaluator_handle = None
+        self._deferred_callbacks = []
+        self._deferred_errors = []
 
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
@@ -203,7 +196,7 @@ class TxBuilder:
         - **Large First**: Minimizes number of inputs by using largest UTXOs first
         - **Random Improve**: Balances between reducing fragmentation and privacy
 
-        If not set, defaults to the Large First strategy.
+        If not set, defaults to the native Random Improve strategy.
 
         Args:
             coin_selector: The coin selection strategy to use.
@@ -235,7 +228,7 @@ class TxBuilder:
         Plutus scripts. This is essential for accurate fee calculation when
         transactions contain smart contracts.
 
-        If not set, defaults to using the provider's built-in evaluator.
+        If not set, uses cardano-c's native Plutus evaluator.
 
         Args:
             evaluator: The transaction evaluator to use.`
@@ -251,10 +244,37 @@ class TxBuilder:
             ...         return redeemers
             >>> builder.set_evaluator(MyEvaluator())
         """
-        self._evaluator_handle = TxEvaluatorHandle(evaluator)
-        evaluator_ptr = self._evaluator_handle.ptr
-        lib.cardano_tx_builder_set_tx_evaluator(self._ptr, evaluator_ptr)
+        from .evaluation.c_tx_evaluator_wrapper import CTxEvaluatorWrapper
+        handle = evaluator if isinstance(evaluator, CTxEvaluatorWrapper) else TxEvaluatorHandle(evaluator)
+        lib.cardano_tx_builder_set_tx_evaluator(self._ptr, handle.ptr)
+        self._evaluator_handle = handle
         return self
+
+    def _defer_redeemer(self, callback):
+        """Keep a callback alive until the native builder releases it."""
+        errors = self._deferred_errors
+
+        @ffi.callback("cardano_deferred_redeemer_fn_t")
+        def resolve(_context, draft, inputs, out):
+            from ..transaction import Transaction
+            from ..common.utxo_list import UtxoList
+            try:
+                lib.cardano_transaction_ref(draft)
+                transaction = Transaction(draft)
+                lib.cardano_utxo_list_ref(inputs)
+                resolved = UtxoList(inputs)
+                value = _to_plutus_data_ptr(callback(transaction, list(resolved)))
+                if value is None:
+                    raise TypeError("A deferred redeemer must return Plutus data")
+                lib.cardano_plutus_data_ref(value._ptr)
+                out[0] = value._ptr
+                return 0
+            except Exception as exc:  # pylint: disable=broad-except
+                errors.append(exc)
+                return 1
+
+        self._deferred_callbacks.append(resolve)
+        return resolve
 
     def set_network_id(self, network_id: NetworkId) -> TxBuilder:
         """
@@ -776,7 +796,7 @@ class TxBuilder:
     def add_input(
         self,
         utxo: "Utxo",
-        redeemer: Optional["PlutusDataLike"] = None,
+        redeemer: Optional[Union["PlutusDataLike", Callable[["Transaction", List["Utxo"]], "PlutusDataLike"]]] = None,
         datum: Optional["PlutusDataLike"] = None,
     ) -> TxBuilder:
         """
@@ -806,6 +826,12 @@ class TxBuilder:
             >>> # Spend from a script address
             >>> builder.add_input(script_utxo, redeemer=spend_redeemer)
         """
+        if callable(redeemer):
+            datum_obj = _to_plutus_data_ptr(datum)
+            lib.cardano_tx_builder_add_input_with_deferred_redeemer(
+                self._ptr, utxo._ptr, self._defer_redeemer(redeemer), ffi.NULL,
+                datum_obj._ptr if datum_obj is not None else ffi.NULL)
+            return self
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         datum_obj = _to_plutus_data_ptr(datum)
 
@@ -867,7 +893,7 @@ class TxBuilder:
         policy_id: Union["Blake2bHash", str, bytes],
         asset_name: Union["AssetName", str, bytes],
         amount: int,
-        redeemer: Optional["PlutusDataLike"] = None,
+        redeemer: Optional[Union["PlutusDataLike", Callable[["Transaction", List["Utxo"]], "PlutusDataLike"]]] = None,
     ) -> TxBuilder:
         """
         Mint or burn native tokens.
@@ -898,7 +924,7 @@ class TxBuilder:
             >>> # Burn 50 tokens
             >>> builder.mint_token(policy_id, asset_name, amount=-50, redeemer=burn_redeemer)
         """
-        redeemer_obj = _to_plutus_data_ptr(redeemer)
+        redeemer_obj = _to_plutus_data_ptr(None if callable(redeemer) else redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
         if isinstance(policy_id, Blake2bHash):
@@ -922,6 +948,12 @@ class TxBuilder:
             name_obj = AssetName.from_bytes(bytes(asset_name))
         else:
             raise TypeError("asset_name must be AssetName, string, or bytes")
+
+        if callable(redeemer):
+            lib.cardano_tx_builder_mint_token_with_deferred_redeemer(
+                self._ptr, policy_obj._ptr, name_obj._ptr, amount,
+                self._defer_redeemer(redeemer), ffi.NULL)
+            return self
 
         lib.cardano_tx_builder_mint_token(
             self._ptr,
@@ -1028,6 +1060,8 @@ class TxBuilder:
             script = Script.from_plutus_v2(script)
         elif isinstance(script, PlutusV3Script):
             script = Script.from_plutus_v3(script)
+        elif isinstance(script, PlutusV4Script):
+            script = Script.from_plutus_v4(script)
         else:
             if not isinstance(script, Script):
                 raise TypeError(
@@ -1168,7 +1202,7 @@ class TxBuilder:
         self,
         reward_address: Union["RewardAddress", str],
         amount: int,
-        redeemer: Optional["PlutusDataLike"] = None,
+        redeemer: Optional[Union["PlutusDataLike", Callable[["Transaction", List["Utxo"]], "PlutusDataLike"]]] = None,
     ) -> TxBuilder:
         """
         Withdraw staking rewards.
@@ -1189,6 +1223,11 @@ class TxBuilder:
             >>> rewards = provider.get_rewards(stake_address)
             >>> builder.withdraw_rewards("stake_test1...", rewards)
         """
+        if callable(redeemer):
+            address = _to_reward_address(reward_address)
+            lib.cardano_tx_builder_withdraw_rewards_with_deferred_redeemer(
+                self._ptr, address._ptr, amount, self._defer_redeemer(redeemer), ffi.NULL)
+            return self
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
 
@@ -1533,7 +1572,7 @@ class TxBuilder:
         voter: "Voter",
         action_id: "GovernanceActionId",
         voting_procedure: "VotingProcedure",
-        redeemer: Optional["PlutusDataLike"] = None,
+        redeemer: Optional[Union["PlutusDataLike", Callable[["Transaction", List["Utxo"]], "PlutusDataLike"]]] = None,
     ) -> TxBuilder:
         """
         Cast a governance vote on a proposal.
@@ -1579,6 +1618,11 @@ class TxBuilder:
             >>> # Cast the vote
             >>> builder.vote(voter, proposal_action_id, procedure)
         """
+        if callable(redeemer):
+            lib.cardano_tx_builder_vote_with_deferred_redeemer(
+                self._ptr, voter._ptr, action_id._ptr, voting_procedure._ptr,
+                self._defer_redeemer(redeemer), ffi.NULL)
+            return self
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
         lib.cardano_tx_builder_vote(
@@ -1593,7 +1637,7 @@ class TxBuilder:
     def add_certificate(
         self,
         certificate: "Certificate",
-        redeemer: Optional["PlutusDataLike"] = None,
+        redeemer: Optional[Union["PlutusDataLike", Callable[["Transaction", List["Utxo"]], "PlutusDataLike"]]] = None,
     ) -> TxBuilder:
         """
         Add a certificate to the transaction.
@@ -1616,6 +1660,10 @@ class TxBuilder:
             >>> cert = Certificate(stake_reg)
             >>> builder.add_certificate(cert)
         """
+        if callable(redeemer):
+            lib.cardano_tx_builder_add_certificate_with_deferred_redeemer(
+                self._ptr, certificate._ptr, self._defer_redeemer(redeemer), ffi.NULL)
+            return self
         redeemer_obj = _to_plutus_data_ptr(redeemer)
         redeemer_ptr = redeemer_obj._ptr if redeemer_obj is not None else ffi.NULL
         lib.cardano_tx_builder_add_certificate(self._ptr, certificate._ptr, redeemer_ptr)
@@ -2100,7 +2148,13 @@ class TxBuilder:
         from ..transaction import Transaction
 
         tx_out = ffi.new("cardano_transaction_t**")
+        self._deferred_errors.clear()
         err = lib.cardano_tx_builder_build(self._ptr, tx_out)
+        if self._deferred_errors:
+            lib.cardano_transaction_unref(tx_out)
+            cause = self._deferred_errors.pop()
+            self._deferred_errors.clear()
+            raise CardanoError(f"Deferred redeemer failed: {cause}") from cause
 
         if err != 0:
             error_msg = self.get_last_error()

@@ -29,6 +29,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PlutusV1ScriptSet": (".plutus_v1_script_set", "PlutusV1ScriptSet"),
     "PlutusV2ScriptSet": (".plutus_v2_script_set", "PlutusV2ScriptSet"),
     "PlutusV3ScriptSet": (".plutus_v3_script_set", "PlutusV3ScriptSet"),
+    "PlutusV4ScriptSet": (".plutus_v4_script_set", "PlutusV4ScriptSet"),
     "PlutusDataSet": (".plutus_data_set", "PlutusDataSet"),
     "WitnessSet": (".witness_set", "WitnessSet"),
 }
@@ -64,6 +65,7 @@ __all__ = [
     "PlutusV1ScriptSet",
     "PlutusV2ScriptSet",
     "PlutusV3ScriptSet",
+    "PlutusV4ScriptSet",
     "Redeemer",
     "RedeemerList",
     "RedeemerTag",

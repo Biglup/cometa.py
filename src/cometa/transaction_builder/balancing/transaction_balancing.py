@@ -135,6 +135,7 @@ def balance_transaction(
         collateral_utxo_ptr,
         collateral_change_ptr,
         evaluator_ptr,
+        ffi.NULL,  # Deferred redeemers are managed by TxBuilder.
     )
     if err != 0:
         raise CardanoError(f"Failed to balance transaction (error code: {err})")

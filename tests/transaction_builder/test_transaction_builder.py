@@ -230,7 +230,7 @@ class TestCoinSelector:
         target = Value.from_coin(3000000)
 
         # Select coins (new signature: pre_selected, available, target)
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -547,3 +547,9 @@ class TestAllExports:
 
         for name in tb.__all__:
             assert hasattr(tb, name), f"Missing export: {name}"
+
+
+def _selection_context():
+    from cometa import Address, ProtocolParameters
+    return {"change_address": Address.from_string("addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp"),
+            "protocol_params": ProtocolParameters.new()}

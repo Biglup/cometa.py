@@ -10,6 +10,8 @@ Imports are deferred until the name is actually accessed.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "CoinSelectionRequest": (".transaction_builder.coin_selection", "CoinSelectionRequest"),
+    "CoinSelectionResult": (".transaction_builder.coin_selection", "CoinSelectionResult"),
     # Common
     "ProtocolVersion": (".common.protocol_version", "ProtocolVersion"),
     "BigInt": (".common.bigint", "BigInt"),
@@ -95,6 +97,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PlutusV1ScriptList": (".auxiliary_data", "PlutusV1ScriptList"),
     "PlutusV2ScriptList": (".auxiliary_data", "PlutusV2ScriptList"),
     "PlutusV3ScriptList": (".auxiliary_data", "PlutusV3ScriptList"),
+    "PlutusV4ScriptList": (".auxiliary_data", "PlutusV4ScriptList"),
     "TransactionMetadata": (".auxiliary_data", "TransactionMetadata"),
     # Address
     "Address": (".address", "Address"),
@@ -148,6 +151,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PlutusV1Script": (".scripts", "PlutusV1Script"),
     "PlutusV2Script": (".scripts", "PlutusV2Script"),
     "PlutusV3Script": (".scripts", "PlutusV3Script"),
+    "PlutusV4Script": (".scripts", "PlutusV4Script"),
     "PlutusScriptLike": (".scripts", "PlutusScriptLike"),
     # Protocol Params
     "ExUnitPrices": (".protocol_params", "ExUnitPrices"),
@@ -210,6 +214,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PlutusV1ScriptSet": (".witness_set", "PlutusV1ScriptSet"),
     "PlutusV2ScriptSet": (".witness_set", "PlutusV2ScriptSet"),
     "PlutusV3ScriptSet": (".witness_set", "PlutusV3ScriptSet"),
+    "PlutusV4ScriptSet": (".witness_set", "PlutusV4ScriptSet"),
     "Redeemer": (".witness_set", "Redeemer"),
     "RedeemerList": (".witness_set", "RedeemerList"),
     "RedeemerTag": (".witness_set", "RedeemerTag"),
@@ -277,11 +282,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ProviderProtocol": (".providers", "ProviderProtocol"),
     "BlockfrostProvider": (".providers", "BlockfrostProvider"),
     "ProviderTxEvaluator": (".providers", "ProviderTxEvaluator"),
-    # Aiken
-    "AikenTxEvaluator": (".aiken", "AikenTxEvaluator"),
-    "TxEvaluationError": (".aiken", "TxEvaluationError"),
-    "apply_params_to_script": (".aiken", "apply_params_to_script"),
-    "ApplyParamsError": (".aiken", "ApplyParamsError"),
+    # Native script utilities
+    "NativeTxEvaluator": (".transaction_builder.evaluation", "NativeTxEvaluator"),
+    "apply_params_to_script": (".scripts", "apply_params_to_script"),
+    "ApplyParamsError": (".scripts", "ApplyParamsError"),
 }
 
 _cache: dict[str, Any] = {}
@@ -308,6 +312,8 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "CoinSelectionRequest",
+    "CoinSelectionResult",
     # Common
     "Anchor",
     "BigInt",
@@ -392,6 +398,7 @@ __all__ = [
     "PlutusV1ScriptList",
     "PlutusV2ScriptList",
     "PlutusV3ScriptList",
+    "PlutusV4ScriptList",
     "TransactionMetadata",
     # Address
     "Address",
@@ -445,6 +452,7 @@ __all__ = [
     "PlutusV1Script",
     "PlutusV2Script",
     "PlutusV3Script",
+    "PlutusV4Script",
     "PlutusScriptLike",
     # Protocol Params
     "ExUnitPrices",
@@ -508,6 +516,7 @@ __all__ = [
     "PlutusV1ScriptSet",
     "PlutusV2ScriptSet",
     "PlutusV3ScriptSet",
+    "PlutusV4ScriptSet",
     "Redeemer",
     "RedeemerList",
     "RedeemerTag",
@@ -577,9 +586,8 @@ __all__ = [
     # Message Signing
     "cip8_sign",
     "cip8_sign_with_key_hash",
-    # Aiken
-    "AikenTxEvaluator",
-    "TxEvaluationError",
+    # Native script utilities
+    "NativeTxEvaluator",
     "apply_params_to_script",
     "ApplyParamsError",
 ]

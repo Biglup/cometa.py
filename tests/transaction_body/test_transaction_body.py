@@ -451,7 +451,7 @@ class TestTransactionBodyRequiredSigners:
     def test_set_required_signers_with_set(self):
         body = create_default_transaction_body()
         signer_set = Blake2bHashSet()
-        hash_obj = Blake2bHash.from_hex("6199186adb51974690d7247d2646097d2c62763b16fb7ed3f9f55d38abc123de")
+        hash_obj = Blake2bHash.from_hex("6199186adb51974690d7247d2646097d2c62763b16fb7ed3f9f55d38")
         signer_set.add(hash_obj)
 
         body.required_signers = signer_set
@@ -460,7 +460,7 @@ class TestTransactionBodyRequiredSigners:
 
     def test_set_required_signers_with_list(self):
         body = create_default_transaction_body()
-        hash_obj = Blake2bHash.from_hex("6199186adb51974690d7247d2646097d2c62763b16fb7ed3f9f55d38abc123de")
+        hash_obj = Blake2bHash.from_hex("6199186adb51974690d7247d2646097d2c62763b16fb7ed3f9f55d38")
 
         body.required_signers = [hash_obj]
 

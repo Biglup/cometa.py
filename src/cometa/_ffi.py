@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from __future__ import annotations
+
 import importlib.util
 import os
 import sys
@@ -188,3 +190,12 @@ def _find_native_lib() -> str:
 
 _lib_path = _find_native_lib()
 lib = ffi.dlopen(_lib_path)
+
+try:
+    _native_version = ffi.string(lib.cardano_get_lib_version()).decode("ascii")
+except (AttributeError, UnicodeDecodeError) as exc:
+    raise ImportError(f"Cannot determine cardano-c version from {_lib_path}") from exc
+if _native_version.split(".", 1)[0] != "2":
+    raise ImportError(
+        f"Cometa 2 requires cardano-c 2.x; found {_native_version} at {_lib_path}"
+    )

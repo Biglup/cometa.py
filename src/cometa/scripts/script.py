@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from .plutus_scripts.plutus_v1_script import PlutusV1Script
     from .plutus_scripts.plutus_v2_script import PlutusV2Script
     from .plutus_scripts.plutus_v3_script import PlutusV3Script
+    from .plutus_scripts.plutus_v4_script import PlutusV4Script
 
     NativeScriptLike = Union[
         NativeScript,
@@ -57,12 +58,14 @@ if TYPE_CHECKING:
         PlutusV1Script,
         PlutusV2Script,
         PlutusV3Script,
+        PlutusV4Script,
     ]
 
     PlutusScriptLike = Union[
         PlutusV1Script,
         PlutusV2Script,
         PlutusV3Script,
+        PlutusV4Script,
     ]
 else:
     # At runtime, we use Any to avoid circular imports
@@ -215,6 +218,28 @@ class Script:
         return cls(out[0])
 
     @classmethod
+    def from_plutus_v4(cls, plutus_v4_script: PlutusV4Script) -> Script:
+        """
+        Creates a Script from a PlutusV4Script.
+
+        Args:
+            plutus_v4_script: The PlutusV4Script to wrap.
+
+        Returns:
+            A new Script instance.
+
+        Raises:
+            CardanoError: If creation fails.
+        """
+        out = ffi.new("cardano_script_t**")
+        err = lib.cardano_script_new_plutus_v4(plutus_v4_script._ptr, out)
+        if err != 0:
+            raise CardanoError(
+                f"Failed to create Script from Plutus V4 (error code: {err})"
+            )
+        return cls(out[0])
+
+    @classmethod
     def from_cbor(cls, reader: CborReader) -> Script:
         """
         Deserializes a Script from CBOR data.
@@ -358,6 +383,24 @@ class Script:
         if err != 0:
             raise CardanoError(f"Failed to convert to Plutus V3 (error code: {err})")
         return PlutusV3Script(out[0])
+
+    def to_plutus_v4(self) -> PlutusV4Script:
+        """
+        Converts this script to a PlutusV4Script.
+
+        Returns:
+            The PlutusV4Script if this is a Plutus V4 script.
+
+        Raises:
+            CardanoError: If conversion fails or type mismatch.
+        """
+        from .plutus_scripts.plutus_v4_script import PlutusV4Script
+
+        out = ffi.new("cardano_plutus_v4_script_t**")
+        err = lib.cardano_script_to_plutus_v4(self._ptr, out)
+        if err != 0:
+            raise CardanoError(f"Failed to convert to Plutus V4 (error code: {err})")
+        return PlutusV4Script(out[0])
 
     def __eq__(self, other: object) -> bool:
         """Checks equality with another Script."""

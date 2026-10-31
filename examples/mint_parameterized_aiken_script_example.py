@@ -3,7 +3,7 @@ Mint with Parameterized Aiken Script Example (Gift Card Contract)
 
 This example demonstrates how to:
 1. Apply parameters to a parameterized Aiken script (Gift Card contract)
-2. Use the AikenTxEvaluator for transaction evaluation
+2. Use the NativeTxEvaluator for transaction evaluation
 3. Mint an NFT using the parameterized script
 
 The Gift Card contract is a parameterized minting policy that requires:
@@ -41,7 +41,7 @@ from cometa import (
     PlutusData,
     PlutusList,
     SlotConfig,
-    AikenTxEvaluator,
+    NativeTxEvaluator,
     apply_params_to_script,
 )
 
@@ -115,15 +115,11 @@ def build_output_reference(tx_hash: str, output_index: int) -> ConstrPlutusData:
     return output_ref
 
 
-def create_aiken_evaluator(provider) -> AikenTxEvaluator:
-    """Creates an AikenTxEvaluator using protocol parameters from the provider."""
+def create_native_evaluator(provider) -> NativeTxEvaluator:
+    """Creates an NativeTxEvaluator using protocol parameters from the provider."""
     protocol_params = provider.get_parameters()
 
-    return AikenTxEvaluator(
-        cost_models=protocol_params.cost_models,
-        slot_config=SlotConfig.preprod(),
-        max_tx_ex_units=protocol_params.max_tx_ex_units,
-    )
+    return NativeTxEvaluator.from_parameters(protocol_params, SlotConfig.preprod())
 
 
 def sign_and_submit(wallet, provider, transaction) -> None:
@@ -154,7 +150,7 @@ def mint_gift_card(wallet, provider, script, redeemer, asset_id: bytes, param_ut
     print("Minting Gift Card NFT...")
 
     builder = wallet.create_transaction_builder()
-    builder.set_evaluator(create_aiken_evaluator(provider))
+    builder.set_evaluator(create_native_evaluator(provider))
 
     addresses = wallet.get_used_addresses()
     address = addresses[0]
@@ -188,7 +184,7 @@ def burn_gift_card(wallet, provider, script, asset_id: bytes) -> None:
     print("Burning Gift Card NFT...")
 
     builder = wallet.create_transaction_builder()
-    builder.set_evaluator(create_aiken_evaluator(provider))
+    builder.set_evaluator(create_native_evaluator(provider))
 
     redeemer = ConstrPlutusData(1)
 
@@ -208,7 +204,7 @@ def main() -> None:
     print("Mint with Parameterized Aiken Script Example (Gift Card)")
     print("=" * 60)
     print("This example demonstrates applying parameters to an Aiken script")
-    print("and minting an NFT using the AikenTxEvaluator.")
+    print("and minting an NFT using the NativeTxEvaluator.")
     print()
 
     provider = BlockfrostProvider(

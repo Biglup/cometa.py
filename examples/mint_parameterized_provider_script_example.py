@@ -39,7 +39,7 @@ from cometa import (
     PlutusData,
     PlutusList,
 )
-from cometa.aiken import apply_params_to_script
+from cometa import apply_params_to_script
 
 GIFT_CARD_AIKEN_COMPILED_CODE = (
     "590221010000323232323232323232323223222232533300b32323232533300f3370e900018070008"

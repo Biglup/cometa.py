@@ -313,10 +313,11 @@ class TestUtxoListClone:
         assert len(cloned) == 2
 
     def test_utxo_list_clone_empty(self):
-        """Test cloning an empty UtxoList fails."""
+        """Test cloning an empty UtxoList returns an independent empty list."""
         utxo_list = UtxoList()
-        with pytest.raises(CardanoError, match="Failed to clone UtxoList"):
-            utxo_list.clone()
+        cloned = utxo_list.clone()
+        assert len(cloned) == 0
+        assert cloned._ptr != utxo_list._ptr
 
     def test_utxo_list_clone_independence(self):
         """Test that cloned list is independent."""
