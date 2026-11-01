@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0rc3
+
+- Bundle cardano-c 2.0.0-rc.6 on all supported platforms.
+- **Breaking JSON change:** transaction inspection now emits all key and script credentials in `guards`, including Conway key-only guards. `required_signers` is no longer emitted in JSON. CBOR, signing, and Python's `required_signers` property are unchanged.
+
 ## 2.0.0rc2
 
 - Upgrade bundled native libraries and CFFI declarations to cardano-c 2.0.0-rc.5.
