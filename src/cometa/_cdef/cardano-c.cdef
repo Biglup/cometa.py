@@ -1289,6 +1289,7 @@ void cardano_governance_action_id_ref(cardano_governance_action_id_t* governance
 size_t cardano_governance_action_id_refcount(const cardano_governance_action_id_t* governance_action_id);
 void cardano_governance_action_id_set_last_error(cardano_governance_action_id_t* governance_action_id, const char* message);
 const char* cardano_governance_action_id_get_last_error(const cardano_governance_action_id_t* governance_action_id);
+cardano_error_t cardano_guard_set_to_cip116_json(const cardano_guard_set_t* value, cardano_json_writer_t* writer);
 cardano_error_t cardano_guard_set_new(cardano_guard_set_t** guard_set);
 cardano_error_t cardano_guard_set_from_cbor(cardano_cbor_reader_t* reader, cardano_guard_set_t** guard_set);
 cardano_error_t cardano_guard_set_to_cbor( const cardano_guard_set_t* guard_set, cardano_cbor_writer_t* writer);
@@ -2610,6 +2611,7 @@ uint64_t slot_to_begin_unix_time(uint64_t slot, const cardano_slot_config_t* con
 uint64_t unix_time_to_enclosing_slot(uint64_t unix_time, const cardano_slot_config_t* config);
 uint64_t cardano_compute_slot_from_unix_time(cardano_network_magic_t magic, uint64_t unix_time);
 uint64_t cardano_compute_unix_time_from_slot(cardano_network_magic_t magic, uint64_t slot);
+cardano_error_t cardano_sub_transaction_to_cip116_json(const cardano_sub_transaction_t* tx, cardano_json_writer_t* writer);
 cardano_error_t cardano_sub_transaction_new( cardano_sub_transaction_body_t* body, cardano_witness_set_t* witness_set, cardano_auxiliary_data_t* auxiliary_data, cardano_sub_transaction_t** sub_transaction);
 cardano_error_t cardano_sub_transaction_from_cbor(cardano_cbor_reader_t* reader, cardano_sub_transaction_t** sub_transaction);
 cardano_error_t cardano_sub_transaction_to_cbor( const cardano_sub_transaction_t* sub_transaction, cardano_cbor_writer_t* writer);
@@ -2657,6 +2659,7 @@ void cardano_transaction_ref(cardano_transaction_t* transaction);
 size_t cardano_transaction_refcount(const cardano_transaction_t* transaction);
 void cardano_transaction_set_last_error( cardano_transaction_t* transaction, const char* message);
 const char* cardano_transaction_get_last_error( const cardano_transaction_t* transaction);
+cardano_error_t cardano_account_balance_interval_to_cip116_json(const cardano_account_balance_interval_t* value, cardano_json_writer_t* writer);
 cardano_error_t cardano_account_balance_interval_new( const uint64_t* inclusive_lower_bound, const uint64_t* exclusive_upper_bound, cardano_account_balance_interval_t** account_balance_interval);
 cardano_error_t cardano_account_balance_interval_new_exact( uint64_t exact_balance, cardano_account_balance_interval_t** account_balance_interval);
 cardano_error_t cardano_account_balance_interval_from_cbor(cardano_cbor_reader_t* reader, cardano_account_balance_interval_t** account_balance_interval);
@@ -2670,6 +2673,7 @@ void cardano_account_balance_interval_ref(cardano_account_balance_interval_t* ac
 size_t cardano_account_balance_interval_refcount(const cardano_account_balance_interval_t* account_balance_interval);
 void cardano_account_balance_interval_set_last_error(cardano_account_balance_interval_t* account_balance_interval, const char* message);
 const char* cardano_account_balance_interval_get_last_error(const cardano_account_balance_interval_t* account_balance_interval);
+cardano_error_t cardano_account_balance_intervals_map_to_cip116_json(const cardano_account_balance_intervals_map_t* value, cardano_json_writer_t* writer);
 cardano_error_t cardano_account_balance_intervals_map_new(cardano_account_balance_intervals_map_t** account_balance_intervals_map);
 cardano_error_t cardano_account_balance_intervals_map_from_cbor(cardano_cbor_reader_t* reader, cardano_account_balance_intervals_map_t** account_balance_intervals_map);
 cardano_error_t cardano_account_balance_intervals_map_to_cbor( const cardano_account_balance_intervals_map_t* account_balance_intervals_map, cardano_cbor_writer_t* writer);
@@ -2686,6 +2690,7 @@ void cardano_account_balance_intervals_map_ref(cardano_account_balance_intervals
 size_t cardano_account_balance_intervals_map_refcount(const cardano_account_balance_intervals_map_t* account_balance_intervals_map);
 void cardano_account_balance_intervals_map_set_last_error(cardano_account_balance_intervals_map_t* account_balance_intervals_map, const char* message);
 const char* cardano_account_balance_intervals_map_get_last_error(const cardano_account_balance_intervals_map_t* account_balance_intervals_map);
+cardano_error_t cardano_direct_deposit_map_to_cip116_json(const cardano_direct_deposit_map_t* value, cardano_json_writer_t* writer);
 cardano_error_t cardano_direct_deposit_map_new(cardano_direct_deposit_map_t** direct_deposit_map);
 cardano_error_t cardano_direct_deposit_map_from_cbor(cardano_cbor_reader_t* reader, cardano_direct_deposit_map_t** direct_deposit_map);
 cardano_error_t cardano_direct_deposit_map_to_cbor( const cardano_direct_deposit_map_t* direct_deposit_map, cardano_cbor_writer_t* writer);
@@ -2702,6 +2707,7 @@ void cardano_direct_deposit_map_ref(cardano_direct_deposit_map_t* direct_deposit
 size_t cardano_direct_deposit_map_refcount(const cardano_direct_deposit_map_t* direct_deposit_map);
 void cardano_direct_deposit_map_set_last_error(cardano_direct_deposit_map_t* direct_deposit_map, const char* message);
 const char* cardano_direct_deposit_map_get_last_error(const cardano_direct_deposit_map_t* direct_deposit_map);
+cardano_error_t cardano_required_guards_map_to_cip116_json(const cardano_required_guards_map_t* value, cardano_json_writer_t* writer);
 cardano_error_t cardano_required_guards_map_new(cardano_required_guards_map_t** required_guards_map);
 cardano_error_t cardano_required_guards_map_from_cbor(cardano_cbor_reader_t* reader, cardano_required_guards_map_t** required_guards_map);
 cardano_error_t cardano_required_guards_map_to_cbor( const cardano_required_guards_map_t* required_guards_map, cardano_cbor_writer_t* writer);
@@ -2717,6 +2723,7 @@ void cardano_required_guards_map_ref(cardano_required_guards_map_t* required_gua
 size_t cardano_required_guards_map_refcount(const cardano_required_guards_map_t* required_guards_map);
 void cardano_required_guards_map_set_last_error(cardano_required_guards_map_t* required_guards_map, const char* message);
 const char* cardano_required_guards_map_get_last_error(const cardano_required_guards_map_t* required_guards_map);
+cardano_error_t cardano_sub_transaction_body_to_cip116_json(const cardano_sub_transaction_body_t* transaction_body, cardano_json_writer_t* writer);
 cardano_error_t cardano_sub_transaction_body_new( cardano_transaction_input_set_t* inputs, cardano_transaction_output_list_t* outputs, const uint64_t* ttl, cardano_sub_transaction_body_t** sub_transaction_body);
 cardano_error_t cardano_sub_transaction_body_from_cbor(cardano_cbor_reader_t* reader, cardano_sub_transaction_body_t** sub_transaction_body);
 cardano_error_t cardano_sub_transaction_body_to_cbor( const cardano_sub_transaction_body_t* sub_transaction_body, cardano_cbor_writer_t* writer);
@@ -2765,6 +2772,7 @@ void cardano_sub_transaction_body_ref(cardano_sub_transaction_body_t* sub_transa
 size_t cardano_sub_transaction_body_refcount(const cardano_sub_transaction_body_t* sub_transaction_body);
 void cardano_sub_transaction_body_set_last_error(cardano_sub_transaction_body_t* sub_transaction_body, const char* message);
 const char* cardano_sub_transaction_body_get_last_error(const cardano_sub_transaction_body_t* sub_transaction_body);
+cardano_error_t cardano_sub_transaction_set_to_cip116_json(const cardano_sub_transaction_set_t* value, cardano_json_writer_t* writer);
 cardano_error_t cardano_sub_transaction_set_new(cardano_sub_transaction_set_t** sub_transaction_set);
 cardano_error_t cardano_sub_transaction_set_from_cbor(cardano_cbor_reader_t* reader, cardano_sub_transaction_set_t** sub_transaction_set);
 cardano_error_t cardano_sub_transaction_set_to_cbor( const cardano_sub_transaction_set_t* sub_transaction_set, cardano_cbor_writer_t* writer);

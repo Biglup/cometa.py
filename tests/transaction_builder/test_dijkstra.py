@@ -1,6 +1,7 @@
 """Dijkstra transaction flows through the public Python API and native evaluator."""
 
 import gc
+import json
 
 import pytest
 
@@ -63,6 +64,15 @@ def test_direct_deposits_and_balance_constraints(params):
           .add_account_balance_interval(STAKE_ADDRESS, interval)
           .add_starting_account_balance_interval(STAKE_ADDRESS, exact).build())
     tx = Transaction.from_cbor(CborReader.from_hex(tx.serialize_to_cbor()))
+    inspected = json.loads(tx.serialize_to_json())["body"]
+    assert inspected["direct_deposits"] == [{"key": STAKE_ADDRESS, "value": "5000000"}]
+    assert inspected["account_balance_intervals"] == [{
+        "key": STAKE_ADDRESS,
+        "value": {"tag": "range", "inclusive_lower_bound": "1000000", "exclusive_upper_bound": "10000000"},
+    }]
+    assert inspected["starting_account_balance_intervals"] == [{
+        "key": STAKE_ADDRESS, "value": {"tag": "exact", "value": "2000000"},
+    }]
     assert tx.body.direct_deposits == {STAKE_ADDRESS: 5_000_000}
     assert tx.body.account_balance_intervals[STAKE_ADDRESS].inclusive_lower_bound == 1_000_000
     assert tx.body.account_balance_intervals[STAKE_ADDRESS].exclusive_upper_bound == 10_000_000
@@ -104,6 +114,10 @@ def test_signed_intent_roundtrip_and_batch_value_conservation(params):
     assert sub.id.to_hex() == original_id
     assert sub.body.required_top_level_guards[0][1].to_int() == 42
     tx = batcher(params).add_guard(credential).add_sub_transaction(sub, [party]).build()
+    inspected = json.loads(tx.serialize_to_json())["body"]["sub_transactions"]
+    assert len(inspected) == 1
+    assert inspected[0]["body"]["required_top_level_guards"][0]["value"] == {"tag": "integer", "value": "42"}
+    assert inspected[0]["witness_set"]
     included = tx.body.sub_transactions[0]
     assert included.serialize_to_cbor() == encoded
     witness = included.witness_set.vkeys[0]
