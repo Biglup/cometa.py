@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0rc2
+
+- Upgrade bundled native libraries and CFFI declarations to cardano-c 2.0.0-rc.5.
+- Include Dijkstra fields, nested witnesses and auxiliary data in transaction JSON inspection.
+
 ## 2.0.0rc1
 
 - Upgrade all bundled platforms and CFFI declarations to cardano-c 2.0.0-rc.4.
