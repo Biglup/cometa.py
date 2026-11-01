@@ -50,19 +50,72 @@ unsigned_tx = (
 
 <hr>
 
-## Native evaluation and Dijkstra
+## Dijkstra Era Support
 
-`TxBuilder` evaluates scripts locally with cardano-c's virtual machine. Aiken's
-runtime library is no longer bundled or required. `apply_params_to_script` remains
-available from `cometa` and uses the same native library.
+Dijkstra introduces Plutus V4. Cometa provides `PlutusV4Script`, V4 witness sets
+and script lists, with local evaluation through cardano-c's virtual machine.
+V4 transactions require protocol version 12 and the network's V4 cost model.
 
-The candidate adds `PlutusV4Script`, V4 witness sets and script lists. V4 execution
-requires Dijkstra protocol parameters (major version 12); use the target network's
-parameters when building transactions. The Python API does not yet expose
-Dijkstra's sub-transaction builders, guards or account-balance intervals.
+### Build a Plutus V4 transaction
+
+Use the network's protocol parameters and slot configuration, the UTxO locked by
+your validator, and wallet UTxOs for fees and collateral. `validator_cbor_hex` is
+the compiled, CBOR-wrapped Plutus V4 validator.
+
+```python
+from cometa import PlutusV4Script, Script, TxBuilder
+
+script = Script.from_plutus_v4(PlutusV4Script.from_hex(validator_cbor_hex))
+
+builder = (
+    TxBuilder(protocol_params, slot_config)
+    .set_utxos(wallet_utxos)
+    .set_change_address(change_address)
+    .set_collateral_utxos(collateral_utxos)
+    .set_collateral_change_address(change_address)
+    .add_script(script)
+)
+
+transaction = (
+    builder
+    .add_input(script_utxo, redeemer=0)
+    .send_lovelace(recipient_address, 2_000_000)
+    .expires_in(3600)
+    .build()
+)
+```
+
+The builder evaluates the validator locally and includes its execution budget in
+the fee. Replace `0` with the redeemer expected by your validator, then sign and
+submit the transaction as usual.
+
+### Evaluate a transaction locally
+
+For an existing transaction, use `NativeTxEvaluator` with the same network
+parameters and the UTxOs referenced by the transaction:
+
+```python
+from cometa import NativeTxEvaluator
+
+evaluator = NativeTxEvaluator.from_parameters(protocol_params, slot_config)
+redeemers = evaluator.evaluate(transaction, resolved_inputs)
+
+for redeemer in redeemers:
+    print(redeemer.tag, redeemer.index, redeemer.ex_units)
+```
+
+Script parameters can also be applied locally before creating the V4 script:
+
+```python
+from cometa import apply_params_to_script, PlutusV4Script
+
+parameterized_hex = apply_params_to_script([42], parameterized_validator_cbor_hex)
+validator = PlutusV4Script.from_hex(parameterized_hex)
+```
 
 ### Deferred redeemers
 
+Deferred redeemers are available for both Conway and Dijkstra transactions.
 Pass a callback to `add_input`, `mint_token`, `withdraw_rewards`, `vote` or
 `add_certificate` when the redeemer depends on the balanced transaction:
 
@@ -83,17 +136,6 @@ tx = builder.build()
 Callbacks receive a `Transaction` and a list of `Utxo` objects. Treat the draft as
 read-only and keep the callback deterministic: balancing may call it several times.
 Callback exceptions are reported by `build()` with the original exception as their cause.
-
-### Migrating from 1.2
-
-- Remove imports from `cometa.aiken`. Import `apply_params_to_script` from `cometa`.
-- Remove explicit `AikenTxEvaluator` configuration to use the builder's native default.
-  Use `NativeTxEvaluator.from_parameters(protocol_params, slot_config)` for standalone evaluation.
-- Direct native coin selection now requires `change_address` and `protocol_params`
-  keyword arguments. `select_with_context(CoinSelectionRequest(...))` also returns change outputs.
-  Existing Python selectors implementing `select(pre_selected, available, target)` still work.
-- System installations must supply cardano-c 2.x. The bundled Linux x86-64/ARM64
-  wheels require glibc 2.33 or newer; bundled macOS wheels require macOS 26 or newer.
 
 ## **Conway Era Support**
 
@@ -118,6 +160,10 @@ You can install Cometa.py using pip:
 ```bash
 pip install biglup-cometa
 ```
+
+The 2.0 binary wheels require glibc 2.33 or newer on Linux x86-64/ARM64, or
+macOS 26 or newer on macOS. Source installations require a compatible cardano-c
+2.x library.
 
 Once installed, you can import it into your application:
 
