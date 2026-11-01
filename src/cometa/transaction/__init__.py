@@ -18,6 +18,7 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "SubTransaction": (".sub_transaction", "SubTransaction"),
     "Transaction": (".transaction", "Transaction"),
 }
 
@@ -45,5 +46,6 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "SubTransaction",
     "Transaction",
 ]

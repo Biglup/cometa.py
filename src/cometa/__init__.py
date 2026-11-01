@@ -10,6 +10,11 @@ Imports are deferred until the name is actually accessed.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "ScriptRequireGuard": (".scripts.native_scripts.script_require_guard", "ScriptRequireGuard"),
+    "SubTransactionBody": (".transaction_body.sub_transaction_body", "SubTransactionBody"),
+    "SubTransaction": (".transaction.sub_transaction", "SubTransaction"),
+    "AccountBalanceInterval": (".transaction_body.account_balance_interval", "AccountBalanceInterval"),
+    "SubTransactionBuilder": (".transaction_builder.sub_transaction_builder", "SubTransactionBuilder"),
     "CoinSelectionRequest": (".transaction_builder.coin_selection", "CoinSelectionRequest"),
     "CoinSelectionResult": (".transaction_builder.coin_selection", "CoinSelectionResult"),
     # Common
@@ -312,6 +317,11 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "ScriptRequireGuard",
+    "SubTransactionBody",
+    "SubTransaction",
+    "AccountBalanceInterval",
+    "SubTransactionBuilder",
     "CoinSelectionRequest",
     "CoinSelectionResult",
     # Common

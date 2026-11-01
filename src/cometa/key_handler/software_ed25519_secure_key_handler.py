@@ -27,7 +27,7 @@ from ..cryptography.ed25519_public_key import Ed25519PublicKey
 from ..cryptography.emip3 import emip3_encrypt, emip3_decrypt
 from ..witness_set.vkey_witness import VkeyWitness
 from ..witness_set.vkey_witness_set import VkeyWitnessSet
-from ..transaction import Transaction
+from ..transaction import Transaction, SubTransaction
 
 
 class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
@@ -197,7 +197,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
 
         return bytes(buffer)
 
-    def sign_transaction(self, transaction: Transaction) -> VkeyWitnessSet:
+    def sign_transaction(self, transaction: Transaction | SubTransaction) -> VkeyWitnessSet:
         """
         Signs a transaction using the securely stored Ed25519 private key.
 
@@ -298,3 +298,7 @@ class SoftwareEd25519SecureKeyHandler(Ed25519SecureKeyHandler):
         finally:
             if isinstance(decrypted_key, bytearray):
                 memzero(decrypted_key)
+
+    def sign_sub_transaction(self, transaction: SubTransaction) -> VkeyWitnessSet:
+        """Sign the sub-transaction body hash before it is included in a batch."""
+        return self.sign_transaction(transaction)

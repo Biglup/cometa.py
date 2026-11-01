@@ -26,6 +26,7 @@ from .native_script_type import NativeScriptType
 
 if TYPE_CHECKING:
     from .script_pubkey import ScriptPubkey
+    from .script_require_guard import ScriptRequireGuard
     from .script_all import ScriptAll
     from .script_any import ScriptAny
     from .script_n_of_k import ScriptNOfK
@@ -410,3 +411,21 @@ class NativeScript:
         if not isinstance(other, NativeScript):
             return NotImplemented
         return bool(lib.cardano_native_script_equals(self._ptr, other._ptr))
+
+    @classmethod
+    def from_require_guard(cls, script: ScriptRequireGuard) -> NativeScript:
+        """Wrap a Dijkstra native guard requirement."""
+        out = ffi.new("cardano_native_script_t **")
+        err = lib.cardano_native_script_new_require_guard(script._ptr, out)
+        if err:
+            raise CardanoError(f"Failed to wrap guard script (error code: {err})")
+        return cls(out[0])
+
+    def to_require_guard(self) -> ScriptRequireGuard:
+        """Extract a guard requirement; fail if this native script has another kind."""
+        from .script_require_guard import ScriptRequireGuard
+        out = ffi.new("cardano_script_require_guard_t **")
+        err = lib.cardano_native_script_to_require_guard(self._ptr, out)
+        if err:
+            raise CardanoError(f"Not a guard script (error code: {err})")
+        return ScriptRequireGuard(out[0])

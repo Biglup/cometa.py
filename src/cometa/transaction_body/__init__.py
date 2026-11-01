@@ -18,6 +18,8 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "SubTransactionBody": (".sub_transaction_body", "SubTransactionBody"),
+    "AccountBalanceInterval": (".account_balance_interval", "AccountBalanceInterval"),
     "Value": (".value", "Value"),
     "TransactionInput": (".transaction_input", "TransactionInput"),
     "TransactionInputSet": (".transaction_input_set", "TransactionInputSet"),
@@ -50,6 +52,8 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "SubTransactionBody",
+    "AccountBalanceInterval",
     "Value",
     "TransactionInput",
     "TransactionInputSet",

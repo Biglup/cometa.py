@@ -6,6 +6,12 @@
 - Use cardano-c's native Plutus evaluator in transaction builders. Remove the Aiken
   evaluator, FFI declarations and runtime binaries. Script parameter application
   remains available as `cometa.apply_params_to_script`.
+- Add direct deposits, account balance intervals, key/script guards, native guard
+  scripts, and signed sub-transaction building and batching. Expose the new body
+  fields and sub-transaction signing through both software key handlers.
+- Support standalone evaluation of a selected sub-transaction in a batch.
+- Release native public-key and signature references after reading witness bytes.
+- Prevent runtime CFFI parser deadlocks during garbage collection in source installs.
 - Add `NativeTxEvaluator`, Plutus V4 scripts, script lists and witness sets.
 - Accept deferred redeemer callbacks for inputs, minting, withdrawals, votes and
   certificates. Callbacks receive transaction and UTxO objects.
@@ -22,6 +28,3 @@
   Linux x86-64/ARM64 wheels require glibc 2.33; macOS wheels require macOS 26.
 - Remove ARMv6 debug information while preserving executable sections and exports.
   Precompiled CFFI declarations remain included for fast startup on small devices.
-
-Dijkstra sub-transaction builders, guards and account-balance intervals are not
-exposed by this Python release.

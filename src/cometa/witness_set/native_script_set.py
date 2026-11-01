@@ -26,6 +26,7 @@ from ..cbor.cbor_writer import CborWriter
 
 if TYPE_CHECKING:
     from ..scripts.native_scripts.native_script import NativeScript
+    from ..scripts.native_scripts.script_require_guard import ScriptRequireGuard
     from ..scripts.native_scripts.script_pubkey import ScriptPubkey
     from ..scripts.native_scripts.script_all import ScriptAll
     from ..scripts.native_scripts.script_any import ScriptAny
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     NativeScriptLike = Union[
         NativeScript,
         ScriptPubkey,
+        ScriptRequireGuard,
         ScriptAll,
         ScriptAny,
         ScriptNOfK,
@@ -178,6 +180,7 @@ class NativeScriptSet(Set["NativeScript"]):
             TypeError: If the script type is not supported.
         """
         from ..scripts.native_scripts.native_script import NativeScript
+        from ..scripts.native_scripts.script_require_guard import ScriptRequireGuard
         from ..scripts.native_scripts.script_pubkey import ScriptPubkey
         from ..scripts.native_scripts.script_all import ScriptAll
         from ..scripts.native_scripts.script_any import ScriptAny
@@ -190,6 +193,8 @@ class NativeScriptSet(Set["NativeScript"]):
             native_script = script
         elif isinstance(script, ScriptPubkey):
             native_script = NativeScript.from_pubkey(script)
+        elif isinstance(script, ScriptRequireGuard):
+            native_script = NativeScript.from_require_guard(script)
         elif isinstance(script, ScriptAll):
             native_script = NativeScript.from_all(script)
         elif isinstance(script, ScriptAny):

@@ -73,3 +73,6 @@ class NativeScriptType(IntEnum):
     This script evaluates to true if the upper bound of the transaction
     validity interval is less than or equal to the specified slot.
     """
+
+    REQUIRE_GUARD = 6
+    """Requires a credential in the Dijkstra transaction guard set."""

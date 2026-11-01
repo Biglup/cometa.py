@@ -18,6 +18,7 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "SubTransactionBuilder": (".sub_transaction_builder", "SubTransactionBuilder"),
     # Fee computation functions
     "compute_transaction_fee": (".fee", "compute_transaction_fee"),
     "compute_min_ada_required": (".fee", "compute_min_ada_required"),
@@ -76,6 +77,7 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "SubTransactionBuilder",
     # Fee functions
     "compute_transaction_fee",
     "compute_min_ada_required",

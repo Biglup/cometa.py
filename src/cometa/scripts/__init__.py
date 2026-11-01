@@ -18,6 +18,7 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "ScriptRequireGuard": (".native_scripts", "ScriptRequireGuard"),
     "apply_params_to_script": (".script_util", "apply_params_to_script"),
     "ApplyParamsError": (".script_util", "ApplyParamsError"),
     "ScriptLanguage": (".script_language", "ScriptLanguage"),
@@ -67,6 +68,7 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "ScriptRequireGuard",
     "apply_params_to_script",
     "ApplyParamsError",
     # Script types

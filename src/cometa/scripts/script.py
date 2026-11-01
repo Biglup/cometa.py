@@ -26,6 +26,7 @@ from .script_language import ScriptLanguage
 
 if TYPE_CHECKING:
     from .native_scripts.native_script import NativeScript
+    from .native_scripts.script_require_guard import ScriptRequireGuard
     from .native_scripts.script_pubkey import ScriptPubkey
     from .native_scripts.script_all import ScriptAll
     from .native_scripts.script_any import ScriptAny
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     NativeScriptLike = Union[
         NativeScript,
         ScriptPubkey,
+        ScriptRequireGuard,
         ScriptAll,
         ScriptAny,
         ScriptNOfK,
@@ -50,6 +52,7 @@ if TYPE_CHECKING:
     ScriptLike = Union[
         NativeScript,
         ScriptPubkey,
+        ScriptRequireGuard,
         ScriptAll,
         ScriptAny,
         ScriptNOfK,
@@ -117,6 +120,7 @@ class Script:
             CardanoError: If creation fails.
         """
         from .native_scripts.native_script import NativeScript
+        from .native_scripts.script_require_guard import ScriptRequireGuard
         from .native_scripts.script_pubkey import ScriptPubkey
         from .native_scripts.script_all import ScriptAll
         from .native_scripts.script_any import ScriptAny
@@ -127,6 +131,8 @@ class Script:
         # Convert specific script types to NativeScript
         if isinstance(native_script, ScriptPubkey):
             native_script = NativeScript.from_pubkey(native_script)
+        elif isinstance(native_script, ScriptRequireGuard):
+            native_script = NativeScript.from_require_guard(native_script)
         elif isinstance(native_script, ScriptAll):
             native_script = NativeScript.from_all(native_script)
         elif isinstance(native_script, ScriptAny):

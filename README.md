@@ -52,9 +52,134 @@ unsigned_tx = (
 
 ## Dijkstra Era Support
 
-Dijkstra introduces Plutus V4. Cometa provides `PlutusV4Script`, V4 witness sets
-and script lists, with local evaluation through cardano-c's virtual machine.
-V4 transactions require protocol version 12 and the network's V4 cost model.
+Cometa supports Dijkstra transaction building with direct deposits into reward
+accounts, independently signed sub-transactions, key and script guards, account
+balance constraints, and Plutus V4. Use protocol version 12 parameters and the
+network's V4 cost model when evaluating V4 scripts.
+
+The examples below use `protocol_params` and `slot_config` from the target network.
+Wallet UTxOs, addresses, and key handlers belong to the parties participating in
+the transaction. Build these transactions for a Dijkstra network.
+
+### Direct account transfers
+
+Transfer 2 ADA from one registered reward account to another, with the wallet
+paying the fee:
+
+```python
+from cometa import TxBuilder
+
+transaction = (
+    TxBuilder(protocol_params, slot_config)
+    .set_utxos(wallet_utxos)
+    .set_change_address(change_address)
+    .withdraw_rewards(source_reward_address, 2_000_000)
+    .add_direct_deposit(destination_reward_address, 2_000_000)
+    .build()
+)
+```
+
+Sign with the source account's staking key and the keys for the wallet inputs.
+`add_direct_deposit()` credits the destination account without creating a UTxO.
+To fund the deposit from wallet UTxOs instead, omit `withdraw_rewards()`.
+Repeated deposits to the same account accumulate.
+
+### Build, sign, and batch sub-transactions
+
+A sub-transaction expresses a party's intent. Its inputs and outputs need not
+balance on their own, and it pays no fee or collateral. The enclosing transaction
+balances the whole batch. Here, `party_utxo` contains 10 ADA and the party requests
+12 ADA back; the batcher supplies the remaining 2 ADA and pays the fee.
+
+```python
+from cometa import SubTransactionBuilder, TxBuilder
+
+sub_transaction = (
+    SubTransactionBuilder(protocol_params, slot_config)
+    .add_input(party_utxo)
+    .send_lovelace(party_address, 12_000_000)
+    .require_top_level_guard(batcher_credential)
+    .build()
+)
+
+# party_keys is a SoftwareEd25519SecureKeyHandler for the input's payment key.
+sub_transaction.apply_vkey_witnesses(
+    party_keys.sign_sub_transaction(sub_transaction)
+)
+
+transaction = (
+    TxBuilder(protocol_params, slot_config)
+    .set_utxos(batcher_utxos)
+    .set_change_address(batcher_address)
+    .add_guard(batcher_credential)
+    .add_sub_transaction(sub_transaction, [party_utxo])
+    .build()
+)
+transaction.apply_vkey_witnesses(batcher_keys.sign_transaction(transaction))
+```
+
+`batcher_credential` is the key credential of `batcher_keys`. Requiring it prevents
+the intent from being included without that party's authorization. The batch
+preserves the sub-transaction's body and signatures. Resolve all spent inputs
+when adding each sub-transaction, plus reference inputs carrying scripts.
+BIP32 key handlers also provide `sign_sub_transaction(sub_transaction, paths)`.
+
+Sub-transactions share the input, output, minting, staking, governance, direct
+deposit, and deferred-redeemer methods of `TxBuilder`. For script execution,
+provide collateral on the enclosing builder. Sub-transaction scripts use Plutus V4
+or native scripts; their execution budgets are fixed before the party signs.
+
+### Account balance constraints
+
+Require a registered account's balance to lie in a range when the transaction
+executes, and separately constrain its balance at the start of the block:
+
+```python
+from cometa import AccountBalanceInterval, TxBuilder
+
+transaction = (
+    TxBuilder(protocol_params, slot_config)
+    .set_utxos(wallet_utxos)
+    .set_change_address(change_address)
+    .send_lovelace(recipient_address, 2_000_000)
+    .add_account_balance_interval(
+        reward_address, AccountBalanceInterval.new(5_000_000, 10_000_000)
+    )
+    .add_starting_account_balance_interval(
+        reward_address, AccountBalanceInterval.new_exact(5_000_000)
+    )
+    .build()
+)
+```
+
+Range lower bounds are inclusive and upper bounds are exclusive. Either bound
+can be `None`. Sub-transactions support execution-time balance constraints;
+starting-balance constraints belong to the enclosing transaction.
+
+### Script guards
+
+A Plutus V4 guard authorizes the transaction through its own redeemer:
+
+```python
+from cometa import Credential, TxBuilder
+
+transaction = (
+    TxBuilder(protocol_params, slot_config)
+    .set_utxos(wallet_utxos)
+    .set_change_address(change_address)
+    .set_collateral_utxos(collateral_utxos)
+    .set_collateral_change_address(change_address)
+    .add_script(guard_script)
+    .add_guard(Credential.from_script_hash(guard_script.hash), redeemer=0)
+    .build()
+)
+```
+
+`guard_script` is a `PlutusV4Script`; replace `0` with its expected redeemer.
+`SubTransactionBuilder.add_guard()` applies the same requirement within an intent.
+`require_top_level_guard(credential, datum=terms)` can attach terms for an enclosing
+guard to check. Native scripts can require a guard with
+`ScriptRequireGuard.new(credential)`, including inside all/any/n-of-k scripts.
 
 ### Build a Plutus V4 transaction
 
