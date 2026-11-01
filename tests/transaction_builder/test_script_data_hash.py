@@ -167,8 +167,8 @@ class TestComputeScriptDataHash:
         with pytest.raises(CardanoError):
             compute_script_data_hash(costmdls, redeemers, None)
 
-    def test_empty_costmdls_raises_error(self):
-        """Test that an error is raised when cost models are empty."""
+    def test_empty_costmdls_encodes_empty_language_views(self):
+        """Test that empty cost models encode an empty language-view map."""
         reader = CborReader.from_hex(REDEEMER_CBOR)
         redeemer = Redeemer.from_cbor(reader)
         redeemers = RedeemerList()
@@ -176,8 +176,12 @@ class TestComputeScriptDataHash:
 
         costmdls = Costmdls.new()
 
-        with pytest.raises(CardanoError):
-            compute_script_data_hash(costmdls, redeemers, None)
+        import hashlib
+        from cometa import CborWriter
+        writer = CborWriter()
+        redeemers.to_cbor(writer)
+        expected = hashlib.blake2b(writer.encode() + b"\xa0", digest_size=32).hexdigest()
+        assert compute_script_data_hash(costmdls, redeemers, None).to_hex() == expected
 
     def test_raises_error_if_costmdls_is_none(self):
         """Test that an error is raised when costmdls is None."""

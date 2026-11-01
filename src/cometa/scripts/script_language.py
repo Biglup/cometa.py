@@ -65,3 +65,6 @@ class ScriptLanguage(IntEnum):
     - Optional treasury amount checking
     - Optional treasury donations
     """
+
+    PLUTUS_V4 = 4
+    """Plutus V4 scripts for Dijkstra."""

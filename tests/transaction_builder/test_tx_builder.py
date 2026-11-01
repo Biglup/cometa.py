@@ -1706,15 +1706,11 @@ class TestBuildWithCustomEvaluator:
 
     def test_build_with_custom_evaluator(self, protocol_params, slot_config):
         """Build with set_evaluator using custom evaluator."""
-        from cometa import AikenTxEvaluator
+        from cometa import NativeTxEvaluator
 
         builder = TxBuilder(protocol_params, slot_config)
 
-        custom_evaluator = AikenTxEvaluator(
-            cost_models=protocol_params.cost_models,
-            slot_config=slot_config,
-            max_tx_ex_units=protocol_params.max_tx_ex_units
-        )
+        custom_evaluator = NativeTxEvaluator.from_parameters(protocol_params, slot_config)
 
         tx = (
             builder
@@ -1765,3 +1761,74 @@ class TestBuilderErrorMessages:
         except Exception:
             error = builder.get_last_error()
             assert isinstance(error, str)
+
+
+# Dijkstra cost model used by the native C/JS transaction oracle.
+DIJKSTRA_COSTS = [
+    205665, 812, 1, 1, 1000, 571, 0, 1, 1000, 24177, 4, 1, 1000, 32, 117366, 10475, 4, 23000, 100,
+    23000, 100, 23000, 100, 23000, 100, 23000, 100, 23000, 100, 100, 100, 23000, 100, 19537, 32,
+    175354, 32, 46417, 4, 221973, 511, 0, 1, 89141, 32, 497525, 14068, 4, 2, 196500, 453240, 220,
+    0, 1, 1, 1000, 28662, 4, 2, 245000, 216773, 62, 1, 1060367, 12586, 1, 208512, 421, 1, 187000,
+    1000, 52998, 1, 80436, 32, 43249, 32, 1000, 32, 80556, 1, 57667, 4, 1000, 10, 197145, 156, 1,
+    197145, 156, 1, 204924, 473, 1, 208896, 511, 1, 52467, 32, 64832, 32, 65493, 32, 22558, 32,
+    16563, 32, 76511, 32, 196500, 453240, 220, 0, 1, 1, 69522, 11687, 0, 1, 60091, 32, 196500,
+    453240, 220, 0, 1, 1, 196500, 453240, 220, 0, 1, 1, 1159724, 392670, 0, 2, 806990, 30482, 4,
+    1927926, 82523, 4, 265318, 0, 4, 0, 85931, 32, 205665, 812, 1, 1, 41182, 32, 212342, 32, 31220,
+    32, 32696, 32, 43357, 32, 32247, 32, 38314, 32, 35892428, 10, 57996947, 18975, 10, 38887044,
+    32947, 10, 1, 2, 3, 4
+]
+
+
+class TestDeferredRedeemers:
+    """Callbacks receive a draft transaction and resolved inputs during balancing."""
+
+    @staticmethod
+    def script_builder(redeemer):
+        from cometa import (
+            EnterpriseAddress, ExUnits, PlutusV4Script, ProtocolVersion, ExUnitPrices, UnitInterval, Costmdls, CostModel, PlutusLanguageVersion,
+        )
+        params = create_protocol_params()
+        params.execution_costs = ExUnitPrices.new(UnitInterval.new(577, 10000), UnitInterval.new(721, 10000000))
+        params.ref_script_cost_per_byte = UnitInterval.new(15, 1)
+        models = Costmdls.new()
+        models.insert(CostModel.new(PlutusLanguageVersion.V4, DIJKSTRA_COSTS))
+        params.cost_models = models
+        params.protocol_version = ProtocolVersion.new(12, 0)
+        params.max_tx_ex_units = ExUnits.new(14_000_000, 10_000_000_000)
+        script = PlutusV4Script.from_hex("450100002499")
+        address = EnterpriseAddress.from_credentials(
+            NetworkId.TESTNET, Credential.from_script_hash(script.hash)).to_address()
+        script_utxo = Utxo.new(TransactionInput.from_hex("aa" * 32, 0),
+                               TransactionOutput.new(address, 20_000_000))
+        return (TxBuilder(params, SlotConfig.preprod())
+                .set_change_address(TEST_ADDRESS)
+                .set_collateral_change_address(TEST_ADDRESS)
+                .set_utxos([create_test_utxo(index=1, lovelace=50_000_000)])
+                .set_collateral_utxos([create_test_utxo(index=2, lovelace=10_000_000)])
+                .add_script(script)
+                .add_input(script_utxo, redeemer=redeemer)
+                .send_lovelace(TEST_ADDRESS_2, 5_000_000))
+
+    def test_deferred_spend_receives_objects_and_sets_redeemer(self):
+        calls = []
+
+        def resolve(tx, inputs):
+            assert isinstance(tx, Transaction)
+            assert inputs and all(isinstance(item, Utxo) for item in inputs)
+            calls.append(tx.body.fee)
+            return 42
+
+        tx = self.script_builder(resolve).build()
+        assert calls
+        assert tx.witness_set.redeemers[0].data.to_int() == 42
+        assert tx.witness_set.redeemers[0].ex_units.cpu_steps > 0
+
+    def test_callback_error_is_preserved(self):
+        from cometa import CardanoError
+
+        def fail(_tx, _inputs):
+            raise ValueError("redeemer construction failed")
+
+        with pytest.raises(CardanoError, match="redeemer construction failed") as exc:
+            self.script_builder(fail).build()
+        assert isinstance(exc.value.__cause__, ValueError)

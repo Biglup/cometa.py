@@ -81,7 +81,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(2000000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert remaining is not None
@@ -101,7 +101,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(0)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert remaining is not None
@@ -120,7 +120,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(6000000)
 
-        selected, remaining = selector.select(preselected_utxos, available_utxos, target)
+        selected, remaining = selector.select(preselected_utxos, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert remaining is not None
@@ -151,7 +151,7 @@ class TestLargeFirstCoinSelector:
 
             target = Value.from_coin(2000000)
 
-            selected, remaining = selector.select(None, available_utxos, target)
+            selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
             assert selected is not None
             assert len(selected) >= 1
@@ -163,7 +163,7 @@ class TestLargeFirstCoinSelector:
         target = Value.from_coin(1000000)
 
         with pytest.raises((CardanoError, Exception)):
-            selector.select(None, available_utxos, target)
+            selector.select(None, available_utxos, target, **_selection_context())
 
     def test_insufficient_balance(self):
         """Test that selector fails when balance is insufficient."""
@@ -175,7 +175,7 @@ class TestLargeFirstCoinSelector:
         target = Value.from_coin(99999999999)
 
         with pytest.raises((CardanoError, Exception)):
-            selector.select(None, available_utxos, target)
+            selector.select(None, available_utxos, target, **_selection_context())
 
     def test_preselected_utxo_satisfies_target(self):
         """Test when preselected UTXOs already satisfy the target."""
@@ -189,7 +189,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(1000000)
 
-        selected, remaining = selector.select(preselected_utxos, available_utxos, target)
+        selected, remaining = selector.select(preselected_utxos, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert len(selected) >= 1
@@ -203,7 +203,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(5000000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert len(selected) >= 1
@@ -220,7 +220,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(5000000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         total_selected = sum(
@@ -240,7 +240,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(100000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert len(selected) >= 1
@@ -258,7 +258,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(2000000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert remaining is not None
@@ -277,7 +277,7 @@ class TestLargeFirstCoinSelector:
 
         target = Value.from_coin(5000000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert remaining is not None
@@ -300,7 +300,7 @@ class TestLargeFirstCoinSelectorEdgeCases:
         target = Value.from_coin(10000000000)
 
         with pytest.raises((CardanoError, Exception)):
-            selector.select(None, available_utxos, target)
+            selector.select(None, available_utxos, target, **_selection_context())
 
     def test_single_utxo_insufficient(self):
         """Test when a single UTXO is insufficient."""
@@ -312,7 +312,7 @@ class TestLargeFirstCoinSelectorEdgeCases:
         target = Value.from_coin(2000000)
 
         with pytest.raises((CardanoError, Exception)):
-            selector.select(None, available_utxos, target)
+            selector.select(None, available_utxos, target, **_selection_context())
 
     def test_all_utxos_same_value(self):
         """Test when all UTXOs have the same value."""
@@ -325,7 +325,7 @@ class TestLargeFirstCoinSelectorEdgeCases:
 
         target = Value.from_coin(2500000)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         total_selected = sum(
@@ -345,7 +345,7 @@ class TestLargeFirstCoinSelectorEdgeCases:
 
         target = Value.from_coin(5000000)
 
-        selected, remaining = selector.select(preselected_utxos, available_utxos, target)
+        selected, remaining = selector.select(preselected_utxos, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert len(selected) >= 1
@@ -361,7 +361,13 @@ class TestLargeFirstCoinSelectorEdgeCases:
 
         target = Value.from_coin(1)
 
-        selected, remaining = selector.select(None, available_utxos, target)
+        selected, remaining = selector.select(None, available_utxos, target, **_selection_context())
 
         assert selected is not None
         assert len(selected) >= 1
+
+
+def _selection_context():
+    from cometa import Address, ProtocolParameters
+    return {"change_address": Address.from_string("addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp"),
+            "protocol_params": ProtocolParameters.new()}

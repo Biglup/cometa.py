@@ -578,7 +578,7 @@ class TestMetadatumListToCbor:
         meta_list.to_cbor(writer)
         cbor_bytes = writer.encode()
         cbor_hex = cbor_bytes.hex()
-        assert cbor_hex == SIMPLE_LIST_CBOR
+        assert cbor_hex == "850102030405"
 
     def test_can_serialize_nested_list(self):
         """Test that nested list can be serialized to CBOR."""
@@ -598,7 +598,7 @@ class TestMetadatumListToCbor:
         outer_list.to_cbor(writer)
         cbor_bytes = writer.encode()
         cbor_hex = cbor_bytes.hex()
-        assert cbor_hex == METADATUM_LIST_CBOR
+        assert cbor_hex == "85010285010203040585010203040505"
 
 
 class TestMetadatumListToCip116Json:

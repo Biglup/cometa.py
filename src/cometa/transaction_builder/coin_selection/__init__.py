@@ -18,6 +18,8 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "CoinSelectionRequest": (".coin_selector", "CoinSelectionRequest"),
+    "CoinSelectionResult": (".coin_selector", "CoinSelectionResult"),
     "CoinSelectorProtocol": (".coin_selector", "CoinSelectorProtocol"),
     "CoinSelector": (".coin_selector", "CoinSelector"),
     "CoinSelectorHandle": (".python_coin_selector_adapter", "CoinSelectorHandle"),
@@ -49,6 +51,8 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "CoinSelectionRequest",
+    "CoinSelectionResult",
     # Protocol/Interface
     "CoinSelectorProtocol",
     "CoinSelector",  # Alias for CoinSelectorProtocol

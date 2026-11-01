@@ -33,12 +33,6 @@ cardano_ffi.cdef(_load_cdef("cardano-c.cdef"))
 cardano_ffi.set_source("cometa._cardano_cffi", None)
 
 
-# === Aiken FFI ===
-aiken_ffi = FFI()
-aiken_ffi.cdef(_load_cdef("aiken-c.cdef"))
-aiken_ffi.set_source("cometa._aiken_cffi", None)
-
-
 def compile_all(output_dir: str = None):
     """Compile all FFI modules to the specified directory."""
     if output_dir is None:
@@ -54,10 +48,6 @@ def compile_all(output_dir: str = None):
         # Compile cardano FFI
         cardano_ffi.compile(tmpdir=tmpdir, verbose=True)
         print("  - _cardano_cffi compiled")
-
-        # Compile aiken FFI
-        aiken_ffi.compile(tmpdir=tmpdir, verbose=True)
-        print("  - _aiken_cffi compiled")
 
         # Move generated files to output directory
         # The files are created in tmpdir/cometa/_*_cffi.py

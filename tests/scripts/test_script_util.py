@@ -15,24 +15,14 @@ limitations under the License.
 """
 
 import pytest
-from unittest.mock import MagicMock
 from cometa import (
     PlutusList,
     PlutusData,
     ConstrPlutusData,
     SlotConfig,
-    ExUnits,
-    AikenTxEvaluator,
-    TxEvaluationError,
     apply_params_to_script,
     ApplyParamsError
 )
-
-@pytest.fixture
-def mock_cost_models():
-    """Create a mock cost models object for testing."""
-    return MagicMock()
-
 
 COMPILED_CODE = (
     "590221010000323232323232323232323223222232533300b32323232533300f3370e9000180700089"
@@ -235,162 +225,6 @@ class TestApplyParamsToScript:
 
         assert result1 != result2
 
-
-class TestAikenTxEvaluator:
-    """Tests for AikenTxEvaluator."""
-
-    def test_create_with_cost_models(self, mock_cost_models):
-        """Test creating evaluator with cost models and default configuration."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        assert evaluator.cost_models == mock_cost_models
-        assert evaluator.slot_config == SlotConfig.mainnet()
-        assert evaluator.max_tx_ex_units.memory == 14_000_000
-        assert evaluator.max_tx_ex_units.cpu_steps == 10_000_000_000
-
-    def test_create_with_custom_slot_config(self, mock_cost_models):
-        """Test creating evaluator with custom slot config."""
-        custom_config = SlotConfig.preview()
-        evaluator = AikenTxEvaluator(
-            cost_models=mock_cost_models,
-            slot_config=custom_config,
-        )
-        assert evaluator.slot_config == custom_config
-        assert evaluator.max_tx_ex_units.memory == 14_000_000
-        assert evaluator.max_tx_ex_units.cpu_steps == 10_000_000_000
-
-    def test_create_with_custom_ex_units(self, mock_cost_models):
-        """Test creating evaluator with custom execution units."""
-        custom_ex_units = ExUnits.new(28000000, 20000000000)
-        evaluator = AikenTxEvaluator(
-            cost_models=mock_cost_models,
-            max_tx_ex_units=custom_ex_units,
-        )
-        assert evaluator.slot_config == SlotConfig.mainnet()
-        assert evaluator.max_tx_ex_units == custom_ex_units
-
-    def test_create_with_all_custom(self, mock_cost_models):
-        """Test creating evaluator with all custom configuration."""
-        custom_config = SlotConfig.preprod()
-        custom_ex_units = ExUnits.new(10000000, 5000000000)
-        evaluator = AikenTxEvaluator(
-            cost_models=mock_cost_models,
-            slot_config=custom_config,
-            max_tx_ex_units=custom_ex_units,
-        )
-        assert evaluator.cost_models == mock_cost_models
-        assert evaluator.slot_config == custom_config
-        assert evaluator.max_tx_ex_units == custom_ex_units
-
-    def test_get_name(self, mock_cost_models):
-        """Test get_name returns correct name."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        assert evaluator.get_name() == "Aiken"
-
-    def test_slot_config_property(self, mock_cost_models):
-        """Test slot_config property."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        config = evaluator.slot_config
-        assert isinstance(config, SlotConfig)
-        assert config == SlotConfig.mainnet()
-
-    def test_max_tx_ex_units_property(self, mock_cost_models):
-        """Test max_tx_ex_units property."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        ex_units = evaluator.max_tx_ex_units
-        assert isinstance(ex_units, ExUnits)
-        assert ex_units.memory == 14_000_000
-        assert ex_units.cpu_steps == 10_000_000_000
-
-    def test_cost_models_property(self, mock_cost_models):
-        """Test cost_models property."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        assert evaluator.cost_models == mock_cost_models
-
-
-class TestAikenTxEvaluatorProtocolCompliance:
-    """Tests to verify AikenTxEvaluator implements TxEvaluatorProtocol correctly."""
-
-    def test_has_get_name_method(self, mock_cost_models):
-        """Test that evaluator has get_name method."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        assert hasattr(evaluator, "get_name")
-        assert callable(evaluator.get_name)
-        result = evaluator.get_name()
-        assert isinstance(result, str)
-
-    def test_has_evaluate_method(self, mock_cost_models):
-        """Test that evaluator has evaluate method."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        assert hasattr(evaluator, "evaluate")
-        assert callable(evaluator.evaluate)
-
-    def test_evaluate_method_signature_matches_protocol(self, mock_cost_models):
-        """Test that evaluate method signature matches TxEvaluatorProtocol."""
-        import inspect
-
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        sig = inspect.signature(evaluator.evaluate)
-        params = list(sig.parameters.keys())
-
-        assert "transaction" in params
-        assert "additional_utxos" in params
-        assert "cost_models" not in params
-
-    def test_evaluate_signature_matches_protocol(self, mock_cost_models):
-        """Test that AikenTxEvaluator.evaluate matches TxEvaluatorProtocol.evaluate."""
-        import inspect
-        from cometa.transaction_builder.evaluation import TxEvaluatorProtocol
-
-        protocol_sig = inspect.signature(TxEvaluatorProtocol.evaluate)
-        protocol_params = set(protocol_sig.parameters.keys()) - {"self"}
-
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-        evaluator_sig = inspect.signature(evaluator.evaluate)
-        evaluator_params = set(evaluator_sig.parameters.keys()) - {"self"}
-
-        assert protocol_params == evaluator_params
-
-    def test_cost_models_in_constructor_not_evaluate(self, mock_cost_models):
-        """Test that cost_models is passed to constructor, not evaluate."""
-        import inspect
-
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-
-        init_sig = inspect.signature(AikenTxEvaluator.__init__)
-        init_params = list(init_sig.parameters.keys())
-        assert "cost_models" in init_params
-
-        eval_sig = inspect.signature(evaluator.evaluate)
-        eval_params = list(eval_sig.parameters.keys())
-        assert "cost_models" not in eval_params
-
-
-class TestTxEvaluationError:
-    """Tests for TxEvaluationError."""
-
-    def test_error_is_exception(self):
-        """Test that TxEvaluationError is an Exception."""
-        error = TxEvaluationError("Test error")
-        assert isinstance(error, Exception)
-
-    def test_error_message(self):
-        """Test that error message is preserved."""
-        msg = "Transaction evaluation failed"
-        error = TxEvaluationError(msg)
-        assert str(error) == msg
-
-    def test_evaluate_actually_calls_c_code(self, mock_cost_models):
-        """Test that actually triggers the C-side evaluation."""
-        evaluator = AikenTxEvaluator(cost_models=mock_cost_models)
-
-        try:
-            # Pass empty/dummy data just to hit the C function
-            # Even garbage data should return a JSON error, NOT segfault
-            evaluator._call_eval_phase_two(
-                "80", "80", "80", "a0"  # Minimal Valid CBOR
-            )
-        except Exception:
-            pass
 
 class TestApplyParamsError:
     """Tests for ApplyParamsError."""

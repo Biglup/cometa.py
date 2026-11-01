@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from __future__ import annotations
+
 import importlib.util
 import os
 import sys
@@ -50,6 +52,15 @@ def _get_ffi():
     """
     try:
         from cometa._cardano_cffi import ffi as precompiled_ffi
+        # Resolve recursive structures before their callback typedefs. Otherwise
+        # CFFI's cached ABI loader can abort while resolving a callback first.
+        for struct_name in (
+            "cardano_secure_key_handler_impl_t",
+            "cardano_provider_impl_t",
+            "cardano_coin_selector_impl_t",
+            "cardano_tx_evaluator_impl_t",
+        ):
+            precompiled_ffi.sizeof(struct_name)
         return precompiled_ffi
     except ImportError:
         pass
@@ -188,3 +199,12 @@ def _find_native_lib() -> str:
 
 _lib_path = _find_native_lib()
 lib = ffi.dlopen(_lib_path)
+
+try:
+    _native_version = ffi.string(lib.cardano_get_lib_version()).decode("ascii")
+except (AttributeError, UnicodeDecodeError) as exc:
+    raise ImportError(f"Cannot determine cardano-c version from {_lib_path}") from exc
+if _native_version.split(".", 1)[0] != "2":
+    raise ImportError(
+        f"Cometa 2 requires cardano-c 2.x; found {_native_version} at {_lib_path}"
+    )

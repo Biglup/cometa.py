@@ -181,7 +181,7 @@ class TestCCoinSelectorWrapperSelect:
         target = Value.new(1000000)
 
         with pytest.raises(CardanoError):
-            selector.select(None, available, target)
+            selector.select(None, available, target, **_selection_context())
 
     def test_select_with_sufficient_utxos(self):
         """Test select with sufficient UTXOs to meet target."""
@@ -189,7 +189,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=5, lovelace_per_utxo=2000000)
         target = Value.new(3000000)
 
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -202,7 +202,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=3, lovelace_per_utxo=2000000)
         target = Value.new(4000000)
 
-        selected, remaining = selector.select(pre_selected, available, target)
+        selected, remaining = selector.select(pre_selected, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -213,7 +213,7 @@ class TestCCoinSelectorWrapperSelect:
         utxos = [create_test_utxo(i, 2000000) for i in range(3)]
         target = Value.new(3000000)
 
-        selected, remaining = selector.select(None, utxos, target)
+        selected, remaining = selector.select(None, utxos, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -225,7 +225,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=3, lovelace_per_utxo=2000000)
         target = Value.new(4000000)
 
-        selected, remaining = selector.select(pre_selected, available, target)
+        selected, remaining = selector.select(pre_selected, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -236,7 +236,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=2, lovelace_per_utxo=2000000)
         target = Value.new(1000000)
 
-        result = selector.select(None, available, target)
+        result = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(result, tuple)
         assert len(result) == 2
@@ -247,7 +247,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=2, lovelace_per_utxo=2000000)
         target = Value.new(4000000)
 
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -258,7 +258,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=1, lovelace_per_utxo=10000000)
         target = Value.new(1000000)
 
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -269,7 +269,7 @@ class TestCCoinSelectorWrapperSelect:
         available = create_test_utxo_list(count=10, lovelace_per_utxo=100000)
         target = Value.new(500000)
 
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -281,7 +281,7 @@ class TestCCoinSelectorWrapperSelect:
         original_len = len(available)
         target = Value.new(1000000)
 
-        selector.select(None, available, target)
+        selector.select(None, available, target, **_selection_context())
 
         assert len(available) == original_len
 
@@ -308,7 +308,7 @@ class TestCCoinSelectorWrapperGetLastError:
         target = Value.new(1000000)
 
         try:
-            selector.select(None, available, target)
+            selector.select(None, available, target, **_selection_context())
         except CardanoError:
             error = selector.get_last_error()
             assert isinstance(error, str)
@@ -402,8 +402,8 @@ class TestCCoinSelectorWrapperLifecycle:
         available = create_test_utxo_list(count=3, lovelace_per_utxo=2000000)
         target = Value.new(1000000)
 
-        result1 = selector.select(None, available, target)
-        result2 = selector.select(None, available, target)
+        result1 = selector.select(None, available, target, **_selection_context())
+        result2 = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(result1, tuple)
         assert isinstance(result2, tuple)
@@ -425,7 +425,7 @@ class TestCCoinSelectorWrapperEdgeCases:
         available = create_test_utxo_list(count=3, lovelace_per_utxo=1000000)
         target = Value.new(0)
 
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
@@ -437,7 +437,7 @@ class TestCCoinSelectorWrapperEdgeCases:
         target = Value.new(10000000)
 
         with pytest.raises(CardanoError):
-            selector.select(None, available, target)
+            selector.select(None, available, target, **_selection_context())
 
     def test_multiple_selects_in_sequence(self):
         """Test multiple select operations in sequence."""
@@ -445,8 +445,8 @@ class TestCCoinSelectorWrapperEdgeCases:
         available = create_test_utxo_list(count=5, lovelace_per_utxo=2000000)
         target = Value.new(3000000)
 
-        result1 = selector.select(None, available, target)
-        result2 = selector.select(None, available, target)
+        result1 = selector.select(None, available, target, **_selection_context())
+        result2 = selector.select(None, available, target, **_selection_context())
 
         assert isinstance(result1, tuple)
         assert isinstance(result2, tuple)
@@ -519,7 +519,7 @@ class TestCCoinSelectorWrapperTypeAnnotations:
         selector = LargeFirstCoinSelector.new()
         available = create_test_utxo_list(count=1, lovelace_per_utxo=2000000)
         target = Value.new(1000000)
-        result = selector.select(None, available, target)
+        result = selector.select(None, available, target, **_selection_context())
         assert isinstance(result, tuple)
 
     def test_get_last_error_returns_str(self):
@@ -549,7 +549,7 @@ class TestCCoinSelectorWrapperIntegration:
         available = UtxoList.from_list([utxo1, utxo2, utxo3])
         target = Value.new(6000000)
 
-        selected, remaining = selector.select(None, available, target)
+        selected, remaining = selector.select(None, available, target, **_selection_context())
 
         assert len(selected) >= 1
         assert len(selected) + len(remaining) == len(available)
@@ -569,7 +569,13 @@ class TestCCoinSelectorWrapperIntegration:
 
         target = Value.new(5000000)
 
-        selected, remaining = selector.select(pre_selected, available, target)
+        selected, remaining = selector.select(pre_selected, available, target, **_selection_context())
 
         assert isinstance(selected, UtxoList)
         assert isinstance(remaining, UtxoList)
+
+
+def _selection_context():
+    from cometa import Address, ProtocolParameters
+    return {"change_address": Address.from_string("addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp"),
+            "protocol_params": ProtocolParameters.new()}

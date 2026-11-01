@@ -30,6 +30,7 @@ from .native_script_set import NativeScriptSet
 from .plutus_v1_script_set import PlutusV1ScriptSet
 from .plutus_v2_script_set import PlutusV2ScriptSet
 from .plutus_v3_script_set import PlutusV3ScriptSet
+from .plutus_v4_script_set import PlutusV4ScriptSet
 from .plutus_data_set import PlutusDataSet
 from .redeemer import Redeemer
 from .redeemer_list import RedeemerList
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from ..scripts.plutus_scripts.plutus_v1_script import PlutusV1Script
     from ..scripts.plutus_scripts.plutus_v2_script import PlutusV2Script
     from ..scripts.plutus_scripts.plutus_v3_script import PlutusV3Script
+    from ..scripts.plutus_scripts.plutus_v4_script import PlutusV4Script
 
 
 class WitnessSet:
@@ -312,6 +314,37 @@ class WitnessSet:
         err = lib.cardano_witness_set_set_plutus_v3_scripts(self._ptr, scripts_ptr)
         if err != 0:
             raise CardanoError(f"Failed to set plutus_v3_scripts (error code: {err})")
+
+    @property
+    def plutus_v4_scripts(self) -> Optional[PlutusV4ScriptSet]:
+        """
+        The set of Plutus V4 scripts.
+
+        Returns:
+            The PlutusV4ScriptSet if present, None otherwise.
+        """
+        ptr = lib.cardano_witness_set_get_plutus_v4_scripts(self._ptr)
+        if ptr == ffi.NULL:
+            return None
+        return PlutusV4ScriptSet(ptr)
+
+    @plutus_v4_scripts.setter
+    def plutus_v4_scripts(self, value: Optional[Union[PlutusV4ScriptSet, List[PlutusV4Script]]]) -> None:
+        """
+        Sets the Plutus V4 scripts.
+
+        Args:
+            value: The PlutusV4ScriptSet, a Python list of PlutusV4Script, or None to clear.
+
+        Raises:
+            CardanoError: If setting fails.
+        """
+        if isinstance(value, list):
+            value = PlutusV4ScriptSet.from_list(value)
+        scripts_ptr = value._ptr if value is not None else ffi.NULL
+        err = lib.cardano_witness_set_set_plutus_v4_scripts(self._ptr, scripts_ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to set plutus_v4_scripts (error code: {err})")
 
     @property
     def plutus_data(self) -> Optional[PlutusDataSet]:

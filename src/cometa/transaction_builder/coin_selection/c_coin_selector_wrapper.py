@@ -22,7 +22,11 @@ from ..._ffi import ffi, lib
 from ...errors import CardanoError
 
 if TYPE_CHECKING:
-    from ...common import UtxoList, Utxo
+    from ...common import Utxo
+    from ...common.utxo_list import UtxoList
+    from ...address import Address
+    from ...protocol_params import ProtocolParameters
+    from .coin_selector import CoinSelectionRequest, CoinSelectionResult
     from ...transaction_body import Value
 
 
@@ -102,60 +106,52 @@ class CCoinSelectorWrapper:
         return ffi.string(result).decode("utf-8")
 
     def select(
-        self,
-        pre_selected_utxo: Optional[Union["UtxoList", List["Utxo"]]],
-        available_utxo: Union["UtxoList", List["Utxo"]],
-        target: "Value",
+        self, pre_selected_utxo: Optional[Union["UtxoList", List["Utxo"]]],
+        available_utxo: Union["UtxoList", List["Utxo"]], target: "Value", *,
+        change_address: "Address", protocol_params: "ProtocolParameters",
     ) -> Tuple["UtxoList", "UtxoList"]:
+        """Select UTxOs using the network's change address and protocol parameters.
+
+        Use ``select_with_context`` when explicit change outputs are also needed.
         """
-        Select UTXOs to satisfy the target value using the coin selection strategy.
+        from .coin_selector import CoinSelectionRequest
+        result = self.select_with_context(CoinSelectionRequest(
+            available_utxo, target, change_address, protocol_params, pre_selected_utxo))
+        return result.selection, result.remaining
 
-        This method performs coin selection using the provided strategy, selecting
-        UTXOs from the available UTXO set to meet the specified target value.
-
-        Args:
-            pre_selected_utxo: Optional set of pre-selected UTXOs to include in selection.
-            available_utxo: List of available UTXOs to select from.
-            target: The target value to be satisfied (in lovelace or multi-asset values).
-
-        Returns:
-            A tuple of (selected_utxos, remaining_utxos).
-
-        Raises:
-            CardanoError: If coin selection fails.
-
-        Example:
-            >>> selected, remaining = selector.select(None, available_utxos, target_value)
-            >>> print(f"Selected {len(selected)} UTXOs")
-        """
+    def select_with_context(self, request: "CoinSelectionRequest") -> "CoinSelectionResult":
+        """Select UTxOs and construct change using a CoinSelectionRequest."""
         from ...common.utxo_list import UtxoList
+        from ...transaction_body import TransactionOutputList
+        from .coin_selector import CoinSelectionResult
 
-        if isinstance(available_utxo, list):
-            available_utxo = UtxoList.from_list(available_utxo)
-
-        pre_selected_ptr = ffi.NULL
-        if pre_selected_utxo is not None:
-            if isinstance(pre_selected_utxo, list):
-                pre_selected_utxo = UtxoList.from_list(pre_selected_utxo)
-            pre_selected_ptr = pre_selected_utxo._ptr
-
-        selection_out = ffi.new("cardano_utxo_list_t**")
-        remaining_out = ffi.new("cardano_utxo_list_t**")
-
-        err = lib.cardano_coin_selector_select(
-            self._ptr,
-            pre_selected_ptr,
-            available_utxo._ptr,
-            target._ptr,
-            selection_out,
-            remaining_out,
-        )
-        if err != 0:
-            raise CardanoError(
-                f"Coin selection failed (error code: {err}): {self.get_last_error()}"
-            )
-
-        return UtxoList(selection_out[0]), UtxoList(remaining_out[0])
+        available = request.available_utxo
+        if not isinstance(available, UtxoList):
+            available = UtxoList.from_list(list(available))
+        pre_selected = request.pre_selected_utxo
+        if pre_selected is not None and not isinstance(pre_selected, UtxoList):
+            pre_selected = UtxoList.from_list(list(pre_selected))
+        outputs = None
+        if request.outputs_to_cover is not None:
+            outputs = TransactionOutputList.from_list(request.outputs_to_cover)
+        native_request = ffi.new("cardano_coin_selection_request_t *")
+        native_request.pre_selected_utxo = pre_selected._ptr if pre_selected is not None else ffi.NULL
+        native_request.available_utxo = available._ptr
+        native_request.target = request.target._ptr
+        native_request.change_address = request.change_address._ptr
+        native_request.protocol_params = request.protocol_params._ptr
+        native_request.outputs_to_cover = outputs._ptr if outputs is not None else ffi.NULL
+        selection = ffi.new("cardano_utxo_list_t **")
+        remaining = ffi.new("cardano_utxo_list_t **")
+        change = ffi.new("cardano_transaction_output_list_t **")
+        err = lib.cardano_coin_selector_select(self._ptr, native_request, selection, remaining, change)
+        if err:
+            lib.cardano_utxo_list_unref(selection)
+            lib.cardano_utxo_list_unref(remaining)
+            lib.cardano_transaction_output_list_unref(change)
+            raise CardanoError(f"Coin selection failed (error code: {err}): {self.get_last_error()}")
+        changes = list(TransactionOutputList(change[0])) if change[0] != ffi.NULL else None
+        return CoinSelectionResult(UtxoList(selection[0]), UtxoList(remaining[0]), changes)
 
     def get_last_error(self) -> str:
         """

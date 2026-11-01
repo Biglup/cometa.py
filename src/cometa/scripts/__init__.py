@@ -18,6 +18,8 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "apply_params_to_script": (".script_util", "apply_params_to_script"),
+    "ApplyParamsError": (".script_util", "ApplyParamsError"),
     "ScriptLanguage": (".script_language", "ScriptLanguage"),
     "Script": (".script", "Script"),
     "ScriptLike": (".script", "ScriptLike"),
@@ -38,6 +40,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PlutusV1Script": (".plutus_scripts", "PlutusV1Script"),
     "PlutusV2Script": (".plutus_scripts", "PlutusV2Script"),
     "PlutusV3Script": (".plutus_scripts", "PlutusV3Script"),
+    "PlutusV4Script": (".plutus_scripts", "PlutusV4Script"),
 }
 
 _cache: dict[str, Any] = {}
@@ -64,6 +67,8 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "apply_params_to_script",
+    "ApplyParamsError",
     # Script types
     "ScriptLanguage",
     "Script",
@@ -84,5 +89,6 @@ __all__ = [
     "PlutusV1Script",
     "PlutusV2Script",
     "PlutusV3Script",
+    "PlutusV4Script",
     "PlutusScriptLike",
 ]

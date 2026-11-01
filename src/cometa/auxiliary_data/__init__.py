@@ -28,6 +28,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "PlutusV1ScriptList": (".plutus_v1_script_list", "PlutusV1ScriptList"),
     "PlutusV2ScriptList": (".plutus_v2_script_list", "PlutusV2ScriptList"),
     "PlutusV3ScriptList": (".plutus_v3_script_list", "PlutusV3ScriptList"),
+    "PlutusV4ScriptList": (".plutus_v4_script_list", "PlutusV4ScriptList"),
 }
 
 _cache: dict[str, Any] = {}
@@ -63,5 +64,6 @@ __all__ = [
     "PlutusV1ScriptList",
     "PlutusV2ScriptList",
     "PlutusV3ScriptList",
+    "PlutusV4ScriptList",
     "TransactionMetadata",
 ]

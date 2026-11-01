@@ -53,7 +53,7 @@ class TestScriptLanguage:
     def test_script_language_invalid_value(self):
         """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError):
-            ScriptLanguage(4)
+            ScriptLanguage(5)
         with pytest.raises(ValueError):
             ScriptLanguage(-1)
         with pytest.raises(ValueError):
@@ -75,7 +75,7 @@ class TestScriptLanguage:
     def test_script_language_iteration(self):
         """Test iteration over ScriptLanguage enum."""
         values = list(ScriptLanguage)
-        assert len(values) == 4
+        assert len(values) == 5
         assert ScriptLanguage.NATIVE in values
         assert ScriptLanguage.PLUTUS_V1 in values
         assert ScriptLanguage.PLUTUS_V2 in values
@@ -163,7 +163,7 @@ class TestScriptLanguage:
 
     def test_script_language_enum_members_count(self):
         """Test that ScriptLanguage has exactly 4 members."""
-        assert len(ScriptLanguage.__members__) == 4
+        assert len(ScriptLanguage.__members__) == 5
 
     def test_script_language_uniqueness(self):
         """Test that all ScriptLanguage values are unique."""
@@ -246,7 +246,7 @@ class TestScriptLanguage:
     def test_script_language_max_min(self):
         """Test max and min operations with ScriptLanguage values."""
         all_languages = list(ScriptLanguage)
-        assert max(all_languages) == ScriptLanguage.PLUTUS_V3
+        assert max(all_languages) == ScriptLanguage.PLUTUS_V4
         assert min(all_languages) == ScriptLanguage.NATIVE
 
     def test_script_language_documentation(self):

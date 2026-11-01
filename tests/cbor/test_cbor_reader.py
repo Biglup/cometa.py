@@ -553,7 +553,7 @@ class TestBigInt:
         reader = CborReader.from_hex('c350fff000000000000000000000000000005820')
         assert reader.peek_state() == CborReaderState.TAG
         bigint_val = reader.read_bigint()
-        assert bigint_val == -340199290171201906221318119490500689920
+        assert bigint_val == -340199290171201906221318119490500689921
 
 
 class TestFactories:

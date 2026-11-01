@@ -19,7 +19,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 INCLUDE_DIR = ROOT / "vendor" / "cardano-c" / "lib" / "include" / "cardano"
-CDEF_PATH = ROOT / "src" / "biglup" / "cometa" / "_cdef" / "cardano-c.cdef"
+CDEF_PATH = ROOT / "src" / "cometa" / "_cdef" / "cardano-c.cdef"
 
 PRIMITIVES = """\
 typedef _Bool              bool;

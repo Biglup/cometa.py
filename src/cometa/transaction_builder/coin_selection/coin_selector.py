@@ -16,11 +16,16 @@ limitations under the License.
 
 from __future__ import annotations
 
-from typing import Protocol, Union, List, Tuple, TYPE_CHECKING
+from dataclasses import dataclass
+
+from typing import Optional, Protocol, Union, List, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...common import UtxoList, Utxo
-    from ...transaction_body import Value
+    from ...common import Utxo
+    from ...common.utxo_list import UtxoList
+    from ...transaction_body import Value, TransactionOutput
+    from ...address import Address
+    from ...protocol_params import ProtocolParameters
 
 
 class CoinSelectorProtocol(Protocol):
@@ -88,3 +93,24 @@ class CoinSelectorProtocol(Protocol):
 
 # Alias for backwards compatibility
 CoinSelector = CoinSelectorProtocol
+
+
+@dataclass
+class CoinSelectionRequest:
+    """Inputs, outputs and network context supplied to a coin selector."""
+
+    available_utxo: Union["UtxoList", List["Utxo"]]
+    target: "Value"
+    change_address: "Address"
+    protocol_params: "ProtocolParameters"
+    pre_selected_utxo: Optional[Union["UtxoList", List["Utxo"]]] = None
+    outputs_to_cover: Optional[List["TransactionOutput"]] = None
+
+
+@dataclass
+class CoinSelectionResult:
+    """Selected and remaining UTxOs, with optional explicit change outputs."""
+
+    selection: Union["UtxoList", List["Utxo"]]
+    remaining: Union["UtxoList", List["Utxo"]]
+    change_outputs: Optional[List["TransactionOutput"]] = None

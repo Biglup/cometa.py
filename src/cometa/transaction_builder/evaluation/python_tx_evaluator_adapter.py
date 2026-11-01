@@ -156,7 +156,7 @@ class TxEvaluatorHandle:
         return self._evaluator_ptr[0]
 
     def __del__(self):
-        if self._evaluator_ptr is not None and self._evaluator_ptr[0] != ffi.NULL:
+        if getattr(self, "_evaluator_ptr", None) is not None and self._evaluator_ptr[0] != ffi.NULL:
             lib.cardano_tx_evaluator_unref(self._evaluator_ptr)
             self._evaluator_ptr = None
 

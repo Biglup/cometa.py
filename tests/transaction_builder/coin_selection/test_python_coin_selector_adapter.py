@@ -447,7 +447,7 @@ class TestCoinSelectorHandleIntegrationWithSelect:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -476,7 +476,7 @@ class TestCoinSelectorHandleIntegrationWithSelect:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -509,7 +509,7 @@ class TestCoinSelectorHandleIntegrationWithSelect:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -538,7 +538,7 @@ class TestCoinSelectorHandleIntegrationWithSelect:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             pre_selected._ptr,
             available._ptr,
@@ -564,7 +564,7 @@ class TestCoinSelectorHandleIntegrationWithSelect:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -603,7 +603,7 @@ class TestCoinSelectorHandleEdgeCases:
         selected_ptr1 = ffi.new("cardano_utxo_list_t**")
         remaining_ptr1 = ffi.new("cardano_utxo_list_t**")
 
-        result1 = lib.cardano_coin_selector_select(
+        result1 = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -615,7 +615,7 @@ class TestCoinSelectorHandleEdgeCases:
         selected_ptr2 = ffi.new("cardano_utxo_list_t**")
         remaining_ptr2 = ffi.new("cardano_utxo_list_t**")
 
-        result2 = lib.cardano_coin_selector_select(
+        result2 = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -651,7 +651,7 @@ class TestCoinSelectorHandleEdgeCases:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -681,7 +681,7 @@ class TestCoinSelectorHandleErrorHandling:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -718,7 +718,7 @@ class TestCoinSelectorHandleErrorHandling:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -830,7 +830,7 @@ class TestCoinSelectorHandleCallbackRefCounting:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -858,7 +858,7 @@ class TestCoinSelectorHandleCallbackRefCounting:
         selected_ptr = ffi.new("cardano_utxo_list_t**")
         remaining_ptr = ffi.new("cardano_utxo_list_t**")
 
-        result = lib.cardano_coin_selector_select(
+        result = _select_native(
             handle.ptr,
             ffi.NULL,
             available._ptr,
@@ -877,3 +877,59 @@ class TestCoinSelectorHandleCallbackRefCounting:
 
         lib.cardano_utxo_list_unref(selected_ptr)
         lib.cardano_utxo_list_unref(remaining_ptr)
+
+
+def _select_native(selector, pre_selected, available, target, selected, remaining):
+    from cometa import Address, ProtocolParameters
+    address = Address.from_string("addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp")
+    params = ProtocolParameters.new()
+    request = ffi.new("cardano_coin_selection_request_t *")
+    request.pre_selected_utxo = pre_selected
+    request.available_utxo = available
+    request.target = target
+    request.change_address = address._ptr
+    request.protocol_params = params._ptr
+    change = ffi.new("cardano_transaction_output_list_t **")
+    try:
+        return lib.cardano_coin_selector_select(selector, request, selected, remaining, change)
+    finally:
+        lib.cardano_transaction_output_list_unref(change)
+
+
+def test_context_callback_returns_change_and_preserves_borrowed_arguments():
+    from cometa import CoinSelectionRequest, CoinSelectionResult, ProtocolParameters
+    from cometa.transaction_builder.coin_selection import CCoinSelectorWrapper
+
+    class ContextSelector:
+        def get_name(self):
+            return "context selector"
+
+        def select_with_context(self, request):
+            assert request.protocol_params.min_fee_a == 44
+            assert str(request.change_address) == TEST_ADDRESS
+            assert len(request.outputs_to_cover) == 1
+            return CoinSelectionResult(
+                request.available_utxo, [],
+                [TransactionOutput.new(request.change_address, 2_000_000)])
+
+    address = Address.from_string(TEST_ADDRESS)
+    params = ProtocolParameters.new()
+    params.min_fee_a = 44
+    available = UtxoList.from_list([create_test_utxo(lovelace=5_000_000)])
+    target = Value.from_coin(3_000_000)
+    request = CoinSelectionRequest(available, target, address, params,
+                                   outputs_to_cover=[TransactionOutput.new(address, 3_000_000)])
+    handle = CoinSelectorHandle(ContextSelector())
+    wrapper = CCoinSelectorWrapper(handle.ptr)
+    refs = (lib.cardano_address_refcount(address._ptr),
+            lib.cardano_protocol_parameters_refcount(params._ptr),
+            lib.cardano_utxo_list_refcount(available._ptr))
+    for _ in range(20):
+        result = wrapper.select_with_context(request)
+        assert len(result.selection) == 1
+        assert len(result.remaining) == 0
+        assert result.change_outputs[0].value.coin == 2_000_000
+        del result
+    assert refs == (lib.cardano_address_refcount(address._ptr),
+                    lib.cardano_protocol_parameters_refcount(params._ptr),
+                    lib.cardano_utxo_list_refcount(available._ptr))

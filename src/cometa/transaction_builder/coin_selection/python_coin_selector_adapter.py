@@ -25,6 +25,42 @@ if TYPE_CHECKING:
     from .coin_selector import CoinSelectorProtocol
 
 
+def _set_callback_error(impl, error):
+    """Store a bounded message without cutting a UTF-8 character in half."""
+    message = str(error).encode("utf-8")[:len(impl.error_message) - 1]
+    message = message.decode("utf-8", "ignore").encode("utf-8")
+    ffi.memmove(impl.error_message, message, len(message))
+    impl.error_message[len(message)] = b"\x00"
+
+
+def _wrap_request(request):
+    """Acquire Python-owned references to the borrowed callback arguments."""
+    from .coin_selector import CoinSelectionRequest
+    from ...common.utxo_list import UtxoList
+    from ...address import Address
+    from ...protocol_params import ProtocolParameters
+    from ...transaction_body import TransactionOutputList, Value
+
+    pre_selected = None
+    if request.pre_selected_utxo != ffi.NULL:
+        lib.cardano_utxo_list_ref(request.pre_selected_utxo)
+        pre_selected = UtxoList(request.pre_selected_utxo)
+    lib.cardano_utxo_list_ref(request.available_utxo)
+    available = UtxoList(request.available_utxo)
+    lib.cardano_value_ref(request.target)
+    target = Value(request.target)
+    lib.cardano_address_ref(request.change_address)
+    address = Address(request.change_address)
+    lib.cardano_protocol_parameters_ref(request.protocol_params)
+    params = ProtocolParameters(request.protocol_params)
+    outputs = None
+    if request.outputs_to_cover != ffi.NULL:
+        lib.cardano_transaction_output_list_ref(request.outputs_to_cover)
+        outputs = list(TransactionOutputList(request.outputs_to_cover))
+    return CoinSelectionRequest(list(available), target, address, params,
+                                list(pre_selected) if pre_selected is not None else [], outputs)
+
+
 class CoinSelectorHandle:
     """
     Wraps a Python CoinSelector and exposes a cardano_coin_selector_t* for libcardano-c.
@@ -97,36 +133,21 @@ class CoinSelectorHandle:
         # ----------------------------------------------------------------
         # select callback
         # ----------------------------------------------------------------
-        @ffi.callback(
-            "cardano_error_t(cardano_coin_selector_impl_t*, cardano_utxo_list_t*, "
-            "cardano_utxo_list_t*, cardano_value_t*, cardano_utxo_list_t**, "
-            "cardano_utxo_list_t**)"
-        )
-        def cb_select( # pylint: disable=too-many-locals
-            _impl, c_pre_selected, c_available, c_target, out_selection, out_remaining
-        ):
+        @ffi.callback("cardano_coin_select_func_t")
+        def cb_select(_impl, request, out_selection, out_remaining, out_change):
+            out_change[0] = ffi.NULL
             try:
                 from ...common.utxo_list import UtxoList
-                from ...transaction_body import Value
+                from ...transaction_body import TransactionOutputList
 
-                # Wrap C types - increment refs since we're creating wrappers
-                pre_selected = None
-                if c_pre_selected != ffi.NULL:
-                    lib.cardano_utxo_list_ref(c_pre_selected)
-                    pre_selected = UtxoList(c_pre_selected)
-
-                lib.cardano_utxo_list_ref(c_available)
-                available = UtxoList(c_available)
-
-                lib.cardano_value_ref(c_target)
-                target = Value(c_target)
-
-                # Call Python selector
-                selected, remaining = selector.select(
-                    list(pre_selected) if pre_selected else [],
-                    list(available),
-                    target,
-                )
+                context = _wrap_request(request)
+                change = None
+                if hasattr(selector, "select_with_context"):
+                    result = selector.select_with_context(context)
+                    selected, remaining, change = result.selection, result.remaining, result.change_outputs
+                else:
+                    selected, remaining = selector.select(
+                        context.pre_selected_utxo, context.available_utxo, context.target)
 
                 # Build output UtxoLists
                 selected_list = UtxoList.from_list(
@@ -136,6 +157,11 @@ class CoinSelectorHandle:
                     remaining if isinstance(remaining, list) else list(remaining)
                 )
 
+                if change is not None:
+                    change_list = TransactionOutputList.from_list(list(change))
+                    lib.cardano_transaction_output_list_ref(change_list._ptr)
+                    out_change[0] = change_list._ptr
+
                 # Increment ref count since C will take ownership
                 lib.cardano_utxo_list_ref(selected_list._ptr)
                 lib.cardano_utxo_list_ref(remaining_list._ptr)
@@ -143,15 +169,7 @@ class CoinSelectorHandle:
                 out_remaining[0] = remaining_list._ptr
                 return 0
             except Exception as exc:
-                msg = f"{exc}"
-                msg_bytes = msg.encode("utf-8")
-
-                max_len = len(_impl.error_message) - 1
-                msg_bytes = msg_bytes[:max_len]
-
-                ffi.memmove(_impl.error_message, msg_bytes, len(msg_bytes))
-                _impl.error_message[len(msg_bytes)] = b"\x00"
-
+                _set_callback_error(_impl, exc)
                 return 1
 
         self._cb_select = cb_select
@@ -177,7 +195,7 @@ class CoinSelectorHandle:
 
     def __del__(self):
         """Clean up the underlying C coin selector when the handle is destroyed."""
-        if self._selector_ptr is not None and self._selector_ptr[0] != ffi.NULL:
+        if getattr(self, "_selector_ptr", None) is not None and self._selector_ptr[0] != ffi.NULL:
             lib.cardano_coin_selector_unref(self._selector_ptr)
             self._selector_ptr = None
 

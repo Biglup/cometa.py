@@ -564,7 +564,7 @@ class TestPlutusDataCborVectors:
         reader = CborReader.from_hex("c349000100000000000000")
         data = PlutusData.from_cbor(reader)
         assert data.kind == PlutusDataKind.INTEGER
-        assert data.to_int() == -72057594037927936
+        assert data.to_int() == -72057594037927937
 
     def test_cbor_bytes_vector(self):
         """Test decoding bytes from CBOR."""

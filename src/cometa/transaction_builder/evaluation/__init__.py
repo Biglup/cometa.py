@@ -18,6 +18,7 @@ limitations under the License.
 from typing import Any
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "NativeTxEvaluator": (".native_tx_evaluator", "NativeTxEvaluator"),
     "TxEvaluatorProtocol": (".tx_evaluator", "TxEvaluatorProtocol"),
     "TxEvaluator": (".tx_evaluator", "TxEvaluator"),
     "TxEvaluatorHandle": (".python_tx_evaluator_adapter", "TxEvaluatorHandle"),
@@ -48,6 +49,7 @@ def __dir__() -> list[str]:
 
 
 __all__ = [
+    "NativeTxEvaluator",
     # Protocol/Interface
     "TxEvaluatorProtocol",
     "TxEvaluator",  # Alias for TxEvaluatorProtocol

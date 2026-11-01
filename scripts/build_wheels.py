@@ -38,12 +38,12 @@ import tempfile
 from pathlib import Path
 
 PLATFORMS = {
-    "linux-x86_64": "manylinux_2_17_x86_64.manylinux2014_x86_64",
-    "linux-arm64": "manylinux_2_17_aarch64.manylinux2014_aarch64",
+    "linux-x86_64": "manylinux_2_33_x86_64",
+    "linux-arm64": "manylinux_2_33_aarch64",
     "linux-armv7": "linux_armv7l",
     "linux-armv6": "linux_armv6l",
-    "macos-x86_64": "macosx_10_9_x86_64",
-    "macos-arm64": "macosx_11_0_arm64",
+    "macos-x86_64": "macosx_26_0_x86_64",
+    "macos-arm64": "macosx_26_0_arm64",
     "windows-x86_64-msvc": "win_amd64",
 }
 
@@ -116,7 +116,7 @@ def build_wheel(src_dir: Path, platform_name: str, wheel_tag: str, output_dir: P
         for py_file in (src_dir / "src" / "cometa").glob("*.py"):
             shutil.copy(py_file, build_src / py_file.name)
 
-        # Compile CFFI modules (generates _cardano_cffi.py and _aiken_cffi.py)
+        # Compile CFFI modules (generates _cardano_cffi.py)
         compile_cffi(src_dir, build_src)
 
         # Copy subpackages
@@ -131,25 +131,26 @@ def build_wheel(src_dir: Path, platform_name: str, wheel_tag: str, output_dir: P
         if (src_dir / "LICENSE").exists():
             shutil.copy(src_dir / "LICENSE", build_dir / "LICENSE")
 
-        # Build wheel
+        shutil.copy(src_dir / "setup.py", build_dir / "setup.py")
+
+        # Build wheel with matching filename and WHEEL metadata.
         subprocess.run(
             [sys.executable, "-m", "build", "--wheel"],
             cwd=build_dir,
+            env={**os.environ, "COMETA_WHEEL_PLATFORM": wheel_tag},
             check=True,
         )
 
-        # Find and rename wheel
+        # Find the platform wheel
         dist_dir = build_dir / "dist"
         wheels = list(dist_dir.glob("*.whl"))
         if not wheels:
             raise RuntimeError("No wheel was built")
 
         wheel = wheels[0]
-        base_name = wheel.name.replace("-py3-none-any.whl", "")
-        new_name = f"{base_name}-py3-none-{wheel_tag}.whl"
 
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / new_name
+        output_path = output_dir / wheel.name
         shutil.copy(wheel, output_path)
 
         return output_path
@@ -196,24 +197,16 @@ def cmd_build(args, src_dir: Path) -> list[Path]:
     # Build platform wheels
     for platform_name, wheel_tag in platforms_to_build.items():
         print(f"Building wheel for {platform_name}...")
-        try:
-            wheel_path = build_wheel(src_dir, platform_name, wheel_tag, args.output)
-            built_files.append(wheel_path)
-            print(f"  -> {wheel_path.name}")
-        except FileNotFoundError as e:
-            print(f"  -> Skipped: {e}")
-        except subprocess.CalledProcessError as e:
-            print(f"  -> Failed: {e}")
+        wheel_path = build_wheel(src_dir, platform_name, wheel_tag, args.output)
+        built_files.append(wheel_path)
+        print(f"  -> {wheel_path.name}")
 
     # Build sdist if building all platforms
     if not args.current and not args.platform and args.sdist:
         print("Building source distribution...")
-        try:
-            sdist_path = build_sdist(src_dir, args.output)
-            built_files.append(sdist_path)
-            print(f"  -> {sdist_path.name}")
-        except subprocess.CalledProcessError as e:
-            print(f"  -> Failed: {e}")
+        sdist_path = build_sdist(src_dir, args.output)
+        built_files.append(sdist_path)
+        print(f"  -> {sdist_path.name}")
 
     print()
     print(f"Built {len(built_files)} file(s):")
