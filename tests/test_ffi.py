@@ -30,3 +30,30 @@ for name in (
         capture_output=True, text=True, check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_runtime_gc_can_release_objects_during_type_resolution():
+    # Force the source-install path, even when the suite uses a compiled cache.
+    script = '''
+import gc
+import sys
+sys.modules["cometa._cardano_cffi"] = None
+from cometa._ffi import ffi
+from cometa import VkeyWitnessSet
+value = VkeyWitnessSet()
+value.cycle = value
+gc.disable()
+del value
+parse_type = ffi._parser.parse_type
+
+def collect_while_parsing(text):
+    gc.collect()
+    return parse_type(text)
+
+ffi._parser.parse_type = collect_while_parsing
+ffi.new("int[19]")
+gc.enable()
+'''
+    result = subprocess.run([sys.executable, '-c', script], capture_output=True,
+                            text=True, check=False, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr

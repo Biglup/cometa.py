@@ -26,6 +26,7 @@ from ...cbor.cbor_writer import CborWriter
 
 if TYPE_CHECKING:
     from .native_script import NativeScript
+    from .script_require_guard import ScriptRequireGuard
     from .script_pubkey import ScriptPubkey
     from .script_all import ScriptAll
     from .script_any import ScriptAny
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     NativeScriptLike = Union[
         NativeScript,
         ScriptPubkey,
+        ScriptRequireGuard,
         ScriptAll,
         ScriptAny,
         ScriptNOfK,
@@ -155,6 +157,7 @@ class NativeScriptList(Sequence["NativeScript"]):
             TypeError: If the script type is not supported.
         """
         from .native_script import NativeScript
+        from .script_require_guard import ScriptRequireGuard
         from .script_pubkey import ScriptPubkey
         from .script_all import ScriptAll
         from .script_any import ScriptAny
@@ -167,6 +170,8 @@ class NativeScriptList(Sequence["NativeScript"]):
             native_script = script
         elif isinstance(script, ScriptPubkey):
             native_script = NativeScript.from_pubkey(script)
+        elif isinstance(script, ScriptRequireGuard):
+            native_script = NativeScript.from_require_guard(script)
         elif isinstance(script, ScriptAll):
             native_script = NativeScript.from_all(script)
         elif isinstance(script, ScriptAny):

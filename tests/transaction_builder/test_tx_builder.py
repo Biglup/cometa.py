@@ -980,14 +980,14 @@ class TestHelperFunctions:
 
     def test_to_reward_address_string(self):
         """Test _to_reward_address with string."""
-        from cometa.transaction_builder.tx_builder import _to_reward_address
+        from cometa.transaction_builder.transaction_builder_base import _to_reward_address
 
         result = _to_reward_address(STAKE_ADDRESS)
         assert isinstance(result, RewardAddress)
 
     def test_to_reward_address_object(self):
         """Test _to_reward_address with RewardAddress object."""
-        from cometa.transaction_builder.tx_builder import _to_reward_address
+        from cometa.transaction_builder.transaction_builder_base import _to_reward_address
 
         addr = RewardAddress.from_bech32(STAKE_ADDRESS)
         result = _to_reward_address(addr)
@@ -995,7 +995,7 @@ class TestHelperFunctions:
 
     def test_to_drep_object(self):
         """Test _to_drep with DRep object."""
-        from cometa.transaction_builder.tx_builder import _to_drep
+        from cometa.transaction_builder.transaction_builder_base import _to_drep
 
         cred = Credential.from_key_hash(Blake2bHash.from_hex("aa" * 28))
         drep = DRep.new(DRepType.KEY_HASH, cred)
@@ -1004,14 +1004,14 @@ class TestHelperFunctions:
 
     def test_to_plutus_data_ptr_none(self):
         """Test _to_plutus_data_ptr with None."""
-        from cometa.transaction_builder.tx_builder import _to_plutus_data_ptr
+        from cometa.transaction_builder.transaction_builder_base import _to_plutus_data_ptr
 
         result = _to_plutus_data_ptr(None)
         assert result is None
 
     def test_to_plutus_data_ptr_plutus_data(self):
         """Test _to_plutus_data_ptr with PlutusData."""
-        from cometa.transaction_builder.tx_builder import _to_plutus_data_ptr
+        from cometa.transaction_builder.transaction_builder_base import _to_plutus_data_ptr
 
         data = ConstrPlutusData(0)
         result = _to_plutus_data_ptr(data)

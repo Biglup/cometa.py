@@ -18,6 +18,7 @@ limitations under the License.
 from typing import Any, Union, TYPE_CHECKING
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
+    "ScriptRequireGuard": (".script_require_guard", "ScriptRequireGuard"),
     "NativeScriptType": (".native_script_type", "NativeScriptType"),
     "NativeScriptList": (".native_script_list", "NativeScriptList"),
     "NativeScript": (".native_script", "NativeScript"),
@@ -47,6 +48,7 @@ def __getattr__(name: str) -> Any:
 
     if name == "NativeScriptLike":
         from .native_script import NativeScript
+        from .script_require_guard import ScriptRequireGuard
         from .script_pubkey import ScriptPubkey
         from .script_all import ScriptAll
         from .script_any import ScriptAny
@@ -56,6 +58,7 @@ def __getattr__(name: str) -> Any:
         value = Union[
             NativeScript,
             ScriptPubkey,
+            ScriptRequireGuard,
             ScriptAll,
             ScriptAny,
             ScriptNOfK,
@@ -75,6 +78,7 @@ def __dir__() -> list[str]:
 
 if TYPE_CHECKING:
     from .native_script import NativeScript
+    from .script_require_guard import ScriptRequireGuard
     from .script_pubkey import ScriptPubkey
     from .script_all import ScriptAll
     from .script_any import ScriptAny
@@ -85,6 +89,7 @@ if TYPE_CHECKING:
     NativeScriptLike = Union[
         NativeScript,
         ScriptPubkey,
+        ScriptRequireGuard,
         ScriptAll,
         ScriptAny,
         ScriptNOfK,
@@ -94,6 +99,7 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    "ScriptRequireGuard",
     "NativeScriptType",
     "NativeScriptList",
     "NativeScript",

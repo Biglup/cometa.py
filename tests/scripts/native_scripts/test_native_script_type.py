@@ -29,6 +29,7 @@ class TestNativeScriptType:
         assert NativeScriptType.REQUIRE_N_OF_K == 3
         assert NativeScriptType.INVALID_BEFORE == 4
         assert NativeScriptType.INVALID_AFTER == 5
+        assert NativeScriptType.REQUIRE_GUARD == 6
 
     def test_native_script_type_from_int(self):
         """Test creating NativeScriptType from integer values."""
@@ -61,7 +62,7 @@ class TestNativeScriptType:
     def test_native_script_type_invalid_value(self):
         """Test that invalid values raise ValueError."""
         with pytest.raises(ValueError):
-            NativeScriptType(6)
+            NativeScriptType(7)
         with pytest.raises(ValueError):
             NativeScriptType(-1)
         with pytest.raises(ValueError):
@@ -82,7 +83,7 @@ class TestNativeScriptType:
     def test_native_script_type_iteration(self):
         """Test iteration over NativeScriptType enum."""
         values = list(NativeScriptType)
-        assert len(values) == 6
+        assert len(values) == 7
         assert NativeScriptType.REQUIRE_PUBKEY in values
         assert NativeScriptType.REQUIRE_ALL_OF in values
         assert NativeScriptType.REQUIRE_ANY_OF in values
@@ -207,6 +208,7 @@ class TestNativeScriptType:
             "REQUIRE_N_OF_K",
             "INVALID_BEFORE",
             "INVALID_AFTER",
+            "REQUIRE_GUARD",
         }
         actual_types = set(NativeScriptType.__members__.keys())
         assert expected_types == actual_types

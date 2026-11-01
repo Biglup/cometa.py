@@ -38,6 +38,10 @@ from .transaction_output_list import TransactionOutputList
 from .transaction_output import TransactionOutput
 
 if TYPE_CHECKING:
+    from ..common import Credential
+    from ..plutus_data import PlutusData
+    from ..transaction import SubTransaction
+    from .account_balance_interval import AccountBalanceInterval
     from ..certificates.certificate import Certificate, CertificateUnion
 
 
@@ -856,3 +860,39 @@ class TransactionBody:
         err = lib.cardano_transaction_body_set_donation(self._ptr, val_ptr)
         if err != 0:
             raise CardanoError(f"Failed to set donation (error code: {err})")
+
+    @property
+    def guards(self) -> list[Credential]:
+        """Return guards in a Python collection (Dijkstra)."""
+        from ._dijkstra import read_guards
+        return read_guards(lib.cardano_transaction_body_get_guards(self._ptr))
+
+    @property
+    def required_top_level_guards(self) -> list[tuple[Credential, Optional[PlutusData]]]:
+        """Return required top level guards in a Python collection (Dijkstra)."""
+        from ._dijkstra import read_required_guards
+        return read_required_guards(lib.cardano_transaction_body_get_required_top_level_guards(self._ptr))
+
+    @property
+    def direct_deposits(self) -> dict[str, int]:
+        """Return direct deposits in a Python collection (Dijkstra)."""
+        from ._dijkstra import read_account_map
+        return read_account_map(lib.cardano_transaction_body_get_direct_deposits(self._ptr))
+
+    @property
+    def account_balance_intervals(self) -> dict[str, AccountBalanceInterval]:
+        """Return account balance intervals in a Python collection (Dijkstra)."""
+        from ._dijkstra import read_account_map
+        return read_account_map(lib.cardano_transaction_body_get_account_balance_intervals(self._ptr), intervals=True)
+
+    @property
+    def starting_account_balance_intervals(self) -> dict[str, AccountBalanceInterval]:
+        """Return starting account balance intervals in a Python collection (Dijkstra)."""
+        from ._dijkstra import read_account_map
+        return read_account_map(lib.cardano_transaction_body_get_starting_account_balance_intervals(self._ptr), intervals=True)
+
+    @property
+    def sub_transactions(self) -> list[SubTransaction]:
+        """Return sub transactions in a Python collection (Dijkstra)."""
+        from ._dijkstra import read_sub_transactions
+        return read_sub_transactions(lib.cardano_transaction_body_get_sub_transactions(self._ptr))

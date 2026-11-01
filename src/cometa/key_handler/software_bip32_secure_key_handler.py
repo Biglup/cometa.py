@@ -32,7 +32,7 @@ from ..cryptography.ed25519_private_key import Ed25519PrivateKey
 from ..cryptography.emip3 import emip3_encrypt, emip3_decrypt
 from ..witness_set.vkey_witness import VkeyWitness
 from ..witness_set.vkey_witness_set import VkeyWitnessSet
-from ..transaction import Transaction
+from ..transaction import Transaction, SubTransaction
 
 
 class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
@@ -199,7 +199,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
 
     def sign_transaction(  # pylint: disable=too-many-locals
         self,
-        transaction: Transaction,
+        transaction: Transaction | SubTransaction,
         derivation_paths: list[DerivationPath]
     ) -> VkeyWitnessSet:
         """
@@ -358,3 +358,7 @@ class SoftwareBip32SecureKeyHandler(Bip32SecureKeyHandler):
         finally:
             if isinstance(entropy, bytearray):
                 memzero(entropy)
+
+    def sign_sub_transaction(self, transaction: SubTransaction, derivation_paths: list[DerivationPath]) -> VkeyWitnessSet:
+        """Sign the sub-transaction body hash before it is included in a batch."""
+        return self.sign_transaction(transaction, derivation_paths)

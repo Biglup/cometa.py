@@ -145,18 +145,15 @@ class VkeyWitness:
         ptr = lib.cardano_vkey_witness_get_vkey(self._ptr)
         if ptr == ffi.NULL:
             raise CardanoError("Failed to get vkey")
-        lib.cardano_ed25519_public_key_ref(ptr)
 
-        # Get the bytes
-        data_ptr = lib.cardano_ed25519_public_key_get_data(ptr)
-        size = lib.cardano_ed25519_public_key_get_bytes_size(ptr)
-        result = bytes(ffi.buffer(data_ptr, size))
-
-        # Clean up
-        pk_ptr = ffi.new("cardano_ed25519_public_key_t**", ptr)
-        lib.cardano_ed25519_public_key_unref(pk_ptr)
-
-        return result
+        # The native getter returns an owned reference.
+        try:
+            data_ptr = lib.cardano_ed25519_public_key_get_data(ptr)
+            size = lib.cardano_ed25519_public_key_get_bytes_size(ptr)
+            return bytes(ffi.buffer(data_ptr, size))
+        finally:
+            out = ffi.new("cardano_ed25519_public_key_t**", ptr)
+            lib.cardano_ed25519_public_key_unref(out)
 
     @vkey.setter
     def vkey(self, value: bytes) -> None:
@@ -191,18 +188,15 @@ class VkeyWitness:
         ptr = lib.cardano_vkey_witness_get_signature(self._ptr)
         if ptr == ffi.NULL:
             raise CardanoError("Failed to get signature")
-        lib.cardano_ed25519_signature_ref(ptr)
 
-        # Get the bytes
-        data_ptr = lib.cardano_ed25519_signature_get_data(ptr)
-        size = lib.cardano_ed25519_signature_get_bytes_size(ptr)
-        result = bytes(ffi.buffer(data_ptr, size))
-
-        # Clean up
-        sig_ptr = ffi.new("cardano_ed25519_signature_t**", ptr)
-        lib.cardano_ed25519_signature_unref(sig_ptr)
-
-        return result
+        # The native getter returns an owned reference.
+        try:
+            data_ptr = lib.cardano_ed25519_signature_get_data(ptr)
+            size = lib.cardano_ed25519_signature_get_bytes_size(ptr)
+            return bytes(ffi.buffer(data_ptr, size))
+        finally:
+            out = ffi.new("cardano_ed25519_signature_t**", ptr)
+            lib.cardano_ed25519_signature_unref(out)
 
     @signature.setter
     def signature(self, value: bytes) -> None:

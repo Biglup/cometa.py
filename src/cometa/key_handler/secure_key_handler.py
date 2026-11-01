@@ -22,6 +22,7 @@ from enum import IntEnum
 from typing import TYPE_CHECKING, Callable, Union
 
 if TYPE_CHECKING:
+    from ..transaction import Transaction, SubTransaction
     from ..cryptography.bip32_public_key import Bip32PublicKey
     from ..cryptography.ed25519_private_key import Ed25519PrivateKey
     from ..cryptography.ed25519_public_key import Ed25519PublicKey
@@ -138,6 +139,11 @@ class Bip32SecureKeyHandler(ABC):
             in memory and securely wiped immediately after use.
         """
 
+    def sign_sub_transaction(self, transaction: "SubTransaction",
+                             derivation_paths: list[DerivationPath]) -> "VkeyWitnessSet":
+        """Sign a Dijkstra intent. Implementations may opt into this operation."""
+        raise NotImplementedError("This key handler does not support sub-transactions")
+
     @abstractmethod
     def sign_data(
         self,
@@ -217,16 +223,20 @@ class Ed25519SecureKeyHandler(ABC):
     """
 
     @abstractmethod
-    def sign_transaction(self, transaction: str) -> "VkeyWitnessSet":
+    def sign_transaction(self, transaction: "Transaction") -> "VkeyWitnessSet":
         """
         Signs a transaction using the securely stored Ed25519 private key.
 
         Args:
-            transaction: The CBOR-encoded transaction hex string to be signed.
+            transaction: The transaction object to be signed.
 
         Returns:
             A VkeyWitnessSet containing the signature.
         """
+
+    def sign_sub_transaction(self, transaction: "SubTransaction") -> "VkeyWitnessSet":
+        """Sign a Dijkstra intent. Implementations may opt into this operation."""
+        raise NotImplementedError("This key handler does not support sub-transactions")
 
     @abstractmethod
     def sign_data(self, data: str) -> dict[str, str]:
