@@ -114,7 +114,10 @@ def test_signed_intent_roundtrip_and_batch_value_conservation(params):
     assert sub.id.to_hex() == original_id
     assert sub.body.required_top_level_guards[0][1].to_int() == 42
     tx = batcher(params).add_guard(credential).add_sub_transaction(sub, [party]).build()
-    inspected = json.loads(tx.serialize_to_json())["body"]["sub_transactions"]
+    body_json = json.loads(tx.serialize_to_json())["body"]
+    assert body_json["guards"] == [{"tag": "pubkey_hash", "value": handler.get_public_key().to_hash().to_hex()}]
+    assert "required_signers" not in body_json
+    inspected = body_json["sub_transactions"]
     assert len(inspected) == 1
     assert inspected[0]["body"]["required_top_level_guards"][0]["value"] == {"tag": "integer", "value": "42"}
     assert inspected[0]["witness_set"]
