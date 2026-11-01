@@ -195,3 +195,21 @@ def test_vkey_witness_init_with_null_ptr_raises_error():
     from cometa._ffi import ffi
     with pytest.raises(CardanoError, match="VkeyWitness: invalid handle"):
         VkeyWitness(ffi.NULL)
+
+
+def test_reading_witness_bytes_does_not_retain_native_references():
+    from cometa._ffi import ffi, lib
+    witness = VkeyWitness.new(bytes.fromhex(VKEY_HEX), bytes.fromhex(SIGNATURE_HEX))
+    key = lib.cardano_vkey_witness_get_vkey(witness._ptr)
+    signature = lib.cardano_vkey_witness_get_signature(witness._ptr)
+    try:
+        key_refs = lib.cardano_ed25519_public_key_refcount(key)
+        signature_refs = lib.cardano_ed25519_signature_refcount(signature)
+        for _ in range(100):
+            assert witness.vkey.hex() == VKEY_HEX
+            assert witness.signature.hex() == SIGNATURE_HEX
+        assert lib.cardano_ed25519_public_key_refcount(key) == key_refs
+        assert lib.cardano_ed25519_signature_refcount(signature) == signature_refs
+    finally:
+        lib.cardano_ed25519_public_key_unref(ffi.new("cardano_ed25519_public_key_t**", key))
+        lib.cardano_ed25519_signature_unref(ffi.new("cardano_ed25519_signature_t**", signature))

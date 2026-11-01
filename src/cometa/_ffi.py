@@ -208,3 +208,16 @@ if _native_version.split(".", 1)[0] != "2":
     raise ImportError(
         f"Cometa 2 requires cardano-c 2.x; found {_native_version} at {_lib_path}"
     )
+
+
+# Runtime CFFI resolves types/functions under a non-reentrant parser lock.
+# A cyclic-GC finalizer reached during that work must not resolve its unref
+# function or pointer type under the same lock. Wheels use the compiled cache.
+if type(ffi).__module__ == "cffi.api":
+    for _symbol in dir(lib):
+        if _symbol.startswith("cardano_") and _symbol.endswith("_unref"):
+            _release = getattr(lib, _symbol)
+            _pointer = ffi.typeof(_release).args[0]
+            _base_type = _pointer.item.item.cname
+            ffi.typeof(f"{_base_type}**")
+            ffi.typeof(f"{_base_type} **")
