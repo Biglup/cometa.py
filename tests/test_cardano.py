@@ -133,7 +133,8 @@ def test_loader_rejects_incompatible_system_library(monkeypatch):
     import cometa._ffi as runtime
 
     native = SimpleNamespace(cardano_get_lib_version=lambda: b"1.2.0")
-    fake_ffi = SimpleNamespace(dlopen=lambda _path: native, string=lambda value: value)
+    fake_ffi = SimpleNamespace(dlopen=lambda _path: native, string=lambda value: value,
+                               sizeof=lambda _name: 1)
     monkeypatch.setitem(sys.modules, "cometa._cardano_cffi", SimpleNamespace(ffi=fake_ffi))
     with pytest.raises(ImportError, match="requires cardano-c 2.x; found 1.2.0"):
         runpy.run_path(runtime.__file__)

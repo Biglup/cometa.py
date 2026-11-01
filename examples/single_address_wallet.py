@@ -456,6 +456,12 @@ class SingleAddressWallet:
         builder.set_collateral_utxos(own_utxos)
         builder.set_utxos(own_utxos)
 
+        # sign_transaction always supplies this witness, including script-only spends.
+        payment_key = self._account_root_public_key.derive([
+            KeyDerivationRole.EXTERNAL, self._credentials_config.payment_index
+        ]).to_ed25519_key()
+        builder.add_signer(payment_key.to_hash())
+
         return builder
 
     def get_address(self) -> Address:

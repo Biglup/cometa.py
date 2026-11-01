@@ -15,6 +15,9 @@
 - Keep Python provider callbacks alive for provider-backed evaluators, preserve
   deferred callback exceptions, and safely truncate coin-selector error messages.
 - Reject incompatible cardano-c 1.x system libraries before calling the 2.x ABI.
+- Initialize recursive CFFI structures before cached callback types to prevent
+  callback-type resolution from aborting the interpreter.
+- Budget the example wallet's payment witness for script-only transactions.
 - Fix platform wheel metadata and fail builds when a requested artifact fails.
   Linux x86-64/ARM64 wheels require glibc 2.33; macOS wheels require macOS 26.
 - Remove ARMv6 debug information while preserving executable sections and exports.

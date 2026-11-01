@@ -52,6 +52,15 @@ def _get_ffi():
     """
     try:
         from cometa._cardano_cffi import ffi as precompiled_ffi
+        # Resolve recursive structures before their callback typedefs. Otherwise
+        # CFFI's cached ABI loader can abort while resolving a callback first.
+        for struct_name in (
+            "cardano_secure_key_handler_impl_t",
+            "cardano_provider_impl_t",
+            "cardano_coin_selector_impl_t",
+            "cardano_tx_evaluator_impl_t",
+        ):
+            precompiled_ffi.sizeof(struct_name)
         return precompiled_ffi
     except ImportError:
         pass
