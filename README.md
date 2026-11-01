@@ -280,10 +280,19 @@ be able to build any valid transaction for the current era. See the [Documentati
 
 ## **Installation**
 
-You can install Cometa.py using pip:
+Install the stable package:
 
-```bash
+```sh
 pip install biglup-cometa
+```
+
+Normal installs select the stable release, currently `1.2.1.post6`. Pip does not
+select the 2.0 release candidate unless you opt in.
+
+To install the release candidate with the new Dijkstra APIs:
+
+```sh
+pip install "biglup-cometa==2.0.0rc1"
 ```
 
 The 2.0 binary wheels require glibc 2.33 or newer on Linux x86-64/ARM64, or
