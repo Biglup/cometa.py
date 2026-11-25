@@ -665,7 +665,7 @@ class TestBlockfrostUtxoParsing:
             project_id="test",
         )
 
-        datum_hash = "e" * 64
+        datum_hash = "fcaa61fb85676101d9e3398a484674e71c45c3fd41b492682f3b0054f4cf3273"
         # CBOR hex for PlutusData integer 42 (d8799f182aff = constructor 0 with fields [42])
         inline_datum_cbor = "d8799f182aff"
 
@@ -684,26 +684,30 @@ class TestBlockfrostUtxoParsing:
         assert utxo is not None
         assert utxo.output.value.coin == 4000000
 
-    def test_parse_utxo_with_script_ref(self):
+    def test_parse_utxo_with_script_ref(self, monkeypatch):
         """Test parsing UTXO with script reference."""
         provider = BlockfrostProvider(
             network=NetworkMagic.PREPROD,
             project_id="test",
         )
 
+        from cometa import NativeScript, Script
+        script = Script.from_native(NativeScript.from_json('{"type":"before","slot":123}'))
+        monkeypatch.setattr(provider, "_get_script_ref", lambda _: script)
         utxo_data = {
             "tx_hash": TX_ID_HASH,
             "output_index": 6,
             "amount": [
                 {"unit": "lovelace", "quantity": "10000000"}
             ],
-            "reference_script_hash": "f" * 56
+            "reference_script_hash": script.hash.hex()
         }
 
         utxo = provider._parse_utxo_json(TEST_ADDRESS, utxo_data)
 
         assert utxo is not None
         assert utxo.output.value.coin == 10000000
+        assert utxo.output.script_ref.hash == script.hash
 
 
 class TestProviderCallbacks:

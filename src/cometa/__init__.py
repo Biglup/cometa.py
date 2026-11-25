@@ -285,6 +285,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     # Providers
     "Provider": (".providers", "Provider"),
     "ProviderProtocol": (".providers", "ProviderProtocol"),
+    "KoiosProvider": (".providers", "KoiosProvider"),
+    "KupmiosProvider": (".providers", "KupmiosProvider"),
+    "HydraProvider": (".providers", "HydraProvider"),
     "BlockfrostProvider": (".providers", "BlockfrostProvider"),
     "ProviderTxEvaluator": (".providers", "ProviderTxEvaluator"),
     # Native script utilities
@@ -591,6 +594,9 @@ __all__ = [
     # Providers
     "Provider",
     "ProviderProtocol",
+    "KoiosProvider",
+    "KupmiosProvider",
+    "HydraProvider",
     "BlockfrostProvider",
     "ProviderTxEvaluator",
     # Message Signing

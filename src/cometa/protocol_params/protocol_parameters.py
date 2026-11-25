@@ -501,3 +501,54 @@ class ProtocolParameters:
         err = lib.cardano_protocol_parameters_set_ref_script_cost_per_byte(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set ref_script_cost_per_byte (error code: {err})")
+
+    @property
+    def max_ref_script_size_per_block(self) -> int:
+        """Maximum reference-script bytes per block."""
+        return lib.cardano_protocol_parameters_get_max_ref_script_size_per_block(self._ptr)
+
+    @max_ref_script_size_per_block.setter
+    def max_ref_script_size_per_block(self, value: int) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64:
+            raise ValueError("Expected an unsigned 64-bit integer")
+        err = lib.cardano_protocol_parameters_set_max_ref_script_size_per_block(self._ptr, value)
+        if err != 0:
+            raise CardanoError(f"Failed to set max_ref_script_size_per_block (error code: {err})")
+
+    @property
+    def max_ref_script_size_per_tx(self) -> int:
+        """Maximum reference-script bytes per transaction."""
+        return lib.cardano_protocol_parameters_get_max_ref_script_size_per_tx(self._ptr)
+
+    @max_ref_script_size_per_tx.setter
+    def max_ref_script_size_per_tx(self, value: int) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64:
+            raise ValueError("Expected an unsigned 64-bit integer")
+        err = lib.cardano_protocol_parameters_set_max_ref_script_size_per_tx(self._ptr, value)
+        if err != 0:
+            raise CardanoError(f"Failed to set max_ref_script_size_per_tx (error code: {err})")
+
+    @property
+    def ref_script_cost_stride(self) -> int:
+        """Reference-script fee tier width in bytes."""
+        return lib.cardano_protocol_parameters_get_ref_script_cost_stride(self._ptr)
+
+    @ref_script_cost_stride.setter
+    def ref_script_cost_stride(self, value: int) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64:
+            raise ValueError("Expected an unsigned 64-bit integer")
+        err = lib.cardano_protocol_parameters_set_ref_script_cost_stride(self._ptr, value)
+        if err != 0:
+            raise CardanoError(f"Failed to set ref_script_cost_stride (error code: {err})")
+
+    @property
+    def ref_script_cost_multiplier(self) -> Optional[UnitInterval]:
+        """Exact multiplier applied between reference-script fee tiers."""
+        ptr = lib.cardano_protocol_parameters_get_ref_script_cost_multiplier(self._ptr)
+        return None if ptr == ffi.NULL else UnitInterval(ptr)
+
+    @ref_script_cost_multiplier.setter
+    def ref_script_cost_multiplier(self, value: UnitInterval) -> None:
+        err = lib.cardano_protocol_parameters_set_ref_script_cost_multiplier(self._ptr, value._ptr)
+        if err != 0:
+            raise CardanoError(f"Failed to set ref_script_cost_multiplier (error code: {err})")

@@ -342,6 +342,39 @@ provider = BlockfrostProvider(
 )
 ```
 
+The same interface also supports Koios, Kupmios (Kupo + Ogmios), and Hydra:
+
+```python
+from cometa import KoiosProvider, KupmiosProvider, HydraProvider, NetworkMagic
+
+provider = KoiosProvider(NetworkMagic.PREPROD)
+
+# Both services must track the same network and Kupo must index your addresses.
+provider = KupmiosProvider(
+    NetworkMagic.PREPROD,
+    kupo_url="http://localhost:1442",
+    ogmios_url="http://localhost:1337",
+)
+
+# Connect to an existing, open Conway Head.
+provider = HydraProvider(NetworkMagic.PREPROD, "http://localhost:4001")
+```
+
+Koios and Kupmios support protocol parameters, UTxO and NFT queries, rewards,
+datum resolution, transaction submission, confirmation, and remote Plutus
+evaluation. Optional bearer tokens and request timeouts are constructor arguments;
+Kupmios accepts separate tokens for Kupo and Ogmios. All three new providers
+preserve exact quantities and rational prices, verify datum/script hashes, bound
+responses to 8 MiB, and never automatically retry a submission.
+
+Hydra submits to the Head's L2 `/transaction` endpoint. It has no staking rewards
+or remote evaluation API; these operations raise `NotImplementedError`. Use a
+local evaluator configured with the Head's parameters. Confirmation checks the
+latest signed snapshot, so older transactions missing from that snapshot cannot
+be rediscovered. L2 confirmation does not mean funds have settled on L1. Kupo
+confirmation similarly requires the transaction's outputs to be indexed and its
+history retained.
+
 > **Tip:** You can create your own providers by implementing the `Provider` protocol.
 
 Create your addresses and fetch UTxOs:
