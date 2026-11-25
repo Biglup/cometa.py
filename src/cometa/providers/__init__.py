@@ -22,6 +22,9 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "ProviderProtocol": (".provider", "ProviderProtocol"),
     "ProviderHandle": (".python_provider_adapter", "ProviderHandle"),
     "CProviderWrapper": (".c_provider_wrapper", "CProviderWrapper"),
+    "KoiosProvider": (".koios_provider", "KoiosProvider"),
+    "KupmiosProvider": (".kupmios_provider", "KupmiosProvider"),
+    "HydraProvider": (".hydra_provider", "HydraProvider"),
     "BlockfrostProvider": (".blockfrost_provider", "BlockfrostProvider"),
     "ProviderTxEvaluator": (".provider_tx_evaluator", "ProviderTxEvaluator"),
 }
@@ -54,6 +57,9 @@ __all__ = [
     "ProviderProtocol",
     "ProviderHandle",
     "CProviderWrapper",
+    "KoiosProvider",
+    "KupmiosProvider",
+    "HydraProvider",
     "BlockfrostProvider",
     "ProviderTxEvaluator",
 ]

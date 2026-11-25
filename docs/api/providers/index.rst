@@ -8,4 +8,7 @@ This section of the documentation introduces the data providers for interacting 
 
    provider
    blockfrost_provider
+   koios_provider
+   kupmios_provider
+   hydra_provider
    provider_tx_evaluator

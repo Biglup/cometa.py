@@ -303,7 +303,8 @@ class BlockfrostProvider:
     # Provider Protocol Implementation
     # -------------------------------------------------------------------------
 
-    def get_name(self) -> str:
+    @staticmethod
+    def get_name() -> str:
         """
         Get the provider name.
 
