@@ -4,6 +4,7 @@
 
 - Add Koios, Kupmios (Kupo + Ogmios), and Hydra providers with exact wire decoding, bounded HTTP requests, and explicit confirmation semantics.
 - Expose reference-script size limits, fee stride, and fee multiplier in protocol parameters.
+- Fix Blockfrost inline datum and native reference-script decoding, preserve complete additional evaluation inputs, and reject incomplete or inconsistent execution budgets.
 
 ## 2.0.0rc3
 

@@ -41,35 +41,14 @@ def _network_magic_to_prefix(magic: NetworkMagic) -> str:
 
 def _prepare_utxos_for_evaluation(utxos: List["Utxo"]) -> List:
     """Prepare UTXOs for the evaluation endpoint."""
+    from ._outputs import ogmios_output
+    from ._values import unique
+
     result = []
-    for utxo in utxos:
-        input_json = {
-            "id": utxo.input.transaction_id.hex(),
-            "index": utxo.input.index
-        }
-
-        output = utxo.output
-        output_json = {
-            "address": str(output.address),
-            "value": {
-                "ada": {
-                    "lovelace": output.value.coin
-                }
-            }
-        }
-
-        assets = output.value.multi_asset
-        if assets:
-            for policy_id, asset_map in assets.items():
-                pid_hex = policy_id.to_hex()
-                if pid_hex not in output_json["value"]:
-                    output_json["value"][pid_hex] = {}
-                for asset_name, qty in asset_map.items():
-                    name_hex = asset_name.to_hex()
-                    output_json["value"][pid_hex][name_hex] = qty
-
-        result.extend([input_json, output_json])
-
+    for utxo in unique(list(utxos)):
+        encoded = ogmios_output(utxo)
+        reference = {"id": encoded.pop("transaction")["id"], "index": encoded.pop("index")}
+        result.extend([reference, encoded])
     return result
 
 
@@ -200,7 +179,7 @@ class BlockfrostProvider:
             json_data = self._get(f"scripts/{script_hash}/json")
             if not json_data or "json" not in json_data:
                 return None
-            return Script.from_native(NativeScript.from_json(json_data["json"]))
+            return Script.from_native(NativeScript.from_json(json.dumps(json_data["json"])))
 
         version_map = {
             "plutusV1": PlutusLanguageVersion.V1,
@@ -209,7 +188,7 @@ class BlockfrostProvider:
         }
 
         plutus_version = version_map.get(script_type)
-        if plutus_version:
+        if plutus_version is not None:
             cbor_data = self._get(f"scripts/{script_hash}/cbor")
             if not cbor_data or "cbor" not in cbor_data:
                 return None
@@ -275,27 +254,17 @@ class BlockfrostProvider:
         inline_datum_cbor = utxo_data.get("inline_datum")
 
         if inline_datum_cbor:
-            try:
-                reader = CborReader.from_hex(inline_datum_cbor)
-                datum = Datum.from_cbor(reader)
-                tx_output.datum = datum
-            except CardanoError:
-                pass
+            from ._outputs import inline_datum
+            tx_output.datum = inline_datum(inline_datum_cbor, datum_hash)
         elif datum_hash:
-            try:
-                datum = Datum.from_data_hash_hex(datum_hash)
-                tx_output.datum = datum
-            except CardanoError:
-                pass
+            tx_output.datum = Datum.from_data_hash_hex(datum_hash)
 
         script_ref_hash = utxo_data.get("reference_script_hash")
         if script_ref_hash:
-            try:
-                script = self._get_script_ref(script_ref_hash)
-                if script:
-                    tx_output.script_ref = script
-            except CardanoError:
-                pass
+            script = self._get_script_ref(script_ref_hash)
+            if script is None or script.hash.hex() != script_ref_hash.lower():
+                raise CardanoError("Invalid Blockfrost reference script")
+            tx_output.script_ref = script
 
         return Utxo.new(tx_input, tx_output)
 
@@ -622,8 +591,13 @@ class BlockfrostProvider:
             inputs = tx_ins
 
         results = []
+        seen = set()
 
         for tx_in in inputs:
+            key = (tx_in.transaction_id, tx_in.index)
+            if key in seen:
+                continue
+            seen.add(key)
             tx_id = tx_in.transaction_id.hex()
             index = tx_in.index
 
@@ -742,17 +716,11 @@ class BlockfrostProvider:
             A list of Redeemer objects with computed execution units.
         """
         from ..transaction import Transaction
-        from ..witness_set import RedeemerTag
-        from ..common.ex_units import ExUnits
+        from ._remote import _budgets
+        from ._values import obj, integer, invalid
 
-        cbor_reader = CborReader.from_hex(tx_cbor_hex)
-        parsed_tx = Transaction.from_cbor(cbor_reader)
-        original_redeemers = parsed_tx.witness_set.redeemers
-
-        redeemer_map = {}
-        if original_redeemers is not None:
-            for original_redeemer in original_redeemers:
-                redeemer_map[(original_redeemer.tag, original_redeemer.index)] = original_redeemer
+        parsed_tx = Transaction.from_cbor(CborReader.from_hex(tx_cbor_hex))
+        original_redeemers = list(parsed_tx.witness_set.redeemers or [])
 
         payload: Dict[str, Any] = {"cbor": tx_cbor_hex}
 
@@ -778,34 +746,14 @@ class BlockfrostProvider:
         if "EvaluationResult" not in result:
             raise CardanoError(f"Evaluation failed: {result}")
 
-        eval_result = result["EvaluationResult"]
-        updated_redeemers = []
-
-        for key, ex_units in eval_result.items():
+        budgets = []
+        aliases = {"certificate": "publish", "withdrawal": "withdraw"}
+        for key, units in obj(result["EvaluationResult"]).items():
             parts = key.split(":")
             if len(parts) != 2:
-                continue
-
-            purpose, index = parts[0], int(parts[1])
-
-            tag_map = {
-                "spend": RedeemerTag.SPEND,
-                "mint": RedeemerTag.MINT,
-                "certificate": RedeemerTag.CERTIFYING,
-                "withdrawal": RedeemerTag.REWARD,
-                "vote": RedeemerTag.VOTING,
-                "propose": RedeemerTag.PROPOSING,
-            }
-
-            tag = tag_map.get(purpose)
-            if tag is None:
-                continue
-
-            redeemer = redeemer_map.get((tag, index))
-
-            if redeemer:
-                units = ExUnits.new(int(ex_units["memory"]), int(ex_units["steps"]))
-                redeemer.ex_units = units
-                updated_redeemers.append(redeemer)
-
-        return updated_redeemers
+                invalid()
+            purpose, index = parts
+            units = obj(units)
+            budgets.append({"validator": {"purpose": aliases.get(purpose, purpose), "index": integer(index)},
+                            "budget": {"memory": units.get("memory"), "cpu": units.get("steps")}})
+        return _budgets(original_redeemers, budgets)

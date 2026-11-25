@@ -425,3 +425,51 @@ def test_koios_repeated_page_is_rejected():
     with pytest.raises(CardanoError):
         instance.get_unspent_outputs(ADDRESS)
     assert instance._http.json.call_count == 2
+
+
+def test_blockfrost_inline_datum_and_native_reference_script():
+    from cometa import BlockfrostProvider, NativeScript, Script
+    native_json = {'type': 'before', 'slot': 123}
+    script = Script.from_native(NativeScript.from_json(json.dumps(native_json)))
+    instance = BlockfrostProvider(1, 'test-credential')
+    instance._get = Mock(side_effect=[{'type': 'timelock'}, {'json': native_json}])
+    row = {'tx_hash': TX_ID, 'output_index': 0, 'amount': [{'unit': 'lovelace', 'quantity': '3000000'}],
+           'inline_datum': DATUM, 'data_hash': DATUM_HASH, 'reference_script_hash': script.hash.hex()}
+    result = instance._parse_utxo_json(ADDRESS, row)
+    assert cbor(result.output.datum.get_inline_data()) == DATUM
+    assert result.output.script_ref.hash == script.hash
+    row['data_hash'] = '00' * 32
+    with pytest.raises(CardanoError):
+        instance._parse_utxo_json(ADDRESS, row)
+
+
+def test_blockfrost_reference_script_failures_are_not_silently_dropped():
+    from cometa import BlockfrostProvider
+    instance = BlockfrostProvider(1, 'test-credential')
+    instance._get = Mock(side_effect=CardanoError('Script lookup failed'))
+    row = {'tx_hash': TX_ID, 'output_index': 0, 'amount': [{'unit': 'lovelace', 'quantity': '3000000'}],
+           'reference_script_hash': 'ab' * 28}
+    with pytest.raises(CardanoError, match='Script lookup failed'):
+        instance._parse_utxo_json(ADDRESS, row)
+
+
+def test_blockfrost_evaluation_preserves_additional_datum_script_and_integer():
+    from cometa.providers.blockfrost_provider import _prepare_utxos_for_evaluation
+    sample = next(koios_output(row) for row in KOIOS if row.get('reference_script'))
+    from cometa.providers._outputs import inline_datum
+    sample.output.datum = inline_datum(DATUM)
+    encoded = _prepare_utxos_for_evaluation([sample])
+    assert len(encoded) == 2
+    assert encoded[0]['id'] == sample.input.transaction_id.hex()
+    assert encoded[1]['datum'] == DATUM
+    assert 'script' in encoded[1]
+    assert isinstance(encoded[1]['value']['ada']['lovelace'], int)
+
+
+def test_blockfrost_evaluation_rejects_unknown_or_extra_budgets():
+    from cometa import BlockfrostProvider
+    instance = BlockfrostProvider(1, 'test-credential')
+    for key in ('bogus:0', 'mint:0', 'mint:garbage'):
+        instance._post = Mock(return_value={'result': {'EvaluationResult': {key: {'memory': 1, 'steps': 2}}}})
+        with pytest.raises(CardanoError):
+            instance.evaluate_transaction(TX)
