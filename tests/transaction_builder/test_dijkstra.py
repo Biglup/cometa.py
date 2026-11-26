@@ -281,3 +281,36 @@ def test_guard_script_in_witness_set():
     witness_set = WitnessSet()
     witness_set.native_scripts = [ScriptRequireGuard.new(credential)]
     assert witness_set.native_scripts[0].to_require_guard().credential == credential
+
+
+def test_pool_state_snapshot_and_protocol_gate(params):
+    """Latest pools refine signers only from protocol 12; invalid snapshots fail."""
+    from cometa import PoolParams, PoolOwners, Relays, Blake2bHash, RewardAddress, PoolRegistrationCert, Certificate
+
+    owner = Blake2bHash.from_hex("22" * 28)
+    owners = PoolOwners.new()
+    owners.add(owner)
+    pool = PoolParams.new(Blake2bHash.from_hex("33" * 28), Blake2bHash.from_hex("44" * 32),
+                          0, 0, UnitInterval.new(1, 20),
+                          RewardAddress.from_credentials(NetworkId.TESTNET, Credential.from_key_hash(owner)), owners, Relays.new())
+    params.pool_deposit = 0
+    builder = batcher(params).set_pool_state([pool])
+    certificate = Certificate.new_pool_registration(PoolRegistrationCert.new(pool))
+    tx = builder.add_certificate(certificate).build()
+    assert len(tx.get_unique_signers(protocol_major=12, pool_state=[pool])) == 1
+    assert len(tx.get_unique_signers(protocol_major=11, pool_state=[pool])) == 2
+    assert len(tx.get_unique_signers()) == 2
+    from cometa.transaction_builder.balancing import balance_transaction
+    from cometa.transaction_builder.coin_selection import LargeFirstCoinSelector
+
+    funding = create_test_utxo(index=10, lovelace=50_000_000)
+    balance_transaction(tx, params, Address.from_string(TEST_ADDRESS), [], LargeFirstCoinSelector.new(),
+                        pre_selected_utxo=[funding], pool_state=[pool])
+    with pytest.raises(CardanoError):
+        balance_transaction(tx, params, Address.from_string(TEST_ADDRESS), [], LargeFirstCoinSelector.new(),
+                            pre_selected_utxo=[funding], pool_state=[pool, pool])
+    with pytest.raises(CardanoError):
+        builder.set_pool_state([pool, pool])
+    builder.set_pool_state([])
+    with pytest.raises(TypeError):
+        builder.set_pool_state([object()])

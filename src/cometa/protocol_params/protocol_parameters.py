@@ -552,3 +552,20 @@ class ProtocolParameters:
         err = lib.cardano_protocol_parameters_set_ref_script_cost_multiplier(self._ptr, value._ptr)
         if err != 0:
             raise CardanoError(f"Failed to set ref_script_cost_multiplier (error code: {err})")
+
+    @property
+    def ref_inputs_cost_per_multi_asset_byte(self) -> int:
+        """Reference-input multi-asset overhead cost per byte (parameter 55)."""
+        return int(lib.cardano_protocol_parameters_get_ref_inputs_cost_per_multi_asset_byte(self._ptr))
+
+    @ref_inputs_cost_per_multi_asset_byte.setter
+    def ref_inputs_cost_per_multi_asset_byte(self, value: int) -> None:
+        if (
+            isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64
+        ):
+            raise ValueError("Expected an unsigned 64-bit integer")
+        err = lib.cardano_protocol_parameters_set_ref_inputs_cost_per_multi_asset_byte(
+            self._ptr, value
+        )
+        if err != 0:
+            raise CardanoError(f"Failed to set multi-asset byte cost (error code: {err})")

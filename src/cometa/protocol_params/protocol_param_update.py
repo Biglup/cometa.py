@@ -744,3 +744,26 @@ class ProtocolParamUpdate:
         err = lib.cardano_protocol_param_update_to_cip116_json(self._ptr, writer._ptr)
         if err != 0:
             raise CardanoError(f"Failed to serialize to CIP-116 JSON (error code: {err})")
+
+    @property
+    def ref_inputs_cost_per_multi_asset_byte(self) -> Optional[int]:
+        """Reference-input multi-asset overhead cost per byte (parameter 55)."""
+        out = ffi.new("uint64_t*")
+        err = lib.cardano_protocol_param_update_get_ref_inputs_cost_per_multi_asset_byte(self._ptr, out)
+        if err == 9:
+            return None
+        if err != 0:
+            raise CardanoError(f"Failed to get multi-asset byte cost (error code: {err})")
+        return int(out[0])
+
+    @ref_inputs_cost_per_multi_asset_byte.setter
+    def ref_inputs_cost_per_multi_asset_byte(self, value: Optional[int]) -> None:
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64
+        ):
+            raise ValueError("Expected an unsigned 64-bit integer")
+        err = lib.cardano_protocol_param_update_set_ref_inputs_cost_per_multi_asset_byte(
+            self._ptr, ffi.NULL if value is None else ffi.new("uint64_t*", value)
+        )
+        if err != 0:
+            raise CardanoError(f"Failed to set multi-asset byte cost (error code: {err})")

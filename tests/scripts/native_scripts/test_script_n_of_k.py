@@ -361,17 +361,13 @@ class TestScriptNOfKEquals:
         assert n_of_k1 == n_of_k2
 
     def test_equals_different_required(self):
-        """Test equality with different required values.
-
-        Note: The C implementation only compares the scripts list, not the required field.
-        This is the expected behavior from the underlying C library.
-        """
+        """Thresholds are part of native-script equality."""
         pubkey = ScriptPubkey.new(
             bytes.fromhex("966e394a544f242081e41d1965137b1bb412ac230d40ed5407821c37")
         )
         n_of_k1 = ScriptNOfK.new([pubkey], 1)
         n_of_k2 = ScriptNOfK.new([pubkey], 2)
-        assert n_of_k1 == n_of_k2
+        assert n_of_k1 != n_of_k2
 
     def test_equals_different_scripts(self):
         """Test equality with different scripts."""

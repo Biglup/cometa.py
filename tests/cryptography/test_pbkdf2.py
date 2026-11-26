@@ -244,11 +244,10 @@ class TestPbkdf2HmacSha512:
         assert isinstance(result, bytes)
         assert len(result) == 256
 
-    def test_zero_iterations_valid(self):
-        """Test PBKDF2 with zero iterations (treated as 1 iteration)."""
-        result = pbkdf2_hmac_sha512(b"password", b"salt", 0, 32)
-        assert isinstance(result, bytes)
-        assert len(result) == 32
+    def test_zero_iterations_invalid(self):
+        """PBKDF2 requires at least one iteration."""
+        with pytest.raises(CardanoError):
+            pbkdf2_hmac_sha512(b"password", b"salt", 0, 32)
 
     def test_negative_iterations_invalid(self):
         """Test PBKDF2 with negative iterations (should fail)."""

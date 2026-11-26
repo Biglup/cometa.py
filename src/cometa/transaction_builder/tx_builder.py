@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from ..common import UtxoList, Utxo
     from ..transaction import Transaction, SubTransaction
     from ..transaction_body import AccountBalanceInterval
+    from ..pool_params import PoolParams
 
 
 class TxBuilder(TransactionBuilderBase):
@@ -74,7 +75,7 @@ class TxBuilder(TransactionBuilderBase):
         >>> tx_hash = provider.submit_transaction(signed_tx)
 
     Note:
-        All configuration and validation errors are deferred until ``build()``
+        Most configuration and validation errors are deferred until ``build()``
         is called. This allows for flexible, incremental transaction construction.
 
     See Also:
@@ -85,6 +86,24 @@ class TxBuilder(TransactionBuilderBase):
         - :class:`TxEvaluator`: Customizable Plutus script evaluation strategies
     """
 
+
+    def set_pool_state(self, pools: List["PoolParams"]) -> TxBuilder:
+        """Snapshot latest registered pools for protocol-12 witness estimation.
+
+        Prefer pending parameters over active ones and include each pool once.
+        Unknown pools remain conservative. An empty list clears the snapshot.
+        This does not change pool deposits. Invalid state raises immediately.
+        """
+        from ..pool_params import PoolParams
+
+        snapshot = tuple(pools)
+        if any(not isinstance(pool, PoolParams) for pool in snapshot):
+            raise TypeError("pools must contain PoolParams values")
+        pointers = ffi.new("cardano_pool_params_t*[]", [pool._ptr for pool in snapshot])
+        err = lib.cardano_tx_builder_set_pool_state(self._ptr, pointers, len(snapshot))
+        if err != 0:
+            raise CardanoError(f"Failed to set pool state (error code: {err})")
+        return self
 
     def set_coin_selector(
         self,

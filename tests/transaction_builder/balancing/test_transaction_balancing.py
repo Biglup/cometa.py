@@ -419,30 +419,19 @@ class TestBalanceTransaction:
         is_balanced = is_transaction_balanced(tx, utxo_list, protocol_params)
         assert is_balanced
 
-    def test_balance_transaction_minimal_arguments_raises_without_evaluator(
-        self,
-        protocol_params,
-        utxo_list,
-        change_address,
-        coin_selector
+    def test_balance_transaction_minimal_arguments(
+        self, protocol_params, utxo_list, change_address, coin_selector
     ):
-        """
-        Test that balance_transaction raises an error without evaluator for script txs.
-
-        Note: In the C implementation, certain balancing operations require additional
-        parameters like evaluator or collateral for proper operation.
-        """
+        """Omitted reference inputs mean an empty list for a script-free draft."""
         tx = create_transaction_without_inputs(BALANCED_TX_CBOR, 15000000)
-
-        # Balance transaction with minimal arguments - raises error for script txs
-        with pytest.raises(CardanoError):
-            balance_transaction(
-                unbalanced_tx=tx,
-                protocol_params=protocol_params,
-                change_address=change_address,
-                available_utxo=utxo_list,
-                coin_selector=coin_selector,
-            )
+        balance_transaction(
+            unbalanced_tx=tx,
+            protocol_params=protocol_params,
+            change_address=change_address,
+            available_utxo=utxo_list,
+            coin_selector=coin_selector,
+        )
+        assert is_transaction_balanced(tx, utxo_list, protocol_params)
 
 
 class TestIsTransactionBalanced:

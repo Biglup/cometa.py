@@ -210,6 +210,21 @@ if _native_version.split(".", 1)[0] != "2":
     )
 
 
+try:
+    # These entry points establish the minimum ABI used by the binding.
+    for _required_symbol in (
+        "cardano_tx_builder_set_pool_state",
+        "cardano_transaction_get_unique_signers_with_pool_state",
+        "cardano_balance_transaction_with_pool_state",
+        "cardano_protocol_parameters_get_ref_inputs_cost_per_multi_asset_byte",
+    ):
+        getattr(lib, _required_symbol)
+except AttributeError as exc:
+    raise ImportError(
+        f"Cometa requires cardano-c 2.0.0-rc.7 or newer; found {_native_version} at {_lib_path}"
+    ) from exc
+
+
 # Runtime CFFI resolves types/functions under a non-reentrant parser lock.
 # A cyclic-GC finalizer reached during that work must not resolve its unref
 # function or pointer type under the same lock. Wheels use the compiled cache.

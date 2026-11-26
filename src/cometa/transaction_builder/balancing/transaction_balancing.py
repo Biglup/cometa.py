@@ -23,6 +23,7 @@ from ...errors import CardanoError
 
 if TYPE_CHECKING:
     from ...transaction import Transaction
+    from ...pool_params import PoolParams
     from ...protocol_params import ProtocolParameters
     from ...common import UtxoList, Utxo
     from ...address import Address
@@ -45,6 +46,7 @@ def balance_transaction(
     available_collateral_utxo: Optional[Union["UtxoList", List["Utxo"]]] = None,
     collateral_change_address: Optional["Address"] = None,
     evaluator: Optional["TxEvaluator"] = None,
+    pool_state: Optional[List["PoolParams"]] = None,
 ) -> None:
     """
     Balance a Cardano transaction by adding necessary inputs and calculating change.
@@ -68,6 +70,9 @@ def balance_transaction(
         available_collateral_utxo: Available UTXOs for collateral if tx has scripts.
         collateral_change_address: Address for collateral change if applicable.
         evaluator: Transaction evaluator for determining script execution costs.
+        pool_state: Latest registered pool parameters, preferring pending over active.
+            Include each pool once. From protocol 12 these refine owner witness fees;
+            unknown pools remain conservative. Pool deposits are unaffected.
 
     Raises:
         CardanoError: If balancing fails.
@@ -92,11 +97,12 @@ def balance_transaction(
     if isinstance(available_utxo, list):
         available_utxo = UtxoList.from_list(available_utxo)
 
-    ref_inputs_ptr = ffi.NULL
-    if reference_inputs is not None:
-        if isinstance(reference_inputs, list):
-            reference_inputs = UtxoList.from_list(reference_inputs)
-        ref_inputs_ptr = reference_inputs._ptr
+    # Native fee pricing requires an empty collection when there are no references.
+    if reference_inputs is None:
+        reference_inputs = UtxoList()
+    elif isinstance(reference_inputs, list):
+        reference_inputs = UtxoList.from_list(reference_inputs)
+    ref_inputs_ptr = reference_inputs._ptr
 
     pre_selected_ptr = ffi.NULL
     if pre_selected_utxo is not None:
@@ -122,7 +128,13 @@ def balance_transaction(
     if evaluator is not None:
         evaluator_ptr = evaluator._ptr
 
-    err = lib.cardano_balance_transaction(
+    from ...pool_params import PoolParams
+
+    pools = tuple(pool_state or ())
+    if any(not isinstance(pool, PoolParams) for pool in pools):
+        raise TypeError("pool_state must contain PoolParams values")
+    pointers = ffi.new("cardano_pool_params_t*[]", [pool._ptr for pool in pools])
+    err = lib.cardano_balance_transaction_with_pool_state(
         unbalanced_tx._ptr,
         foreign_signature_count,
         protocol_params._ptr,
@@ -136,6 +148,8 @@ def balance_transaction(
         collateral_change_ptr,
         evaluator_ptr,
         ffi.NULL,  # Deferred redeemers are managed by TxBuilder.
+        pointers,
+        len(pools),
     )
     if err != 0:
         raise CardanoError(f"Failed to balance transaction (error code: {err})")

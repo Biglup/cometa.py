@@ -37,11 +37,11 @@ class TestBase58:
         encoded = Base58.encode(data)
         assert isinstance(encoded, str)
         assert len(encoded) > 0
-        assert encoded == "17bWpTW"
+        assert encoded == "7bWpTW"
 
     def test_decode_simple_data(self):
         """Test decoding simple Base58 string."""
-        encoded = "17bWpTW"
+        encoded = "7bWpTW"
         decoded = Base58.decode(encoded)
         assert decoded == bytes([0x01, 0x02, 0x03, 0x04, 0x05])
 
@@ -205,7 +205,7 @@ class TestBase58:
 
     def test_decode_returns_bytes_type(self):
         """Test that decode returns bytes."""
-        encoded = "17bWpTW"
+        encoded = "7bWpTW"
         decoded = Base58.decode(encoded)
         assert isinstance(decoded, bytes)
 

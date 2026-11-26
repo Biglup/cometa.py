@@ -149,7 +149,8 @@ class TestComputeImplicitCoin:
         assert isinstance(implicit_coin, ImplicitCoin)
         assert implicit_coin.withdrawals == 10
         assert implicit_coin.deposits == 157
-        assert implicit_coin.reclaim_deposits == 137
+        # Pool retirement refunds the deposit at the epoch boundary.
+        assert implicit_coin.reclaim_deposits == 134
 
     def test_compute_implicit_coin_net_value(self, transaction, protocol_params):
         """
@@ -159,7 +160,7 @@ class TestComputeImplicitCoin:
 
         expected_net = implicit_coin.withdrawals + implicit_coin.reclaim_deposits - implicit_coin.deposits
         assert implicit_coin.net_value == expected_net
-        assert implicit_coin.net_value == -10
+        assert implicit_coin.net_value == -13
 
     def test_compute_implicit_coin_with_none_transaction(self, protocol_params):
         """
