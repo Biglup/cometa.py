@@ -96,11 +96,11 @@ class TxBuilder(TransactionBuilderBase):
         """
         from ..pool_params import PoolParams
 
-        pools = tuple(pools)
-        if any(not isinstance(pool, PoolParams) for pool in pools):
+        snapshot = tuple(pools)
+        if any(not isinstance(pool, PoolParams) for pool in snapshot):
             raise TypeError("pools must contain PoolParams values")
-        pointers = ffi.new("cardano_pool_params_t*[]", [pool._ptr for pool in pools])
-        err = lib.cardano_tx_builder_set_pool_state(self._ptr, pointers, len(pools))
+        pointers = ffi.new("cardano_pool_params_t*[]", [pool._ptr for pool in snapshot])
+        err = lib.cardano_tx_builder_set_pool_state(self._ptr, pointers, len(snapshot))
         if err != 0:
             raise CardanoError(f"Failed to set pool state (error code: {err})")
         return self

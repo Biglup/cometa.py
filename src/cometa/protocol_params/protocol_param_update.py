@@ -758,7 +758,9 @@ class ProtocolParamUpdate:
 
     @ref_inputs_cost_per_multi_asset_byte.setter
     def ref_inputs_cost_per_multi_asset_byte(self, value: Optional[int]) -> None:
-        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64):
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64
+        ):
             raise ValueError("Expected an unsigned 64-bit integer")
         err = lib.cardano_protocol_param_update_set_ref_inputs_cost_per_multi_asset_byte(
             self._ptr, ffi.NULL if value is None else ffi.new("uint64_t*", value)

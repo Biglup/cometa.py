@@ -560,7 +560,9 @@ class ProtocolParameters:
 
     @ref_inputs_cost_per_multi_asset_byte.setter
     def ref_inputs_cost_per_multi_asset_byte(self, value: int) -> None:
-        if (isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64):
+        if (
+            isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 2**64
+        ):
             raise ValueError("Expected an unsigned 64-bit integer")
         err = lib.cardano_protocol_parameters_set_ref_inputs_cost_per_multi_asset_byte(
             self._ptr, value

@@ -420,12 +420,16 @@ class Transaction:
             ...     print(signer.to_hex())
         """
         from ..cryptography.blake2b_hash_set import Blake2bHashSet
+        from ..pool_params import PoolParams
 
         out = ffi.new("cardano_blake2b_hash_set_t**")
         inputs_ptr = resolved_inputs._ptr if resolved_inputs is not None else ffi.NULL
-        from ..pool_params import PoolParams
 
-        if isinstance(protocol_major, bool) or not isinstance(protocol_major, int) or not 0 <= protocol_major < 2**64:
+        if (
+            isinstance(protocol_major, bool)
+            or not isinstance(protocol_major, int)
+            or not 0 <= protocol_major < 2**64
+        ):
             raise ValueError("protocol_major must be an unsigned 64-bit integer")
         pools = tuple(pool_state or ())
         if any(not isinstance(pool, PoolParams) for pool in pools):
