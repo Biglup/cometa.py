@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.0.0rc4
+
 - Normalize omitted reference inputs to an empty collection when balancing, as required by native reference-script fee pricing.
 
 - Upgrade native sources and CFFI declarations to cardano-c v2.0.0-rc.7, including CIP-172 created-output script sources from protocol 12.

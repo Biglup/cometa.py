@@ -28,7 +28,7 @@ Cometa.py is a lightweight, high-performance Python library binding for the [lib
 
 Cometa.py packages [libcardano-c](https://github.com/Biglup/cardano-c) using CFFI bindings, providing a fully documented, developer-friendly Pythonic API with type hints for excellent IDE support.
 
-The development branch uses cardano-c v2.0.0-rc.7. The published 2.0.0rc3 candidate uses [cardano-c v2.0.0-rc.6](https://github.com/Biglup/cardano-c/releases/tag/v2.0.0-rc.6).
+The 2.0.0rc4 release candidate uses [cardano-c v2.0.0-rc.7](https://github.com/Biglup/cardano-c/releases/tag/v2.0.0-rc.7).
 The [stable 1.2 series](https://pypi.org/project/biglup-cometa/1.2.1.post6/) remains available for applications using cardano-c 1.2.
 
 Example:
@@ -292,7 +292,7 @@ select the 2.0 release candidate unless you opt in.
 To install the release candidate with the new Dijkstra APIs:
 
 ```sh
-pip install "biglup-cometa==2.0.0rc3"
+pip install "biglup-cometa==2.0.0rc4"
 ```
 
 The 2.0 binary wheels require glibc 2.33 or newer on Linux x86-64/ARM64, or
