@@ -29,6 +29,7 @@ from ..witness_set.witness_set import WitnessSet
 from ..auxiliary_data.auxiliary_data import AuxiliaryData
 
 if TYPE_CHECKING:
+    from ..pool_params import PoolParams
     from ..cryptography.blake2b_hash_set import Blake2bHashSet
     from ..common.utxo_list import UtxoList
 
@@ -384,7 +385,8 @@ class Transaction:
             )
 
     def get_unique_signers(
-        self, resolved_inputs: Optional["UtxoList"] = None
+        self, resolved_inputs: Optional["UtxoList"] = None, *,
+        protocol_major: int = 0, pool_state: Optional[list["PoolParams"]] = None
     ) -> "Blake2bHashSet":
         """
         Extracts the unique set of public key hashes required to sign this transaction.
@@ -393,6 +395,10 @@ class Transaction:
         and an optional list of resolved input UTxOs.
 
         Args:
+            protocol_major: Ledger protocol version. The default keeps conservative
+                owner requirements; the exemption applies from version 12.
+            pool_state: Latest registered parameters, pending preferred over active,
+                with one entry per pool. Unknown pools require owner witnesses.
             resolved_inputs: An optional UtxoList containing the resolved UTxOs
                 that are spent by the transaction. If None or empty, the function
                 won't resolve signers from inputs or collateral inputs. If provided,
@@ -417,7 +423,17 @@ class Transaction:
 
         out = ffi.new("cardano_blake2b_hash_set_t**")
         inputs_ptr = resolved_inputs._ptr if resolved_inputs is not None else ffi.NULL
-        err = lib.cardano_transaction_get_unique_signers(self._ptr, inputs_ptr, out)
+        from ..pool_params import PoolParams
+
+        if isinstance(protocol_major, bool) or not isinstance(protocol_major, int) or not 0 <= protocol_major < 2**64:
+            raise ValueError("protocol_major must be an unsigned 64-bit integer")
+        pools = tuple(pool_state or ())
+        if any(not isinstance(pool, PoolParams) for pool in pools):
+            raise TypeError("pool_state must contain PoolParams values")
+        pointers = ffi.new("cardano_pool_params_t*[]", [pool._ptr for pool in pools])
+        err = lib.cardano_transaction_get_unique_signers_with_pool_state(
+            self._ptr, inputs_ptr, protocol_major, pointers, len(pools), out
+        )
         if err != 0:
             raise CardanoError(
                 f"Failed to get unique signers from transaction (error code: {err})"

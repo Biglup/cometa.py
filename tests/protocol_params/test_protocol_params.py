@@ -1392,3 +1392,29 @@ class TestUpdate:
         proposed_updates, _ = self._create_proposed_updates()
         with Update.new(300, proposed_updates) as update:
             assert update is not None
+
+
+def test_multi_asset_byte_cost_boundaries():
+    """Parameter 55 preserves the full uint64 range and rejects invalid input."""
+    params = ProtocolParameters.new()
+    for value in (0, 123, 2**64 - 1):
+        params.ref_inputs_cost_per_multi_asset_byte = value
+        assert params.ref_inputs_cost_per_multi_asset_byte == value
+    for value in (-1, 2**64, True, 0.5):
+        with pytest.raises(ValueError):
+            params.ref_inputs_cost_per_multi_asset_byte = value
+
+
+def test_multi_asset_byte_update_roundtrip_and_clear():
+    """An omitted update differs from an explicit zero byte cost."""
+    from cometa import ProtocolParamUpdate
+
+    update = ProtocolParamUpdate.new()
+    assert update.ref_inputs_cost_per_multi_asset_byte is None
+    update.ref_inputs_cost_per_multi_asset_byte = 0
+    writer = CborWriter()
+    update.to_cbor(writer)
+    decoded = ProtocolParamUpdate.from_cbor(CborReader.from_bytes(writer.encode()))
+    assert decoded.ref_inputs_cost_per_multi_asset_byte == 0
+    update.ref_inputs_cost_per_multi_asset_byte = None
+    assert update.ref_inputs_cost_per_multi_asset_byte is None

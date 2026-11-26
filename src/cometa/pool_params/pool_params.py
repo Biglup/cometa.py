@@ -50,6 +50,24 @@ class PoolParams:
             raise CardanoError("PoolParams: invalid handle")
         self._ptr = ptr
 
+    def requires_owner_witnesses(self, latest: Optional[PoolParams] = None) -> bool:
+        """Whether this registration needs owner witnesses from protocol version 12.
+
+        Supply the latest registered parameters, preferring pending over active
+        parameters. An unknown pool requires owners; the operator is always
+        required separately. BLS-only changes and equivalent owner sets or
+        rational margins do not require owner witnesses.
+        """
+        if latest is not None and not isinstance(latest, PoolParams):
+            raise TypeError("latest must be PoolParams or None")
+        out = ffi.new("bool*")
+        err = lib.cardano_pool_params_requires_owner_witnesses(
+            self._ptr, ffi.NULL if latest is None else latest._ptr, out
+        )
+        if err != 0:
+            raise CardanoError(f"Failed to compare pool parameters (error code: {err})")
+        return bool(out[0])
+
     def __del__(self) -> None:
         if getattr(self, "_ptr", ffi.NULL) not in (None, ffi.NULL):
             ptr_ptr = ffi.new("cardano_pool_params_t**", self._ptr)

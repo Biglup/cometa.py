@@ -596,6 +596,17 @@ class TestPoolMetadata:
 class TestPoolParams:
     """Tests for PoolParams."""
 
+    def test_owner_witness_comparison(self, operator_hash, vrf_hash, margin, reward_account, owners, relays):
+        """Known unchanged pools omit owners; changes and unknown pools require them."""
+        latest = PoolParams.new(operator_hash, vrf_hash, 10000, 1000, margin, reward_account, owners, relays)
+        proposed = PoolParams.new(operator_hash, vrf_hash, 10000, 1000, margin, reward_account, owners, relays)
+        assert proposed.requires_owner_witnesses()
+        assert not proposed.requires_owner_witnesses(latest)
+        proposed.cost += 1
+        assert proposed.requires_owner_witnesses(latest)
+        with pytest.raises(TypeError):
+            proposed.requires_owner_witnesses(object())
+
     @pytest.fixture
     def operator_hash(self):
         """Create a test operator key hash (28 bytes)."""

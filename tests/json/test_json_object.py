@@ -138,17 +138,11 @@ class TestJsonObjectParse:
         with pytest.raises(CardanoError):
             JsonObject.parse('[1,2,3')
 
-    def test_can_parse_with_trailing_comma_in_object(self):
-        """Test that trailing comma in object is accepted (parser allows it)."""
-        obj = JsonObject.parse('{"name":"Alice",}')
-        assert obj is not None
-        assert obj.type == JsonObjectType.OBJECT
-
-    def test_can_parse_with_trailing_comma_in_array(self):
-        """Test that trailing comma in array is accepted (parser allows it)."""
-        obj = JsonObject.parse('[1,2,3,]')
-        assert obj is not None
-        assert obj.type == JsonObjectType.ARRAY
+    @pytest.mark.parametrize("text", ['{"name":"Alice",}', '[1,2,3,]'])
+    def test_rejects_trailing_commas(self, text):
+        """Strict JSON does not accept trailing commas."""
+        with pytest.raises(CardanoError):
+            JsonObject.parse(text)
 
 
 class TestJsonObjectType:

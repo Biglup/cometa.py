@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Normalize omitted reference inputs to an empty collection when balancing, as required by native reference-script fee pricing.
+
+- Upgrade native sources and CFFI declarations to cardano-c v2.0.0-rc.7, including CIP-172 created-output script sources from protocol 12.
+- Add `TxBuilder.set_pool_state`, pool-aware signer discovery and balancing, and `PoolParams.requires_owner_witnesses`. Supply latest registered parameters, pending preferred over active; unknown pools remain conservative and pool deposits are unaffected.
+- Expose protocol parameter 55 as `ref_inputs_cost_per_multi_asset_byte`, including optional updates.
+- Align tests with native fixes: strict JSON, Base58 leading zeros, native-script threshold equality, rejection of zero PBKDF2 iterations, ledger fee sizing, and pool refunds at epoch boundaries.
+
 - Add Koios, Kupmios (Kupo + Ogmios), and Hydra providers with exact wire decoding, bounded HTTP requests, and explicit confirmation semantics.
 - Expose reference-script size limits, fee stride, and fee multiplier in protocol parameters.
 - Fix Blockfrost inline datum and native reference-script decoding, preserve complete additional evaluation inputs, and reject incomplete or inconsistent execution budgets.
